@@ -1,0 +1,17 @@
++--------------------------------------------------------------------------+
+| Job on the BlueBEAR cluster:
+| Starting at Wed Sep  3 10:45:01 2025 for puc369(883164)
+| Identity jobid 27650160 jobname job.sh
+| Running against project scanlodo-pv-defects and in partition icelake-shared
+| Requested cpu=48,mem=192G,node=1,billing=48 - 10-00:00:00 walltime
+| Allocated cpu=48,mem=192G,node=1,billing=48
+| Assigned to nodes bear-pg0105u27b
+| Command /rds/projects/s/scanlodo-pv-defects/FOM_Code/DOS_CdTe_Tutorial/job.sh
+| WorkDir /rds/projects/s/scanlodo-pv-defects/FOM_Code/DOS_CdTe_Tutorial
++--------------------------------------------------------------------------+
++--------------------------------------------------------------------------+
+| Finished at Wed Sep  3 11:03:59 2025 for puc369(883164) on the BlueBEAR Cluster
+| Required (14:50:15 cputime, 12949866K memory used) - 00:18:58 walltime
+| JobState COMPLETING - Reason None
+| Exitcode 0:0
++--------------------------------------------------------------------------+
