@@ -1,0 +1,74 @@
+GCCcore/11.3.0
+zlib/1.2.12-GCCcore-11.3.0
+binutils/2.38-GCCcore-11.3.0
+GCC/11.3.0
+numactl/2.0.14-GCCcore-11.3.0
+XZ/5.2.5-GCCcore-11.3.0
+libxml2/2.9.13-GCCcore-11.3.0
+libpciaccess/0.16-GCCcore-11.3.0
+hwloc/2.7.1-GCCcore-11.3.0
+OpenSSL/1.1
+libevent/2.1.12-GCCcore-11.3.0
+UCX/1.12.1-GCCcore-11.3.0
+libfabric/1.15.1-GCCcore-11.3.0
+PMIx/4.1.2-GCCcore-11.3.0
+UCC/1.0.0-GCCcore-11.3.0
+OpenMPI/4.1.4-GCC-11.3.0
+OpenBLAS/0.3.20-GCC-11.3.0
+FlexiBLAS/3.2.0-GCC-11.3.0
+FFTW/3.3.10-GCC-11.3.0
+gompi/2022a
+FFTW.MPI/3.3.10-gompi-2022a
+ScaLAPACK/2.2.0-gompi-2022a-fb
+foss/2022a
+Szip/2.1.1-GCCcore-11.3.0
+HDF5/1.13.1-gompi-2022a
+The use of VASP is restricted. You must be a member of the correct Unix group for VASP to work.
+
+VASP/6.4.2-foss-2022a
+ running   48 mpi-ranks, with    1 threads/rank, on    1 nodes
+ distrk:  each k-point on   48 cores,    1 groups
+ distr:  one band on    4 cores,   12 groups
+ vasp.6.4.2 20Jul23 (build Oct 17 2023 11:49:23) complex                         
+ POSCAR found type information on POSCAR CdTe
+ POSCAR found :  2 types and       2 ions
+ Reading from existing POTCAR
+ scaLAPACK will be used
+ Reading from existing POTCAR
+ LDA part: xc-table for Pade appr. of Perdew
+ -----------------------------------------------------------------------------
+|                                                                             |
+|           W    W    AA    RRRRR   N    N  II  N    N   GGGG   !!!           |
+|           W    W   A  A   R    R  NN   N  II  NN   N  G    G  !!!           |
+|           W    W  A    A  R    R  N N  N  II  N N  N  G       !!!           |
+|           W WW W  AAAAAA  RRRRR   N  N N  II  N  N N  G  GGG   !            |
+|           WW  WW  A    A  R   R   N   NN  II  N   NN  G    G                |
+|           W    W  A    A  R    R  N    N  II  N    N   GGGG   !!!           |
+|                                                                             |
+|     The requested file  could not be found or opened for reading            |
+|     k-point information. Automatic k-point generation is used as a          |
+|     fallback, which may lead to unwanted results.                           |
+|                                                                             |
+ -----------------------------------------------------------------------------
+
+ found WAVECAR, reading the header
+ INCAR ok, starting setup
+ POSCAR ok, starting setup
+ FFT: planning ... GRIDC
+ FFT: planning ... GRID_SOFT
+ FFT: planning ... GRID
+ reading WAVECAR
+ the WAVECAR file was read successfully
+ initial charge from wavefunction
+ entering main loop
+       N       E                     dE             d eps       ncg     rms          rms(c)
+DAV:   1    -0.603991887792E+01   -0.60399E+01   -0.69367E-07  1848   0.313E-03    0.154E-03
+DAV:   2    -0.603991886200E+01    0.15918E-07   -0.99721E-09  1368   0.559E-04
+   1 F= -.60399189E+01 E0= -.60399189E+01  d E =0.000000E+00
+ writing wavefunctions
+ optical routines
+ imaginary and real dielectric function
+ recalculating local potential from charge density
+ direction            1
+ direction            2
+ direction            3
