@@ -1,4 +1,4 @@
-import Linux_Project.Figure_of_merit.fom_placeholder.db_fom as db_fom
+import fom_placeholder.placeholder.db_fom as db_fom
 import numpy as np
 import matplotlib.pyplot as plt
 
