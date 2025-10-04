@@ -1,5 +1,5 @@
-from Linux_Project.Figure_of_merit.fom_placeholder.pv_fom import Final_equation
-from Linux_Project.Figure_of_merit.fom_placeholder.db_fom import max_eff
+from fom_placeholder.placeholder.pv_fom import Final_equation
+from fom_placeholder.placeholder.db_fom import max_eff
 
 # Calculating equation 33 from the FOM paper
 
