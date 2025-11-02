@@ -12,10 +12,10 @@ def photons_above_bandgap_plot(spectrum, Egap):
     for row in a:
         # print row
         row[1] = db_fom.photons_above_bandgap(row[0], spectrum)
-    plt.plot(a[:, 0], a[:, 1])
+    plt.plot(a[:, 0], a[:, 1], color='#231123')
 
     p_above_1_1 = db_fom.photons_above_bandgap(Egap, spectrum)
-    plt.plot([Egap], [p_above_1_1], 'ro')
+    plt.plot([Egap], [p_above_1_1], 'ro', color='#FF6666')
     plt.text(Egap+0.05, p_above_1_1, '{}eV, {:.4}'.format(Egap, p_above_1_1))
 
     plt.xlabel('$E_{gap}$ (eV)')
@@ -32,13 +32,13 @@ def iv_curve_plot(egap, spectrum, Tcell, power=False):
         plt.xlabel('Voltage (V)')
         plt.ylabel('Power generated ($W$)')
         plt.title('Power Curve')
-        plt.plot(v, p)
+        plt.plot(v, p, color='#231123')
     else:
         i =  db_fom.current_density(egap, spectrum, v, Tcell)
         plt.xlabel('Voltage (V)')
         plt.ylabel('Current density $J$ ($Am^{-2}$)')
         plt.title('IV Curve')
-        plt.plot(v, i)
+        plt.plot(v, i, color='#231123')
 
 
 def iv_curve_plot_2(egap, spectrum, Tcell, power=False):
@@ -50,13 +50,13 @@ def iv_curve_plot_2(egap, spectrum, Tcell, power=False):
     p =  v * db_fom.current_density(egap, spectrum, v, Tcell)
     i =  db_fom.current_density(egap, spectrum, v, Tcell)
     
-    ax1.plot(v, i)
+    ax1.plot(v, i, color='#231123')
     ax1.set_xlabel('Voltage (V)')
     ax1.set_ylabel('Current density $J$ ($Am^{-2}$)')
     ax1.legend(['Current'], loc=2)
     
     ax2 = ax1.twinx()
-    ax2.plot(v, p, color='orange')
+    ax2.plot(v, p, color='#FF6666')
     ax2.set_ylabel('Power generated ($W$)')
     ax2.legend(['Power'], loc=3)
     return
