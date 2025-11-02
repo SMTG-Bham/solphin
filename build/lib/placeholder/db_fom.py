@@ -1,6 +1,7 @@
 import scipy.constants as sc
 import numpy as np
 import logging
+from importlib.resources import files
 
 logging.basicConfig(level=logging.INFO)
 
@@ -12,6 +13,46 @@ k = sc.k        # Boltzmann constant (J/K)
 q = sc.e        # Elementary charge (Coulombs)
 
 # Convert the spectrum to the useful units - taken from https://github.com/kaklin/sq-limit?tab=readme-ov-file
+
+def load_spectrum(spectrum_type):
+
+    if spectrum_type == "AM1.5":
+        filename = 'ASTMG173.csv'
+
+    elif spectrum_type == "Fluorescent":
+        filename = 'fluorescent.csv'
+
+    elif spectrum_type == "Blue LED":
+        filename = 'led_blue.csv'
+
+    elif spectrum_type == "Green LED":
+        filename = 'led_green.csv'
+
+    elif spectrum_type == "Red LED":
+        filename = 'led_red.csv'
+
+    elif spectrum_type == "White LED":
+        filename = 'led_white.csv'
+
+    elif spectrum_type == "IR LED":
+        filename = 'led_ir.csv'
+
+    elif spectrum_type == "Photopic":
+        filename = 'photopic.csv'
+
+    else:
+        print("Unrecognisable spectrum selected")
+        print("Options: AM1.5, Fluorescent, Blue LED, Green LED, Red LED, White LED, IR LED, Photopic")
+        print("reverting to AM1.5")
+
+        filename = 'ASTMG173.csv'
+
+    csv_path = files("placeholder.resources") / f"{filename}"
+
+    with csv_path.open("r", encoding="utf-8") as f:
+        spectrum = np.loadtxt(f, delimiter=",", skiprows=1)
+
+    return spectrum
 
 def convert_spectrum(spectrum):
 
