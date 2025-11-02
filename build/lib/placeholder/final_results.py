@@ -1,5 +1,5 @@
-from fom_placeholder.placeholder.pv_fom import Final_equation
-from fom_placeholder.placeholder.db_fom import max_eff
+from placeholder.pv_fom import Final_equation
+from placeholder.db_fom import max_eff
 
 # Calculating equation 33 from the FOM paper
 
