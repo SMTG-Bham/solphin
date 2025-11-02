@@ -1,6 +1,7 @@
 import scipy.constants as sc
 import numpy as np
 import logging
+from importlib.resources import files
 
 logging.basicConfig(level=logging.INFO)
 
@@ -12,6 +13,46 @@ k = sc.k        # Boltzmann constant (J/K)
 q = sc.e        # Elementary charge (Coulombs)
 
 # Convert the spectrum to the useful units - taken from https://github.com/kaklin/sq-limit?tab=readme-ov-file
+
+def load_spectrum(spectrum_type):
+
+    if spectrum_type == "AM1.5":
+        filename = 'ASTMG173.csv'
+
+    elif spectrum_type == "Fluorescent":
+        filename = 'fluorescent.csv'
+
+    elif spectrum_type == "Blue LED":
+        filename = 'led_blue.csv'
+
+    elif spectrum_type == "Green LED":
+        filename = 'led_green.csv'
+
+    elif spectrum_type == "Red LED":
+        filename = 'led_red.csv'
+
+    elif spectrum_type == "White LED":
+        filename = 'led_white.csv'
+
+    elif spectrum_type == "IR LED":
+        filename = 'led_ir.csv'
+
+    elif spectrum_type == "Photopic":
+        filename = 'photopic.csv'
+
+    else:
+        print("Unrecognisable spectrum selected")
+        print("Options: AM1.5, Fluorescent, Blue LED, Green LED, Red LED, White LED, IR LED, Photopic")
+        print("reverting to AM1.5")
+
+        filename = 'ASTMG173.csv'
+
+    csv_path = files("placeholder.resources") / f"{filename}"
+
+    with csv_path.open("r", encoding="utf-8") as f:
+        spectrum = np.loadtxt(f, delimiter=",", skiprows=1)
+
+    return spectrum
 
 def convert_spectrum(spectrum):
 
@@ -56,7 +97,7 @@ def photons_above_bandgap(E_gap, photon_spectrum):
     indexes = np.where(photon_spectrum[:, 0] > E_gap)
     y = photon_spectrum[indexes, 1][0]
     x = photon_spectrum[indexes, 0][0]
-    return np.trapezoid(y[::-1], x[::-1])
+    return np.trapz(y[::-1], x[::-1])
 
 def rr0(E_gap, photon_spectrum, Tcell):
     '''
@@ -83,7 +124,7 @@ def rr0(E_gap, photon_spectrum, Tcell):
     denominator = np.exp(exponential_in) - 1
     integrand = numerator / denominator
 
-    integral = np.trapezoid(integrand[egap_index], E[egap_index, 0])
+    integral = np.trapz(integrand[egap_index], E[egap_index, 0])
 
     result = const * integral
     return result[0]
@@ -234,7 +275,7 @@ def max_eff(E_gap, photon_spectrum, Tcell):
     photon_spectrum_1 = photon_spectrum[::-1, 1] 
     photon_spectrum_0 = photon_spectrum[::-1, 0]
 
-    irradiance =  np.trapezoid(photon_spectrum_1 * q * photon_spectrum_0, photon_spectrum_0)
+    irradiance =  np.trapz(photon_spectrum_1 * q * photon_spectrum_0, photon_spectrum_0)
     return max_power(E_gap, photon_spectrum, Tcell) / irradiance
 
 def FillFactor(E_gap, photon_spectrum, Tcell):
