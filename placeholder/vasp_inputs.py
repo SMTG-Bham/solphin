@@ -1,10 +1,7 @@
-from pymatgen.io.vasp import Poscar
-from pymatgen.io.vasp import Potcar
-import math
-import os
-import shutil
-from pathlib import Path
 from typing import Dict, List, Optional, Union
+from importlib.resources import files
+import json 
+import placeholder.resources
 
 from monty.serialization import loadfn
 from pymatgen.core.structure import Structure
@@ -43,7 +40,9 @@ def _load_config(fname: str) -> Dict[str, Dict[str, Union[str, Dict[str, str]]]]
     Returns:
         dict: A dictionary containing the configuration information.
     """
-    config = loadfn(str(fname))
+    resource_path = files("placeholder.resources") / fname  # adjust module name
+    with resource_path.open("r", encoding="utf-8") as f:
+        config = json.load(f)
     return config
 
 def determine_potcar_functional(
