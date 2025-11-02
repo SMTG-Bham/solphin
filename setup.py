@@ -11,12 +11,9 @@ setup(
     packages=['placeholder'],
     install_requires=['numpy',
                       'scipy',
-                      'logging',
                       'matplotlib>=3.9.4',
                       'pymatgen>=2024.8.9',
                       'mpmath',
-                      'os',
-                      'shuntil',
                       'pathlib',
                       'typing_extensions',
                       'monty'                     
