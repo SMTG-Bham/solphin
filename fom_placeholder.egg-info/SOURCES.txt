@@ -1,0 +1,14 @@
+README.md
+setup.py
+fom_placeholder.egg-info/PKG-INFO
+fom_placeholder.egg-info/SOURCES.txt
+fom_placeholder.egg-info/dependency_links.txt
+fom_placeholder.egg-info/requires.txt
+fom_placeholder.egg-info/top_level.txt
+placeholder/__init__.py
+placeholder/db_fom.py
+placeholder/db_plotting.py
+placeholder/final_results.py
+placeholder/pv_fom.py
+placeholder/vasp_inputs.py
+placeholder/version.py
