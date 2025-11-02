@@ -97,7 +97,7 @@ def photons_above_bandgap(E_gap, photon_spectrum):
     indexes = np.where(photon_spectrum[:, 0] > E_gap)
     y = photon_spectrum[indexes, 1][0]
     x = photon_spectrum[indexes, 0][0]
-    return np.trapezoid(y[::-1], x[::-1])
+    return np.trapz(y[::-1], x[::-1])
 
 def rr0(E_gap, photon_spectrum, Tcell):
     '''
@@ -124,7 +124,7 @@ def rr0(E_gap, photon_spectrum, Tcell):
     denominator = np.exp(exponential_in) - 1
     integrand = numerator / denominator
 
-    integral = np.trapezoid(integrand[egap_index], E[egap_index, 0])
+    integral = np.trapz(integrand[egap_index], E[egap_index, 0])
 
     result = const * integral
     return result[0]
@@ -275,7 +275,7 @@ def max_eff(E_gap, photon_spectrum, Tcell):
     photon_spectrum_1 = photon_spectrum[::-1, 1] 
     photon_spectrum_0 = photon_spectrum[::-1, 0]
 
-    irradiance =  np.trapezoid(photon_spectrum_1 * q * photon_spectrum_0, photon_spectrum_0)
+    irradiance =  np.trapz(photon_spectrum_1 * q * photon_spectrum_0, photon_spectrum_0)
     return max_power(E_gap, photon_spectrum, Tcell) / irradiance
 
 def FillFactor(E_gap, photon_spectrum, Tcell):
