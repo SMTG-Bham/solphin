@@ -155,13 +155,13 @@ def blank_eta(spectrum, E, alpha, n, length, Qi, trap):
 
     return(eta)
 
-def blank_parse():
+def blank_parse(folder):
     
     # Parses outputs from current directory
 
-    abs_data = pd.read_table('absorption.dat', delim_whitespace=True,
+    abs_data = pd.read_table(f'{folder}/absorption.dat', delim_whitespace=True,
                                 skiprows=1, header=None)
-    n_data = pd.read_table('n_real.dat', delim_whitespace=True,
+    n_data = pd.read_table(f'{folder}/n_real.dat', delim_whitespace=True,
                     skiprows=1, header=None)
     
     E_p = list(abs_data[0])
@@ -170,7 +170,9 @@ def blank_parse():
 
     return{"E": E_p, "alpha": alpha_p, "n": n_p}
 
-def blank_calculate(data):
+def blank_calculate(spectrum, folder):
+
+    data = blank_parse(folder)
 
     E = np.asarray(data["E"])
     alpha = np.asarray(data["alpha"])
@@ -193,7 +195,7 @@ def blank_calculate(data):
         eta_arr = eta_arr.reshape(len(length_arr), (len(Qi_arr)+1))
         for k, l_pt in enumerate(length_arr):
             for l, q_pt in enumerate(Qi_arr):
-                eta_max = blank_eta(E, alpha, n, l_pt, q_pt, tr_pt)
+                eta_max = blank_eta(spectrum, E, alpha, n, l_pt, q_pt, tr_pt)
                 eta_arr[k, 0] = l_pt
                 eta_arr[k, l+1] = eta_max
         if tr_pt == 1:
