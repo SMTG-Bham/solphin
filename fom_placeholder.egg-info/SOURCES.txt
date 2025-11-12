@@ -10,6 +10,7 @@ placeholder/__init__.py
 placeholder/db_fom.py
 placeholder/db_plotting.py
 placeholder/final_results.py
+placeholder/optics.py
 placeholder/pv_fom.py
 placeholder/vasp_inputs.py
 placeholder/version.py
