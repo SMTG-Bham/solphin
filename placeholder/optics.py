@@ -48,9 +48,6 @@ def calc_absorption(eps_full, energies):
 
 def print_n_real_file(data, energies):
 
-    print(data['n_real'])
-    print(energies)
-
     filename = 'n_real.dat'
     directory = 'dos'
 
