@@ -10,8 +10,17 @@ k=0.000086173325 #eV/K
 h=4.135667E-15 #eVs
 c=2.9979E+8 #m/s
 
-
 def calc_dielectric(filename):
+
+    '''Calculates the dielectric constants from a vasprun.xml
+    
+    Parameters:
+        filename(string): filename/ path of the vasprun, typically vasprun.xml.
+        
+    Returns:
+        eps_full(np.array): static dielectric constant (complex, contains both real and imaginary components)
+        energies(np.array): energy of the incident radiation eV
+        '''
 
     load_vasprun = Vasprun(filename)
     dielectric = load_vasprun.dielectric
@@ -25,6 +34,17 @@ def calc_dielectric(filename):
     return eps_full, energies
 
 def calc_absorption(eps_full, energies):
+
+    '''Calculates the averages of the real and imaginary components of the refractive index, absorption, losses, real and imaginary components of the 
+    static dielectric constant.
+    
+    Parameters:
+        eps_full(np.array): static dielectric constant (complex, contains both real and imaginary components)
+        energies(np.array): energy of the incident radiation eV
+        
+    Returns:
+        data(dictionary):
+        '''
 
     # take sqrt of eps matrix; if eps = V S V^-1; then eps^1/2 = V S^{1/2} V^-1;
     eigvals, eigvecs = np.linalg.eig(eps_full)
@@ -76,6 +96,10 @@ def generate_n_real(filename):
      data = calc_absorption(eps_full, energies)
 
      print_n_real_file(data, energies)
+
+
+# BELOW USES THE BLANK-METRIC CODE FROM DAN DAVIS AND CHRIS SAVORY, NEEDS STRIPPING BACK TO THEORY 
+
 
 def blank_flat(alpha, n, length): 
 
