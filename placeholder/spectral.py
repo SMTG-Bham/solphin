@@ -1,13 +1,18 @@
 import numpy as np
 from scipy.integrate import simpson
-import math as m
-import scipy.special as sc
+import scipy.constants as sc
 
-q=1.60217662E-19
-kT=0.0258519975 # eV for T=300K
-k=0.000086173325 #eV/K
-h=4.135667E-15 #eVs
-c=2.9979E+8 #m/s
+# q=1.60217662E-19
+# kT=0.0258519975 # eV for T=300K
+# k=0.000086173325 #eV/K
+# h=4.135667E-15 #eVs
+# c=2.9979E+8 #m/s
+
+
+h = sc.h        # Planck's constant (J·s)
+c = sc.c        # Speed of light (m/s)
+k = sc.k        # Boltzmann constant (J/K)
+q = sc.e        # Elementary charge (Coulombs)
 
 def load_absorption(abs_file):
 
@@ -77,9 +82,11 @@ def match_wavelengths(filtered_wavelengths_abs, filtered_wavelengths_spec, filte
         closest_values = [filtered_irradiance_spec[i] for i in close_indices]
         matched_values.append(sum(closest_values) / len(closest_values))  # Average
 
+    # matched_values = np.array(matched_values, dtype = float)
+
     return matched_values
 
-def calculate_spectral_dispersion(filtered_abs_coff, matched_irradiance):
+def calculate_spectral_dispersion(filtered_abs_coff, matched_irradiance, filtered_wavelengths_abs):
     # Convert to log scale
     log_alpha = [np.log(a) for a in filtered_abs_coff]
 
@@ -91,7 +98,7 @@ def calculate_spectral_dispersion(filtered_abs_coff, matched_irradiance):
     # Compute numerator (variance term)
 
     numerator_x = list(irr * (log_a - log_alpha_bar) ** 2 for irr, log_a in zip(matched_irradiance, log_alpha))
-    numerator_variance = simpson( numerator_x )
+    numerator_variance = simpson(numerator_x)
 
     # Compute denominator (normalization term)
     denominator_variance = simpson(matched_irradiance)
@@ -102,7 +109,7 @@ def calculate_spectral_dispersion(filtered_abs_coff, matched_irradiance):
     return spectral_dispersion
 
 # Function to calculate spectral average
-def calculate_spectral_average(filtered_abs_coff, matched_irradiance):
+def calculate_spectral_average(filtered_abs_coff, matched_irradiance, filtered_wavelengths_abs):
     # Compute numerator (weighted sum of alpha)
     numerator_1 = list(alpha * irr for alpha, irr in zip(filtered_abs_coff, matched_irradiance))
 
@@ -116,6 +123,7 @@ def calculate_spectral_average(filtered_abs_coff, matched_irradiance):
     
     return spectral_average
 
+
 def generate_spectral_parameters(abs_file, spectrum, E_gap):
 
     abs_energy_eV, abs_coeff = load_absorption(abs_file)
@@ -123,8 +131,8 @@ def generate_spectral_parameters(abs_file, spectrum, E_gap):
     filtered_wavelengths_spec, filtered_irradiance_spec  = truncate_light_spectra(spectrum, E_gap)
     matched_irradiance = match_wavelengths(filtered_wavelengths_abs, filtered_wavelengths_spec, filtered_irradiance_spec)
 
-    spectral_average = calculate_spectral_average(filtered_abs_coff, matched_irradiance)
-    spectral_dispersion = calculate_spectral_dispersion(filtered_abs_coff, matched_irradiance)
+    spectral_average = calculate_spectral_average(filtered_abs_coff, matched_irradiance, filtered_wavelengths_abs)
+    spectral_dispersion = calculate_spectral_dispersion(filtered_abs_coff, matched_irradiance, filtered_wavelengths_abs)
 
     return spectral_average, spectral_dispersion
 
