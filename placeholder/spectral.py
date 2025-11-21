@@ -81,7 +81,7 @@ def match_wavelengths(filtered_wavelengths_abs, filtered_wavelengths_spec, filte
 
 def calculate_spectral_dispersion(filtered_abs_coff, matched_irradiance):
     # Convert to log scale
-    log_alpha = [m.log(a) for a in filtered_abs_coff]
+    log_alpha = [np.log(a) for a in filtered_abs_coff]
 
     # Compute weighted mean log(α)
     numerator_mean = sum(irr * log_a for irr, log_a in zip(matched_irradiance, log_alpha)) #not mean?
@@ -97,7 +97,7 @@ def calculate_spectral_dispersion(filtered_abs_coff, matched_irradiance):
     denominator_variance = simpson(matched_irradiance)
 
     # Spectral density
-    spectral_dispersion = m.sqrt(numerator_variance / denominator_variance)
+    spectral_dispersion = np.sqrt(numerator_variance / denominator_variance)
     
     return spectral_dispersion
 
