@@ -1,7 +1,7 @@
 from typing import Dict, List, Optional, Union
 from importlib.resources import files
 import json 
-import placeholder.resources
+import solphin.resources
 
 from monty.serialization import loadfn
 from pymatgen.core.structure import Structure
