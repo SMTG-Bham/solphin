@@ -8,7 +8,7 @@ setup(
     author='Philippa U Cox, Peter P Russell',
     author_email='puc369@student.bham.ac.uk, ppr466@student.bham.ac.uk',
     license='MIT',
-    packages=['placeholder'],
+    packages=['solphin'],
     install_requires=['numpy',
                       'scipy',
                       'matplotlib>=3.9.4',
