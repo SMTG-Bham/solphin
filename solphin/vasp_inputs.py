@@ -40,7 +40,7 @@ def _load_config(fname: str) -> Dict[str, Dict[str, Union[str, Dict[str, str]]]]
     Returns:
         dict: A dictionary containing the configuration information.
     """
-    resource_path = files("placeholder.resources") / fname  # adjust module name
+    resource_path = files("solphin.resources") / fname  # adjust module name
     with resource_path.open("r", encoding="utf-8") as f:
         config = json.load(f)
     return config
