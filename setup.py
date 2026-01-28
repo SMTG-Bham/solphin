@@ -1,8 +1,8 @@
 from setuptools import setup
 
 setup(
-    name='fom_placeholder',
-    version='0.1.0',    
+    name='solphin',
+    version='0.0.0',    
     description='Figure of Merit for Photovoltaics',
     url='https://github.com/SMTG-Bham/PV-FoM',
     author='Philippa U Cox, Peter P Russell',
