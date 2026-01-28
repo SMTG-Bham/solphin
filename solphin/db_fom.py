@@ -47,7 +47,7 @@ def load_spectrum(spectrum_type):
 
         filename = 'ASTMG173.csv'
 
-    csv_path = files("placeholder.resources") / f"{filename}"
+    csv_path = files("solphin.resources") / f"{filename}"
 
     with csv_path.open("r", encoding="utf-8") as f:
         spectrum = np.loadtxt(f, delimiter=",", skiprows=1)
