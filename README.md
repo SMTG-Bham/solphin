@@ -2,19 +2,19 @@
 
 **Please note that this code is still under development and not currently suitable for use**
 
-`placeholder` is a code developed to assist with the characterisation of novel photovoltaic materials with `VASP`. It combines detailed balance analysis with other tools such as the photovoltaic figure of merit proposed by A.Crovetto, Spectroscopic Limited Maximum Efficiency (SLME), Blank et al Maximum Efficiency and Optical tauc plots to provide a full picture of a materials theoretical photovoltaic efficiency. 
+`solphin` is a code developed to assist with the characterisation of novel photovoltaic materials with `VASP`. It combines detailed balance analysis with other tools such as the photovoltaic figure of merit proposed by A.Crovetto, Spectroscopic Limited Maximum Efficiency (SLME), Blank et al Maximum Efficiency and Optical tauc plots to provide a full picture of a materials theoretical photovoltaic efficiency. 
 
-*We request that any use of `placeholder` in your work cites the code and theory papers*
+*We request that any use of `solphin` in your work cites the code and theory papers*
 
 ## Installation 
 
-`placeholder` is currently only installable through the following method:
+`solphin` is currently only installable through the following method:
 
 ```
 git clone https://<PATOKEN>@github.com/SMTG-Bham/PV-FoM
 ```
 
-Navigate into `placeholder` and run:
+Navigate into `solphin` and run:
 
 ```
 pip install -e.
