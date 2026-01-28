@@ -1,5 +1,5 @@
-from placeholder.pv_fom import Final_equation
-from placeholder.db_fom import max_eff
+from solphin.pv_fom import Final_equation
+from solphin.db_fom import max_eff
 
 # Calculating equation 33 from the FOM paper
 
