@@ -1,9 +1,9 @@
-import placeholder.pv_fom
-import placeholder.db_fom
-import placeholder.final_results
-import placeholder.db_plotting
-import placeholder.vasp_inputs
-import placeholder.spectral
-import placeholder.optics
+import solphin.pv_fom
+import solphin.db_fom
+import solphin.final_results
+import solphin.db_plotting
+import solphin.vasp_inputs
+import solphin.spectral
+import solphin.optics
 from .version import __version__
-import placeholder.resources
+import solphin.resources

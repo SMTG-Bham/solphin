@@ -1,4 +1,4 @@
-import placeholder.db_fom as db_fom
+import solphin.db_fom as db_fom
 import numpy as np
 import matplotlib.pyplot as plt
 
