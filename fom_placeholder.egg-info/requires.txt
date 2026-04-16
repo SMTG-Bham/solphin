@@ -1,8 +1,0 @@
-numpy
-scipy
-matplotlib>=3.9.4
-pymatgen>=2024.8.9
-mpmath
-pathlib
-typing_extensions
-monty
