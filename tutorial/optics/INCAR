@@ -1,5 +1,6 @@
 AEXX = 0.25
 ALGO = Normal
+CSHIFT = 1e-06
 EDIFF = 1e-06
 ENCUT = 450.0
 GGA = Pe
@@ -11,6 +12,7 @@ KSPACING = 0.2
 LASPH = True
 LHFCALC = True
 LMAXMIX = 4
+LOPTICS = True
 LORBIT = 14
 LREAL = False
 NCORE = 4
