@@ -1,6 +1,6 @@
 LICENSE
 README.md
-setup.py
+pyproject.toml
 solphin/__init__.py
 solphin/db_fom.py
 solphin/db_plotting.py

@@ -3,6 +3,10 @@ import numpy as np
 from os.path import join
 import scipy.special as sc
 import pandas as pd
+from sumo.cli.optplot import optplot
+from matplotlib import pyplot as plt
+import logging
+logging.getLogger('matplotlib.font_manager').disabled = True
 
 q=1.60217662E-19
 kT=0.0258519975 # eV for T=300K
@@ -217,4 +221,9 @@ def blank_calculate(spectrum, folder):
         elif tr_pt == 2:
             head="Thickness[m] \t Eta as fraction for Lambertian scatterer with Qi = 1.0, 0.01, 1E-4, 1E-6"
             np.savetxt('lamb_eta_out', eta_arr, header=head)
-        
+
+def plot_absorption(filename, xmin=0, xmax=6, gaussian=0.05):
+    fig, ax = plt.subplots(figsize=(3,3), dpi=150)
+    optplot(filenames=filename, xmin=xmin, xmax=xmax, gaussian=gaussian, plt=plt)
+    plt.show()
+    return

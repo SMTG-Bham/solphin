@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "solphin"
+version = "0.0.0"
+description = "Figure of Merit for Photovoltaics"
+license = { text = "MIT" }
+authors = [
+  { name = "Philippa U Cox", email = "puc369@student.bham.ac.uk" },
+  { name = "Peter P Russell", email = "ppr466@student.bham.ac.uk" }
+]
+classifiers = [
+  "Development Status :: 1 - Planning",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: Python :: 3.9"
+]
+dependencies = [
+  "numpy",
+  "scipy",
+  "matplotlib>=3.9.4",
+  "pymatgen>=2024.8.9",
+  "mpmath",
+  "pathlib",
+  "typing_extensions",
+  "monty"
+]
+
+[project.urls]
+Homepage = "https://github.com/SMTG-Bham/PV-FoM"
+
+[tool.setuptools]
+packages = ["solphin"]
