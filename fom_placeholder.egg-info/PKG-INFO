@@ -1,4 +1,4 @@
-Metadata-Version: 2.2
+Metadata-Version: 2.1
 Name: fom_placeholder
 Version: 0.1.0
 Summary: Figure of Merit for Photovoltaics
@@ -20,10 +20,3 @@ Requires-Dist: mpmath
 Requires-Dist: pathlib
 Requires-Dist: typing_extensions
 Requires-Dist: monty
-Dynamic: author
-Dynamic: author-email
-Dynamic: classifier
-Dynamic: home-page
-Dynamic: license
-Dynamic: requires-dist
-Dynamic: summary
