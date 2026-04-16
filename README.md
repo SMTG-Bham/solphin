@@ -1,4 +1,4 @@
-# PV-FoM
+# Solphin
 
 **Please note that this code is still under development and not currently suitable for use**
 
