@@ -1,14 +1,14 @@
 from setuptools import setup
 
 setup(
-    name='fom_placeholder',
-    version='0.1.0',    
+    name='solphin',
+    version='0.0.0',    
     description='Figure of Merit for Photovoltaics',
     url='https://github.com/SMTG-Bham/PV-FoM',
     author='Philippa U Cox, Peter P Russell',
     author_email='puc369@student.bham.ac.uk, ppr466@student.bham.ac.uk',
     license='MIT',
-    packages=['placeholder'],
+    packages=['solphin'],
     install_requires=['numpy',
                       'scipy',
                       'matplotlib>=3.9.4',
