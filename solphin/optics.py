@@ -1,3 +1,4 @@
+from pathlib import Path
 from pymatgen.io.vasp import Vasprun
 import numpy as np
 from os.path import join
@@ -78,10 +79,9 @@ def calc_absorption(eps_full, energies):
 
     return data
 
-def print_n_real_file(data, energies):
+def print_n_real_file(data, energies, directory:Path):
 
     filename = 'n_real.dat'
-    directory = 'dos'
 
     if directory:
             filename = join(directory, filename)
@@ -95,11 +95,13 @@ def print_n_real_file(data, energies):
 
 def generate_n_real(filename):
      
+     directory = Path(filename).parent
+     
      eps_full, energies = calc_dielectric(filename)
 
      data = calc_absorption(eps_full, energies)
 
-     print_n_real_file(data, energies)
+     print_n_real_file(data, energies, directory)
 
 
 def blank_flat(alpha, n, length): 
@@ -176,9 +178,9 @@ def blank_parse(folder):
     
     # Parses outputs from current directory
 
-    abs_data = pd.read_table(f'{folder}/absorption.dat', delim_whitespace=True,
+    abs_data = pd.read_table(f'{folder}/absorption.dat', sep=r"\s+",
                                 skiprows=1, header=None)
-    n_data = pd.read_table(f'{folder}/n_real.dat', delim_whitespace=True,
+    n_data = pd.read_table(f'{folder}/n_real.dat', sep=r"\s+",
                     skiprows=1, header=None)
     
     E_p = list(abs_data[0])
