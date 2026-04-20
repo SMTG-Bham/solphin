@@ -1,11 +1,13 @@
 from pathlib import Path
 from pymatgen.io.vasp import Vasprun
+import solphin.spectral as spectral
 import numpy as np
 from os.path import join
 import scipy.special as sc
 import pandas as pd
 from sumo.cli.optplot import optplot
 from matplotlib import pyplot as plt
+import pymatgen.analysis.solar.slme as slme
 import logging
 logging.getLogger('matplotlib.font_manager').disabled = True
 
@@ -229,3 +231,16 @@ def plot_absorption(filename, xmin=0, xmax=6, gaussian=0.05):
     optplot(filenames=filename, xmin=xmin, xmax=xmax, gaussian=gaussian, plt=plt)
     plt.show()
     return
+
+def calculate_slme(abs_file, direct_gap, indirect_gap):
+
+    energy, alpha_cm = spectral.load_absorption(abs_file)
+
+    thickness = np.logspace(-8, -3, 100, endpoint=True)
+    effSlm = []
+
+    for i in thickness:
+        eff = slme.slme(energy, alpha_cm, direct_gap, indirect_gap, thickness=i, absorbance_in_inverse_centimeters=True)
+        effSlm.append(eff)
+
+    return effSlm, thickness
