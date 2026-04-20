@@ -83,6 +83,18 @@ def convert_spectrum(spectrum):
 
     return converted
 
+# def convert_spectrum(spectrum):
+
+#     wavelength = spectrum[:, 0] * 1e-9   # m
+#     I_lambda = spectrum[:, 1] * 1e9       # W/m²/m
+
+#     E = h * c / wavelength                # J
+
+#     phi = I_lambda * wavelength / (h * c)  # photons/m²/s/J
+#     phi = phi / E                          # photons/m²/s/J (per energy weighting)
+
+#     return np.column_stack((E / q, phi))
+
 
 def photons_above_bandgap(E_gap, photon_spectrum):
     """Counts number of photons above given bandgap.

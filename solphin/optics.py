@@ -9,6 +9,7 @@ from sumo.cli.optplot import optplot
 from matplotlib import pyplot as plt
 import pymatgen.analysis.solar.slme as slme
 import logging
+from importlib.resources import files
 logging.getLogger('matplotlib.font_manager').disabled = True
 
 q=1.60217662E-19
@@ -16,6 +17,24 @@ kT=0.0258519975 # eV for T=300K
 k=0.000086173325 #eV/K
 h=4.135667E-15 #eVs
 c=2.9979E+8 #m/s
+
+def load_AM15G_spectrum():
+
+    AM_15_G = files("solphin.resources") / "AM15G.dat"
+
+    phi_sun = []
+    ps_E = []
+    #opens spectrum file correctly, alter path if necessary
+    with open(AM_15_G) as f:
+        am = f.readlines()
+      
+    # reads in columns of results, strips newline chars,converts to float
+    for i in am:
+        ps_E.append(float(i.rstrip().split(' ')[0]))
+        phi_sun.append(float(i.rstrip().split(' ')[1]))
+
+    return phi_sun, ps_E
+
 
 def calc_dielectric(filename):
 
@@ -141,7 +160,7 @@ def blank_lambert(alpha, n, length):
 
     return(Abs)
 
-def blank_eta(spectrum, E, alpha, n, length, Qi, trap):
+def blank_eta(E, alpha, n, length, Qi, trap):
     #For given scatterer, calculates Blank et al. eta
     dE = E[1]-E[0]
     if trap == 1:
@@ -153,13 +172,12 @@ def blank_eta(spectrum, E, alpha, n, length, Qi, trap):
     phibb = 2*np.divide(np.divide(np.multiply(E,E),((h**3)*(c**2))),(np.exp(E/kT)-1))
     phibb = np.nan_to_num(phibb) # NaNs to 0, as in Matlab
 
-    ps_E = spectrum[:, 0]
-    phi_sun = spectrum[:, 1]
+    phi_sun, ps_E = load_AM15G_spectrum()
     
     # works for all E values above 0.03? won't extrapolate for 0
     # values < gap shouldn't be relevant?
-    phisun = np.interp(E, ps_E, phi_sun)
-        
+    phisun = 10000 * np.interp(E, ps_E, phi_sun)
+
     Jsc = q*np.sum(Abs*phisun)*dE
     J0rad = q*np.sum(Abs*phibb)*dE
     
@@ -216,7 +234,7 @@ def blank_calculate(spectrum, folder):
         eta_arr = eta_arr.reshape(len(length_arr), (len(Qi_arr)+1))
         for k, l_pt in enumerate(length_arr):
             for l, q_pt in enumerate(Qi_arr):
-                eta_max = blank_eta(spectrum, E, alpha, n, l_pt, q_pt, tr_pt)
+                eta_max = blank_eta(E, alpha, n, l_pt, q_pt, tr_pt)
                 eta_arr[k, 0] = l_pt
                 eta_arr[k, l+1] = eta_max
         if tr_pt == 1:
