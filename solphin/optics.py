@@ -156,7 +156,7 @@ def blank_eta(spectrum, E, alpha, n, length, Qi, trap):
     
     # works for all E values above 0.03? won't extrapolate for 0
     # values < gap shouldn't be relevant?
-    phisun = 10000*np.interp(E, ps_E, phi_sun)
+    phisun = np.interp(E, ps_E, phi_sun)
         
     Jsc = q*np.sum(Abs*phisun)*dE
     J0rad = q*np.sum(Abs*phibb)*dE
