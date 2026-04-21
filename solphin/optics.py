@@ -15,26 +15,38 @@ logging.getLogger('matplotlib.font_manager').disabled = True
 q=1.60217662E-19
 kT=0.0258519975 # eV for T=300K
 k=0.000086173325 #eV/K
-h=4.135667E-15 #eVs
+h_e=4.135667E-15 #eVs
+h = 6.62607015e-34  # J·s
 c=2.9979E+8 #m/s
 
-def load_AM15G_spectrum():
+def spectrum_nm_to_photon_energy(spectrum):
+    """
+    Convert spectrum from:
+        λ (nm), I(λ) (W m^-2 nm^-1)
+    to:
+        E (eV), φ(E) (photons m^-2 s^-1 eV^-1)
+    """
 
-    AM_15_G = files("solphin.resources") / "AM15G.dat"
+    wavelength_nm = spectrum[:, 0]
+    irradiance = spectrum[:, 1]
 
-    phi_sun = []
-    ps_E = []
-    #opens spectrum file correctly, alter path if necessary
-    with open(AM_15_G) as f:
-        am = f.readlines()
-      
-    # reads in columns of results, strips newline chars,converts to float
-    for i in am:
-        ps_E.append(float(i.rstrip().split(' ')[0]))
-        phi_sun.append(float(i.rstrip().split(' ')[1]))
+    # nm → m
+    wavelength_m = wavelength_nm * 1e-9
 
-    return phi_sun, ps_E
+    # Energy (eV)
+    E = 1240.0 / wavelength_nm
 
+    # Photon flux per nm
+    phi_lambda = irradiance * wavelength_m / (h * c)
+
+    # Convert to per eV
+    d_lambda_d_E = (wavelength_m**2) / (h * c)
+    phi_E = phi_lambda * d_lambda_d_E * q
+
+    # Sort by increasing energy (important for interpolation)
+    idx = np.argsort(E)
+
+    return phi_E[idx], E[idx]
 
 def calc_dielectric(filename):
 
@@ -72,22 +84,29 @@ def calc_absorption(eps_full, energies):
         data(dictionary):
         '''
 
-    # take sqrt of eps matrix; if eps = V S V^-1; then eps^1/2 = V S^{1/2} V^-1;
-    eigvals, eigvecs = np.linalg.eig(eps_full)
+    eps = np.linalg.eigvals(eps_full).mean(axis=1)
 
-    # fancy einsum to calculate V S^{1/2} V^-1 at every energy
-    n = np.einsum("ijk,ik,ikl->ijl", eigvecs, np.sqrt(eigvals), np.linalg.inv(eigvecs))
+    n_complex = np.sqrt(eps)
+
+    n = n_complex.real
+    k = n_complex.imag
 
     # calculate optical absorption
-    alpha = n.imag * energies[:, None, None] * 4 * np.pi / 1.23984212e-4
+    alpha = 4 * np.pi * k * energies / 1.23984212e-4
 
-    # Invert epsilon to obtain energy-loss function
-    loss = -np.linalg.inv(eps_full).imag
-
+    # Average dielectric function (scalar)
     eps = np.linalg.eigvals(eps_full).mean(axis=1)
-    n = np.linalg.eigvals(n).mean(axis=1)
-    loss = np.linalg.eigvalsh(loss).mean(axis=1)
-    alpha = np.linalg.eigvalsh(alpha).mean(axis=1)
+
+    # Complex refractive index
+    n_complex = np.sqrt(eps)
+    n_real = n_complex.real
+    k = n_complex.imag
+
+    # Absorption coefficient (1/m)
+    alpha = 4 * np.pi * k * energies / 1.23984212e-4
+
+    # Energy loss function (optional, scalar version)
+    loss = (-1 / eps).imag
 
     data = {
         "eps_real": eps.real,
@@ -160,7 +179,7 @@ def blank_lambert(alpha, n, length):
 
     return(Abs)
 
-def blank_eta(E, alpha, n, length, Qi, trap):
+def blank_eta(spectrum, E, alpha, n, length, Qi, trap):
     #For given scatterer, calculates Blank et al. eta
     dE = E[1]-E[0]
     if trap == 1:
@@ -172,11 +191,11 @@ def blank_eta(E, alpha, n, length, Qi, trap):
     phibb = 2*np.divide(np.divide(np.multiply(E,E),((h**3)*(c**2))),(np.exp(E/kT)-1))
     phibb = np.nan_to_num(phibb) # NaNs to 0, as in Matlab
 
-    phi_sun, ps_E = load_AM15G_spectrum()
+    phi_sun, ps_E = spectrum_nm_to_photon_energy(spectrum)
     
     # works for all E values above 0.03? won't extrapolate for 0
     # values < gap shouldn't be relevant?
-    phisun = 10000 * np.interp(E, ps_E, phi_sun)
+    phisun = np.interp(E, ps_E, phi_sun)
 
     Jsc = q*np.sum(Abs*phisun)*dE
     J0rad = q*np.sum(Abs*phibb)*dE
@@ -229,12 +248,21 @@ def blank_calculate(spectrum, folder):
     Qi_arr = np.logspace(0, -6, num=4)
     trap = [1, 2]
 
+    print("E range:", E.min(), E.max())
+    print("alpha range:", alpha.min(), alpha.max())
+    print("n real range:", n.real.min(), n.real.max())
+    print("n imag range:", n.imag.min(), n.imag.max())
+
+    phi_sun, ps_E = spectrum_nm_to_photon_energy(spectrum)
+    print("ps_E range:", ps_E.min(), ps_E.max())
+    print("phi_sun range:", phi_sun.min(), phi_sun.max())
+
     for tr_pt in trap:
         eta_arr = np.zeros(len(length_arr)*(len(Qi_arr)+1))
         eta_arr = eta_arr.reshape(len(length_arr), (len(Qi_arr)+1))
         for k, l_pt in enumerate(length_arr):
             for l, q_pt in enumerate(Qi_arr):
-                eta_max = blank_eta(E, alpha, n, l_pt, q_pt, tr_pt)
+                eta_max = blank_eta(spectrum, E, alpha, n, l_pt, q_pt, tr_pt)
                 eta_arr[k, 0] = l_pt
                 eta_arr[k, l+1] = eta_max
         if tr_pt == 1:
