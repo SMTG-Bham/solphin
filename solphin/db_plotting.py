@@ -2,9 +2,15 @@ import solphin.db_fom as db_fom
 import numpy as np
 import matplotlib.pyplot as plt
 from ipywidgets import interact, widgets
+
 import logging
 logging.getLogger('matplotlib.font_manager').disabled = True
 logging.basicConfig(level=logging.INFO)
+
+import warnings
+warnings.filterwarnings(action="ignore",message="This figure was using a layout engine that is incompatible with subplots_adjust{1}.+")
+warnings.filterwarnings(action="ignore",message="invalid value encountered in multiply{1}.+")
+
 
 def photons_above_bandgap_plot(spectrum, Egap, ax=None):
     """Plot of photons above bandgap as a function of bandgap"""
