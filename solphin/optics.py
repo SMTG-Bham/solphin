@@ -17,7 +17,8 @@ c=2.9979E+8 #m/s
 
 def calc_dielectric(filename):
 
-    '''Calculates the dielectric constants from a vasprun.xml
+    '''
+    Calculates the dielectric constants from a vasprun.xml
     
     Parameters:
         filename(string): filename/ path of the vasprun, typically vasprun.xml.
@@ -25,18 +26,21 @@ def calc_dielectric(filename):
     Returns:
         eps_full(np.array): static dielectric constant (complex, contains both real and imaginary components)
         energies(np.array): energy of the incident radiation eV
-        '''
+    '''
 
     load_vasprun = Vasprun(filename)
     dielectric = load_vasprun.dielectric
 
     energies = np.array(dielectric[0])
+    eps_real = np.array(dielectric[1])[:, [[0, 3, 5], [3, 1, 4], [5, 4, 2]]]
+    eps_imag = np.array(dielectric[2])[:, [[0, 3, 5], [3, 1, 4], [5, 4, 2]]]
+    eps_full = eps_real + 1j * eps_imag
 
-    real_eps = np.array(dielectric[1])[:, [[0, 3, 5], [3, 1, 4], [5, 4, 2]]]
-    imag_eps = np.array(dielectric[2])[:, [[0, 3, 5], [3, 1, 4], [5, 4, 2]]]
-    eps_full = real_eps + 1j * imag_eps
 
-    return eps_full, energies
+    eps_inf = np.mean(eps_real[0].diagonal())
+    eps_inf_tensor = eps_real[0]
+
+    return eps_inf, eps_inf_tensor, eps_full, eps_imag, energies
 
 def calc_absorption(eps_full, energies):
 
@@ -224,8 +228,8 @@ def blank_calculate(spectrum, folder):
             head="Thickness[m] \t Eta as fraction for Lambertian scatterer with Qi = 1.0, 0.01, 1E-4, 1E-6"
             np.savetxt('lamb_eta_out', eta_arr, header=head)
 
-def plot_absorption(filename, xmin=0, xmax=6, gaussian=0.05):
+def plot_absorption(filename, xmin=0, xmax=6, gaussian=0.05, directory=None):
     fig, ax = plt.subplots(figsize=(3,3), dpi=150)
-    optplot(filenames=filename, xmin=xmin, xmax=xmax, gaussian=gaussian, plt=plt)
+    optplot(filenames=filename, xmin=xmin, xmax=xmax, gaussian=gaussian, directory=directory)
     plt.show()
     return
