@@ -3,50 +3,28 @@ from pymatgen.io.vasp import Vasprun
 import solphin.spectral as spectral
 import numpy as np
 from os.path import join
-import scipy.special as sc
-import pandas as pd
+from pymatgen.io.vasp import Vasprun
 from sumo.cli.optplot import optplot
 from matplotlib import pyplot as plt
 import pymatgen.analysis.solar.slme as slme
 import logging
-from importlib.resources import files
 logging.getLogger('matplotlib.font_manager').disabled = True
 
 q=1.60217662E-19
 kT=0.0258519975 # eV for T=300K
 k=0.000086173325 #eV/K
-h_e=4.135667E-15 #eVs
-h = 6.62607015e-34  # J·s
-c=2.9979E+8 #m/s
+h = 4.135667696e-15   # eV·s
+c = 2.99792458e8      # m/s
+hc = 1239.84193       # eV·nm
 
-def spectrum_nm_to_photon_energy(spectrum):
-    """
-    Convert spectrum from:
-        λ (nm), I(λ) (W m^-2 nm^-1)
-    to:
-        E (eV), φ(E) (photons m^-2 s^-1 eV^-1)
-    """
+def spectrum_nm_to_photon_flux(spectrum):
 
     wavelength_nm = spectrum[:, 0]
-    irradiance = spectrum[:, 1]
+    I = spectrum[:, 1]  # W m^-2 nm^-1
 
-    # nm → m
-    wavelength_m = wavelength_nm * 1e-9
+    Phi = (I * wavelength_nm) / hc   # photons m^-2 s^-1 nm^-1
 
-    # Energy (eV)
-    E = 1240.0 / wavelength_nm
-
-    # Photon flux per nm
-    phi_lambda = irradiance * wavelength_m / (h * c)
-
-    # Convert to per eV
-    d_lambda_d_E = (wavelength_m**2) / (h * c)
-    phi_E = phi_lambda * d_lambda_d_E * q
-
-    # Sort by increasing energy (important for interpolation)
-    idx = np.argsort(E)
-
-    return phi_E[idx], E[idx]
+    return wavelength_nm, Phi
 
 def calc_dielectric(filename):
 
@@ -84,35 +62,23 @@ def calc_absorption(eps_full, energies):
         data(dictionary):
         '''
 
-    eps = np.linalg.eigvals(eps_full).mean(axis=1)
+    eps_eig = np.linalg.eigvals(eps_full)
+    eps = np.mean(eps_eig, axis=1)
 
-    n_complex = np.sqrt(eps)
+    n_complex = np.sqrt(eps + 0j)
 
-    n = n_complex.real
-    k = n_complex.imag
+    n_real = np.real(n_complex)
+    k = np.imag(n_complex)
 
-    # calculate optical absorption
-    alpha = 4 * np.pi * k * energies / 1.23984212e-4
+    alpha = (4 * np.pi * energies * np.imag(n_complex)) / (h * c) # consistent units
 
-    # Average dielectric function (scalar)
-    eps = np.linalg.eigvals(eps_full).mean(axis=1)
-
-    # Complex refractive index
-    n_complex = np.sqrt(eps)
-    n_real = n_complex.real
-    k = n_complex.imag
-
-    # Absorption coefficient (1/m)
-    alpha = 4 * np.pi * k * energies / 1.23984212e-4
-
-    # Energy loss function (optional, scalar version)
     loss = (-1 / eps).imag
 
     data = {
-        "eps_real": eps.real,
-        "eps_imag": eps.imag,
-        "n_real": n.real,
-        "n_imag": n.imag,
+        "eps_real": np.real(eps),
+        "eps_imag": np.imag(eps),
+        "n_real": n_real,
+        "n_imag": k,
         "loss": loss,
         "absorption": alpha,
     }
@@ -143,150 +109,94 @@ def generate_n_real(filename):
 
      print_n_real_file(data, energies, directory)
 
-
-def blank_flat(alpha, n, length): 
-
-    #Absorptance for flat scatterer, from Matlab script
-    the_c = np.arcsin(1/n[0])
-    theta = np.linspace(0.0, the_c, num=200)
-    a_len = len(alpha)
-    t_len = len(theta)
-    toft = np.zeros(a_len*t_len)
-    toft = toft.reshape(a_len, t_len)
-    absorb_tr = np.zeros(a_len)
-
-    for i, a_pt in enumerate(alpha):
-        for j, t_pt in enumerate(theta):
-            toft_pt = np.exp(((2*np.multiply((-a_pt), length))/np.cos(t_pt)))
-            toft[i, j] = toft_pt
-        a_t_1 = np.trapz((toft[i,:]*np.cos(theta)*np.sin(theta)), theta)
-        a_t_2 = np.trapz((np.cos(theta)*np.sin(theta)), theta)
-        absorb_tr[i] = 1 - (a_t_1/a_t_2)
-
-    absorb = absorb_tr.conjugate()
-    return(absorb)
-
-
-def blank_lambert(alpha, n, length):
-
-    #Absorptance for Lambertian scatterer coating, from Matlab script
-    x = np.multiply(2,np.multiply(alpha,length))
-    T = np.exp((-x)) - np.multiply(x, np.exp((-x))) + (x**2*sc.exp1(x))
-    R = 1.0/(np.multiply(n,n))
-    Abs = (1-T)/(1-T+(R*T))
-    Abs = np.nan_to_num(Abs)
-    Emi = (R*T)/(1-T+(R*T))
-
-    return(Abs)
-
-def blank_eta(spectrum, E, alpha, n, length, Qi, trap):
-    #For given scatterer, calculates Blank et al. eta
-    dE = E[1]-E[0]
-    if trap == 1:
-        Abs = blank_flat(alpha, n, length)
-    elif trap == 2:
-        Abs = blank_lambert(alpha, n, length)
-    
-    #np divide necessary to have array divide here?
-    phibb = 2*np.divide(np.divide(np.multiply(E,E),((h**3)*(c**2))),(np.exp(E/kT)-1))
-    phibb = np.nan_to_num(phibb) # NaNs to 0, as in Matlab
-
-    phi_sun, ps_E = spectrum_nm_to_photon_energy(spectrum)
-    
-    # works for all E values above 0.03? won't extrapolate for 0
-    # values < gap shouldn't be relevant?
-    phisun = np.interp(E, ps_E, phi_sun)
-
-    Jsc = q*np.sum(Abs*phisun)*dE
-    J0rad = q*np.sum(Abs*phibb)*dE
-    
-    Rrad = 4*np.pi*np.sum(alpha*(n**2)*phibb)*dE
-    Rnrad = (Rrad-Qi*Rrad)/Qi
-    
-    pe = J0rad/(q*Rrad*length)
-    J0 = q*length*(Rnrad + pe*Rrad)
-    #Looks like this scans over only voltages between 0 and 2 V
-    #need testing for band gaps>2 eV?
-    V = np.linspace(0, 2, 1001)
-    Pmax = np.max(V*(Jsc - J0*(np.exp(V/kT)-1)))
-    eta = Pmax/1000
-
-    return(eta)
-
-def blank_parse(folder):
-    
-    # Parses outputs from current directory
-
-    abs_data = pd.read_table(f'{folder}/absorption.dat', sep=r"\s+",
-                                skiprows=1, header=None)
-    n_data = pd.read_table(f'{folder}/n_real.dat', sep=r"\s+",
-                    skiprows=1, header=None)
-    
-    E_p = list(abs_data[0])
-    alpha_p = list(abs_data[1])
-    n_p = list(n_data[1])
-
-    return{"E": E_p, "alpha": alpha_p, "n": n_p}
-
-def blank_calculate(spectrum, folder):
-
-    data = blank_parse(folder)
-
-    E = np.asarray(data["E"])
-    alpha = np.asarray(data["alpha"])
-    alpha = np.multiply(alpha, 100)
-    n = np.asarray(data["n"])
-
-    #Remove data for E>5eV, necessary for speed! Also done in Matlab
-
-    E = np.asarray([o for o in E if o <= 5])
-    alpha = alpha[0:(len(E))]
-    n = n[0:(len(E))]
-
-    #main, looping over lengths and Qi, outputs eta table
-    length_arr = np.logspace(-8.0, -3.0, num=36)
-    Qi_arr = np.logspace(0, -6, num=4)
-    trap = [1, 2]
-
-    print("E range:", E.min(), E.max())
-    print("alpha range:", alpha.min(), alpha.max())
-    print("n real range:", n.real.min(), n.real.max())
-    print("n imag range:", n.imag.min(), n.imag.max())
-
-    phi_sun, ps_E = spectrum_nm_to_photon_energy(spectrum)
-    print("ps_E range:", ps_E.min(), ps_E.max())
-    print("phi_sun range:", phi_sun.min(), phi_sun.max())
-
-    for tr_pt in trap:
-        eta_arr = np.zeros(len(length_arr)*(len(Qi_arr)+1))
-        eta_arr = eta_arr.reshape(len(length_arr), (len(Qi_arr)+1))
-        for k, l_pt in enumerate(length_arr):
-            for l, q_pt in enumerate(Qi_arr):
-                eta_max = blank_eta(spectrum, E, alpha, n, l_pt, q_pt, tr_pt)
-                eta_arr[k, 0] = l_pt
-                eta_arr[k, l+1] = eta_max
-        if tr_pt == 1:
-            head="Thickness[m] \t Eta as fraction for Flat scatterer with Qi = 1.0, 0.01, 1E-4, 1E-6"
-            np.savetxt('flat_eta_out', eta_arr, header=head)
-        elif tr_pt == 2:
-            head="Thickness[m] \t Eta as fraction for Lambertian scatterer with Qi = 1.0, 0.01, 1E-4, 1E-6"
-            np.savetxt('lamb_eta_out', eta_arr, header=head)
-
 def plot_absorption(filename, xmin=0, xmax=6, gaussian=0.05):
     fig, ax = plt.subplots(figsize=(3,3), dpi=150)
     optplot(filenames=filename, xmin=xmin, xmax=xmax, gaussian=gaussian, plt=plt)
     plt.show()
     return
 
-def calculate_slme(abs_file, direct_gap, indirect_gap):
+def blank_efficiency_energy(spectrum, energy, alpha_cm, thickness_cm, model="flat", n=3.5):
+    """
+    Compute Blank-style efficiency in ENERGY space.
+
+    energy: eV
+    alpha_cm: cm^-1
+    thickness_cm: cm
+    model: "flat" or "lambert"
+    """
+
+    lam_nm = spectrum[:, 0]
+    I = spectrum[:, 1]  # W m^-2 nm^-1
+
+    # convert to photon flux per energy
+    lam_m = lam_nm * 1e-9
+    E_J = (6.62607015e-34 * 2.99792458e8) / lam_m
+    E_eV = E_J / 1.60217662e-19
+
+    phi_lambda = I * lam_m / (6.62607015e-34 * 2.99792458e8)
+    dlam_dE = (6.62607015e-34 * 2.99792458e8) / (E_J**2)
+    phi_E = phi_lambda * dlam_dE
+
+    # sort
+    idx = np.argsort(E_eV)
+    E_sun = E_eV[idx]
+    phi_E = phi_E[idx]
+
+    # interpolate solar spectrum onto material energy grid
+    phi = np.interp(energy, E_sun, phi_E, left=0, right=0)
+
+    # --- absorptance ---
+    if model == "flat":
+        A = 1 - np.exp(-alpha_cm * thickness_cm)
+
+    elif model == "lambert":
+        A = (alpha_cm * thickness_cm) / (alpha_cm * thickness_cm + 1/(2*n**2))
+
+    A = np.clip(A, 0, 1)
+
+    # --- efficiency (energy-weighted) ---
+    num = np.trapz(A * phi * energy, energy)
+    den = np.trapz(phi * energy, energy)
+
+    eta = num / den * 100
+
+    return eta
+
+
+def make_blank_plot(spectrum, abs_file, direct_gap, indirect_gap):
 
     energy, alpha_cm = spectral.load_absorption(abs_file)
 
-    thickness = np.logspace(-8, -3, 100, endpoint=True)
-    effSlm = []
+    # --- thickness grid ---
+    thickness = np.logspace(-8, -3, 80)  # nm or cm depending on α units
 
-    for i in thickness:
-        eff = slme.slme(energy, alpha_cm, direct_gap, indirect_gap, thickness=i, absorbance_in_inverse_centimeters=True)
-        effSlm.append(eff)
+    eff_flat = []
+    eff_lam = []
+    eff_slme = []  # optional placeholder
 
-    return effSlm, thickness
+    for d in thickness:
+
+        eff_flat.append(blank_efficiency_energy(spectrum, energy, alpha_cm, d, model="flat"))
+        eff_lam.append(blank_efficiency_energy(spectrum, energy, alpha_cm, d, model="lambert"))
+
+        # SLME placeholder (replace if you have full model)
+        eff = slme.slme(energy, alpha_cm, direct_gap, indirect_gap, thickness=d, absorbance_in_inverse_centimeters=True)
+        eff_slme.append(eff)
+
+    # --- plot ---
+    fig, ax = plt.subplots(figsize=(6,4))
+
+    plt.plot(thickness, eff_slme, label='SLME')
+    plt.plot(thickness, eff_lam, label='Blank Lambertian')
+    plt.plot(thickness, eff_flat, label='Blank Flat')
+
+    plt.xscale('log')
+    plt.margins(x=0)
+    plt.ylim([0, 35])
+
+    ax.set_aspect(0.06)
+
+    plt.legend()
+    plt.show()
+
+    return thickness, eff_slme, eff_lam, eff_flat
