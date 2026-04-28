@@ -115,6 +115,25 @@ def plot_absorption(filename, xmin=0, xmax=6, gaussian=0.05):
     plt.show()
     return
 
+def spectrum_nm_to_photon_energy(spectrum):
+
+    wavelength_nm = spectrum[:, 0]
+    irradiance = spectrum[:, 1]
+
+    wavelength_m = wavelength_nm * 1e-9
+
+    E_J = (6.62607015e-34 * 2.99792458e8) / wavelength_m
+    E_eV = E_J / 1.60217662e-19
+
+    phi_lambda = irradiance * wavelength_m / (6.62607015e-34 * 2.99792458e8)
+    d_lambda_dE = (6.62607015e-34 * 2.99792458e8) / (E_J**2)
+
+    phi_E = phi_lambda * d_lambda_dE
+
+    idx = np.argsort(E_eV)
+
+    return phi_E[idx], E_eV[idx]
+
 def blank_efficiency_energy(spectrum, energy, alpha_cm, thickness_cm, model="flat", n=3.5):
     """
     Compute Blank-style efficiency in ENERGY space.
@@ -125,27 +144,10 @@ def blank_efficiency_energy(spectrum, energy, alpha_cm, thickness_cm, model="fla
     model: "flat" or "lambert"
     """
 
-    lam_nm = spectrum[:, 0]
-    I = spectrum[:, 1]  # W m^-2 nm^-1
+    phi_sun, E_sun = spectrum_nm_to_photon_energy(spectrum)
 
-    # convert to photon flux per energy
-    lam_m = lam_nm * 1e-9
-    E_J = (6.62607015e-34 * 2.99792458e8) / lam_m
-    E_eV = E_J / 1.60217662e-19
+    phi = np.interp(energy, E_sun, phi_sun, left=0, right=0)
 
-    phi_lambda = I * lam_m / (6.62607015e-34 * 2.99792458e8)
-    dlam_dE = (6.62607015e-34 * 2.99792458e8) / (E_J**2)
-    phi_E = phi_lambda * dlam_dE
-
-    # sort
-    idx = np.argsort(E_eV)
-    E_sun = E_eV[idx]
-    phi_E = phi_E[idx]
-
-    # interpolate solar spectrum onto material energy grid
-    phi = np.interp(energy, E_sun, phi_E, left=0, right=0)
-
-    # --- absorptance ---
     if model == "flat":
         A = 1 - np.exp(-alpha_cm * thickness_cm)
 
@@ -154,7 +156,6 @@ def blank_efficiency_energy(spectrum, energy, alpha_cm, thickness_cm, model="fla
 
     A = np.clip(A, 0, 1)
 
-    # --- efficiency (energy-weighted) ---
     num = np.trapz(A * phi * energy, energy)
     den = np.trapz(phi * energy, energy)
 
@@ -167,7 +168,6 @@ def make_blank_plot(spectrum, abs_file, direct_gap, indirect_gap):
 
     energy, alpha_cm = spectral.load_absorption(abs_file)
 
-    # --- thickness grid ---
     thickness = np.logspace(-8, -3, 80)  # nm or cm depending on α units
 
     eff_flat = []
@@ -179,11 +179,9 @@ def make_blank_plot(spectrum, abs_file, direct_gap, indirect_gap):
         eff_flat.append(blank_efficiency_energy(spectrum, energy, alpha_cm, d, model="flat"))
         eff_lam.append(blank_efficiency_energy(spectrum, energy, alpha_cm, d, model="lambert"))
 
-        # SLME placeholder (replace if you have full model)
         eff = slme.slme(energy, alpha_cm, direct_gap, indirect_gap, thickness=d, absorbance_in_inverse_centimeters=True)
         eff_slme.append(eff)
 
-    # --- plot ---
     fig, ax = plt.subplots(figsize=(6,4))
 
     plt.plot(thickness, eff_slme, label='SLME')
@@ -198,5 +196,3 @@ def make_blank_plot(spectrum, abs_file, direct_gap, indirect_gap):
 
     plt.legend()
     plt.show()
-
-    return thickness, eff_slme, eff_lam, eff_flat
