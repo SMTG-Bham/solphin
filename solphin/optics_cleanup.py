@@ -227,11 +227,6 @@ def plot_blank(use_slme, thickness_range, eff_slme, eff_lam, eff_flat):
     plt.tight_layout()
     plt.show()
 
-
-# ---------------------------------------------------------------------------
-# Backwards-compatible spectrum utilities
-# ---------------------------------------------------------------------------
-
 def spectrum_nm_to_photon_flux(spectrum):
     """Photon flux in wavelength space [photons m-2 s-1 nm-1]."""
     wavelength_nm = spectrum[:, 0]
