@@ -4,6 +4,6 @@ import solphin.final_results
 import solphin.db_plotting
 import solphin.vasp_inputs
 import solphin.spectral
-import solphin.optics
+import solphin.optics_working
 from .version import __version__
 import solphin.resources
