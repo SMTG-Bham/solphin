@@ -22,7 +22,6 @@ _c   = constants.c
 _h   = constants.h
 _h_e = constants.h / constants.e
 _k   = constants.k
-_k_e = constants.k / constants.e
 _e   = constants.e
 _T   = 293.15
 
@@ -127,7 +126,7 @@ def bb_per_wl(sol_wl_m):
     bb_irr     = (2*_h*_c**2 / sol_wl_m**5) / (np.exp(_h*_c/(sol_wl_m*_k*_T)) - 1.0)
     bb_phot_wl = bb_irr * (sol_wl_m / (_h * _c))
 
-    return bb_irr, bb_phot_wl
+    return bb_phot_wl
 
 def n_real_abs_fit(abs_file, n_real_file):
 
@@ -168,20 +167,20 @@ def make_blank_plot(abs_file, n_real_file, direct_gap, indirect_gap,
 
     power_in = calc_incident_power(sol_irr, sol_wl)
         
-    bb_irr, bb_phot_wl = bb_per_wl(sol_wl_m)
+    bb_phot_wl = bb_per_wl(sol_wl_m)
 
     energy_abs, alpha_cm, alpha_m, n_real = n_real_abs_fit(abs_file, n_real_file)
-
-    phi_bb_E  = _bb_per_eV(energy_abs)
-
+    
     alpha_on_sol = interpolate_a(energy_abs, alpha_m, direct_gap, sol_wl) 
 
-    eff_flat, eff_lam, eff_slme, thickness_range = thickness_calc(thickness_range, alpha_on_sol, alpha_m, use_slme, n, energy_abs, alpha_cm, direct_gap, indirect_gap, phi_bb_E, n_real, bb_phot_wl, sol_wl_m, sol_phot_flux, sol_wl, Qi, power_in)
+    eff_flat, eff_lam, eff_slme, thickness_range = thickness_calc(thickness_range, alpha_on_sol, alpha_m, use_slme, n, energy_abs, alpha_cm, direct_gap, indirect_gap, n_real, bb_phot_wl, sol_wl_m, sol_phot_flux, sol_wl, Qi, power_in)
             
     plot_blank(use_slme, thickness_range, eff_slme, eff_lam, eff_flat)
 
 
-def _eta_d(d, A_sol, A_E, phi_bb_E, energy_abs, n_real, alpha_m, bb_phot_wl, sol_wl_m, sol_phot_flux, sol_wl, Qi, power_in):
+def power_efficiency(A_E, energy_abs, n_real, alpha_m, d):
+
+    phi_bb_E  = _bb_per_eV(energy_abs)
 
     # pe denominator: ∫n²(E)·α(E)·φ_BB(E) dE  — independent of thickness
     denom_int = simpson(n_real**2 * alpha_m * phi_bb_E, x=energy_abs)
@@ -189,6 +188,13 @@ def _eta_d(d, A_sol, A_E, phi_bb_E, energy_abs, n_real, alpha_m, bb_phot_wl, sol
     # --- efficiency with full pe/Qi correction (Blank et al. eqs. 4-6) ---
     numer_int = simpson(A_E * phi_bb_E, x=energy_abs)
     pe  = min(numer_int / (4 * d * denom_int), 1.0)
+
+    return pe
+
+
+def _eta_d(d, A_sol, A_E, energy_abs, n_real, alpha_m, bb_phot_wl, sol_wl_m, sol_phot_flux, sol_wl, Qi, power_in):
+
+    pe = power_efficiency(A_E, energy_abs, n_real, alpha_m, d)
 
     # External luminescence efficiency (Blank eq. after eq. 6)
     Qe  = (pe * Qi) / (1.0 + (pe - 1.0) * Qi)
@@ -208,7 +214,7 @@ def _eta_d(d, A_sol, A_E, phi_bb_E, energy_abs, n_real, alpha_m, bb_phot_wl, sol
         tv += vs
     return Pfn(tv) / power_in * 100.0 
 
-def thickness_calc(thickness_range, alpha_on_sol, alpha_m, use_slme, n, energy_abs, alpha_cm, direct_gap, indirect_gap, phi_bb_E, n_real, bb_phot_wl, sol_wl_m, sol_phot_flux, sol_wl, Qi, power_in):
+def thickness_calc(thickness_range, alpha_on_sol, alpha_m, use_slme, n, energy_abs, alpha_cm, direct_gap, indirect_gap, n_real, bb_phot_wl, sol_wl_m, sol_phot_flux, sol_wl, Qi, power_in):
         
         if thickness_range is None:
             thickness_range = np.logspace(-8, -3, 80)   # m
@@ -223,8 +229,8 @@ def thickness_calc(thickness_range, alpha_on_sol, alpha_m, use_slme, n, energy_a
             A_flat_E   = np.clip(1.0 - np.exp(-2.0 * alpha_m * d), 0.0, 1.0)
             A_lamb_E   = np.clip(1.0 - 1.0/(1.0 + 4.0*n**2 * alpha_m * d), 0.0, 1.0)
 
-            eff_flat.append(_eta_d(d, A_flat_sol, A_flat_E, phi_bb_E, energy_abs, n_real, alpha_m, bb_phot_wl, sol_wl_m, sol_phot_flux, sol_wl, Qi, power_in))
-            eff_lam.append(_eta_d(d,  A_lamb_sol, A_lamb_E,phi_bb_E, energy_abs, n_real, alpha_m, bb_phot_wl, sol_wl_m, sol_phot_flux, sol_wl, Qi, power_in))
+            eff_flat.append(_eta_d(d, A_flat_sol, A_flat_E, energy_abs, n_real, alpha_m, bb_phot_wl, sol_wl_m, sol_phot_flux, sol_wl, Qi, power_in))
+            eff_lam.append(_eta_d(d,  A_lamb_sol, A_lamb_E, energy_abs, n_real, alpha_m, bb_phot_wl, sol_wl_m, sol_phot_flux, sol_wl, Qi, power_in))
 
             if use_slme:
                 eff_slme.append(slme_mod.slme(
