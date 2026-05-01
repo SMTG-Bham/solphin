@@ -12,15 +12,15 @@ logging.getLogger('matplotlib.font_manager').disabled = True
 import os
 from scipy.integrate import simpson
 from scipy.interpolate import interp1d
-from scipy import constants
+from scipy import constants as sc
 
 hc_eV_nm = 1239.84193    # eV nm
 
-_c   = constants.c
-_h   = constants.h
-_h_e = constants.h / constants.e
-_k   = constants.k
-_e   = constants.e
+_c   = sc.c
+_h   = sc.h
+_h_e = sc.h / sc.e
+_k   = sc.k
+_e   = sc.e
 _T   = 293.15
 
 
