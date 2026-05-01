@@ -69,11 +69,13 @@ def print_n_real_file(data, energies, directory: Path):
     np.savetxt(filename, out, header="energy(eV) n_real")
 
 
-def generate_n_real(filename):
-    directory          = Path(filename).parent
+def generate_n_real(optics_directory):
+
+    filename = f'{optics_directory}/vasprun.xml'
+
     eps_full, energies = calc_dielectric(filename)
     data               = calc_absorption(eps_full, energies)
-    print_n_real_file(data, energies, directory)
+    print_n_real_file(data, energies, optics_directory)
 
 
 def plot_absorption(filename, xmin=0, xmax=6, gaussian=0.05):
