@@ -25,13 +25,31 @@ _T   = 293.15
 
 
 def calc_dielectric(filename):
+
+    '''
+    Calculates the dielectric constants from a vasprun.xml
+    
+    Parameters:
+        filename(string): filename/ path of the vasprun, typically vasprun.xml.
+        
+    Returns:
+        eps_full(np.array): static dielectric constant (complex, contains both real and imaginary components)
+        energies(np.array): energy of the incident radiation eV
+    '''
+
     load_vasprun = Vasprun(filename)
-    dielectric   = load_vasprun.dielectric
-    energies     = np.array(dielectric[0])
-    real_eps     = np.array(dielectric[1])[:, [[0,3,5],[3,1,4],[5,4,2]]] # Reshape into a matrix from VASP dielectric flattened tensor
-    imag_eps     = np.array(dielectric[2])[:, [[0,3,5],[3,1,4],[5,4,2]]] # Reshpare into a matrix from VASP dielectric flattened tensor
-    eps_full     = real_eps + 1j * imag_eps
-    return eps_full, energies
+    dielectric = load_vasprun.dielectric
+
+    energies = np.array(dielectric[0])
+    eps_real = np.array(dielectric[1])[:, [[0, 3, 5], [3, 1, 4], [5, 4, 2]]]
+    eps_imag = np.array(dielectric[2])[:, [[0, 3, 5], [3, 1, 4], [5, 4, 2]]]
+    eps_full = eps_real + 1j * eps_imag
+
+
+    eps_inf = np.mean(eps_real[0].diagonal())
+    eps_inf_tensor = eps_real[0]
+
+    return eps_inf, eps_inf_tensor, eps_full, eps_imag, energies
 
 
 def calc_absorption(eps_full, energies):
@@ -73,7 +91,7 @@ def generate_n_real(optics_directory):
 
     filename = f'{optics_directory}/vasprun.xml'
 
-    eps_full, energies = calc_dielectric(filename)
+    _, _, eps_full, _, energies = calc_dielectric(filename)
     data               = calc_absorption(eps_full, energies)
     print_n_real_file(data, energies, optics_directory)
 
