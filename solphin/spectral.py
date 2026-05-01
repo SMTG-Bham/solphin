@@ -124,7 +124,9 @@ def calculate_spectral_average(filtered_abs_coff, matched_irradiance, filtered_w
     return spectral_average
 
 
-def generate_spectral_parameters(abs_file, spectrum, E_gap):
+def generate_spectral_parameters(optics_directory, spectrum, E_gap):
+
+    abs_file = f'{optics_directory}/absorption.dat'
 
     abs_energy_eV, abs_coeff = load_absorption(abs_file)
     filtered_wavelengths_abs, filtered_abs_coff = truncate_abs_spectra(E_gap, abs_energy_eV, abs_coeff)
