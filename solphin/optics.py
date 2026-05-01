@@ -28,8 +28,8 @@ def calc_dielectric(filename):
     load_vasprun = Vasprun(filename)
     dielectric   = load_vasprun.dielectric
     energies     = np.array(dielectric[0])
-    real_eps     = np.array(dielectric[1])[:, [[0,3,5],[3,1,4],[5,4,2]]]
-    imag_eps     = np.array(dielectric[2])[:, [[0,3,5],[3,1,4],[5,4,2]]]
+    real_eps     = np.array(dielectric[1])[:, [[0,3,5],[3,1,4],[5,4,2]]] # Reshape into a matrix from VASP dielectric flattened tensor
+    imag_eps     = np.array(dielectric[2])[:, [[0,3,5],[3,1,4],[5,4,2]]] # Reshpare into a matrix from VASP dielectric flattened tensor
     eps_full     = real_eps + 1j * imag_eps
     return eps_full, energies
 
