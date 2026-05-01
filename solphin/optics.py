@@ -14,8 +14,6 @@ from scipy.integrate import simpson
 from scipy.interpolate import interp1d
 from scipy import constants
 
-h_eV = 4.135667696e-15   # eV s
-c    = 2.99792458e8       # m/s
 hc_eV_nm = 1239.84193    # eV nm
 
 _c   = constants.c
@@ -50,7 +48,7 @@ def calc_absorption(eps_full, energies):
     n_real = np.real(n_complex)
     k      = np.imag(n_complex)
 
-    alpha = (4 * np.pi * energies * k) / (h_eV * c)   # m-1
+    alpha = (4 * np.pi * energies * k) / (_h_e * _c)   # m-1
     loss  = (-1 / eps).imag
 
     return {
@@ -156,8 +154,11 @@ def interpolate_a(energy_abs, alpha_m, direct_gap, sol_wl):
     return alpha_on_sol
 
 
-def make_blank_plot(abs_file, n_real_file, direct_gap, indirect_gap,
+def make_blank_plot(optics_directory, direct_gap, indirect_gap,
                     spectrum_type="AM1.5", Qi=1.0, n=3.5, thickness_range=None):
+    
+    abs_file = f'{optics_directory}/absorption.dat'
+    n_real_file = f'{optics_directory}/n_real.dat'
     
     # Setup the spectrum and convert to units
     sol_wl, sol_irr, use_slme = spectrum_select(spectrum_type)
@@ -171,9 +172,9 @@ def make_blank_plot(abs_file, n_real_file, direct_gap, indirect_gap,
 
     energy_abs, alpha_cm, alpha_m, n_real = n_real_abs_fit(abs_file, n_real_file)
     
-    alpha_on_sol = interpolate_a(energy_abs, alpha_m, direct_gap, sol_wl) 
-
-    eff_flat, eff_lam, eff_slme, thickness_range = thickness_calc(thickness_range, alpha_on_sol, alpha_m, use_slme, n, energy_abs, alpha_cm, direct_gap, indirect_gap, n_real, bb_phot_wl, sol_wl_m, sol_phot_flux, sol_wl, Qi, power_in)
+    eff_flat, eff_lam, eff_slme, thickness_range = thickness_calc(thickness_range, alpha_m, use_slme, n, 
+                                                                  energy_abs, alpha_cm, direct_gap, indirect_gap, n_real, bb_phot_wl, 
+                                                                  sol_wl_m, sol_phot_flux, sol_wl, Qi, power_in)
             
     plot_blank(use_slme, thickness_range, eff_slme, eff_lam, eff_flat)
 
@@ -214,8 +215,10 @@ def _eta_d(d, A_sol, A_E, energy_abs, n_real, alpha_m, bb_phot_wl, sol_wl_m, sol
         tv += vs
     return Pfn(tv) / power_in * 100.0 
 
-def thickness_calc(thickness_range, alpha_on_sol, alpha_m, use_slme, n, energy_abs, alpha_cm, direct_gap, indirect_gap, n_real, bb_phot_wl, sol_wl_m, sol_phot_flux, sol_wl, Qi, power_in):
+def thickness_calc(thickness_range, alpha_m, use_slme, n, energy_abs, alpha_cm, direct_gap, indirect_gap, n_real, bb_phot_wl, sol_wl_m, sol_phot_flux, sol_wl, Qi, power_in):
         
+        alpha_on_sol = interpolate_a(energy_abs, alpha_m, direct_gap, sol_wl)
+
         if thickness_range is None:
             thickness_range = np.logspace(-8, -3, 80)   # m
 
@@ -244,9 +247,9 @@ def plot_blank(use_slme, thickness_range, eff_slme, eff_lam, eff_flat):
     fig, ax = plt.subplots(figsize=(6, 4))
 
     if use_slme:
-        ax.plot(thickness_range, eff_slme, label="SLME")
-    ax.plot(thickness_range, eff_lam,  label="Blank Lambertian")
-    ax.plot(thickness_range, eff_flat, label="Blank Flat")
+        ax.plot(thickness_range, eff_slme, color = 'blue', label="SLME")
+    ax.plot(thickness_range, eff_lam, color = 'green', label="Blank Lambertian")
+    ax.plot(thickness_range, eff_flat, color = 'orange', label="Blank Flat")
     ax.set_xscale("log")
     ax.set_xlabel("Film Thickness / m", labelpad=5)
     ax.set_ylabel(r"Max PV Efficiency $(\eta_\mathrm{Max})$ / %")
