@@ -1,231 +1,289 @@
 from pathlib import Path
 from pymatgen.io.vasp import Vasprun
+import solphin.spectral as spectral
+from solphin.db_fom import load_spectrum
 import numpy as np
 from os.path import join
-import scipy.special as sc
-import pandas as pd
 from sumo.cli.optplot import optplot
 from matplotlib import pyplot as plt
+import pymatgen.analysis.solar.slme as slme_mod
 import logging
 logging.getLogger('matplotlib.font_manager').disabled = True
+import os
+from scipy.integrate import simpson
+from scipy.interpolate import interp1d
+from scipy import constants as sc
 
-q=1.60217662E-19
-kT=0.0258519975 # eV for T=300K
-k=0.000086173325 #eV/K
-h=4.135667E-15 #eVs
-c=2.9979E+8 #m/s
+hc_eV_nm = 1239.84193    # eV nm
+
+_c   = sc.c
+_h   = sc.h
+_h_e = sc.h / sc.e
+_k   = sc.k
+_e   = sc.e
+_T   = 293.15
+
 
 def calc_dielectric(filename):
-
-    '''Calculates the dielectric constants from a vasprun.xml
-    
-    Parameters:
-        filename(string): filename/ path of the vasprun, typically vasprun.xml.
-        
-    Returns:
-        eps_full(np.array): static dielectric constant (complex, contains both real and imaginary components)
-        energies(np.array): energy of the incident radiation eV
-        '''
-
     load_vasprun = Vasprun(filename)
-    dielectric = load_vasprun.dielectric
-
-    energies = np.array(dielectric[0])
-
-    real_eps = np.array(dielectric[1])[:, [[0, 3, 5], [3, 1, 4], [5, 4, 2]]]
-    imag_eps = np.array(dielectric[2])[:, [[0, 3, 5], [3, 1, 4], [5, 4, 2]]]
-    eps_full = real_eps + 1j * imag_eps
-
+    dielectric   = load_vasprun.dielectric
+    energies     = np.array(dielectric[0])
+    real_eps     = np.array(dielectric[1])[:, [[0,3,5],[3,1,4],[5,4,2]]] # Reshape into a matrix from VASP dielectric flattened tensor
+    imag_eps     = np.array(dielectric[2])[:, [[0,3,5],[3,1,4],[5,4,2]]] # Reshpare into a matrix from VASP dielectric flattened tensor
+    eps_full     = real_eps + 1j * imag_eps
     return eps_full, energies
+
 
 def calc_absorption(eps_full, energies):
 
-    '''Calculates the averages of the real and imaginary components of the refractive index, absorption, losses, real and imaginary components of the 
-    static dielectric constant.
-    
-    Parameters:
-        eps_full(np.array): static dielectric constant (complex, contains both real and imaginary components)
-        energies(np.array): energy of the incident radiation eV
-        
-    Returns:
-        data(dictionary):
-        '''
+    eps_eig = np.linalg.eigvals(eps_full)
 
-    # take sqrt of eps matrix; if eps = V S V^-1; then eps^1/2 = V S^{1/2} V^-1;
-    eigvals, eigvecs = np.linalg.eig(eps_full)
+    # Scalar averaged dielectric (for eps outputs and loss function)
+    eps = np.mean(eps_eig, axis=1)
 
-    # fancy einsum to calculate V S^{1/2} V^-1 at every energy
-    n = np.einsum("ijk,ik,ikl->ijl", eigvecs, np.sqrt(eigvals), np.linalg.inv(eigvecs))
+    # Per-eigenvalue refractive index, then average (sumo-consistent)
+    n_eig     = np.sqrt(eps_eig + 0j)
+    n_complex = np.mean(n_eig, axis=1)
 
-    # calculate optical absorption
-    alpha = n.imag * energies[:, None, None] * 4 * np.pi / 1.23984212e-4
+    n_real = np.real(n_complex)
+    k      = np.imag(n_complex)
 
-    # Invert epsilon to obtain energy-loss function
-    loss = -np.linalg.inv(eps_full).imag
+    alpha = (4 * np.pi * energies * k) / (_h_e * _c)   # m-1
+    loss  = (-1 / eps).imag
 
-    eps = np.linalg.eigvals(eps_full).mean(axis=1)
-    n = np.linalg.eigvals(n).mean(axis=1)
-    loss = np.linalg.eigvalsh(loss).mean(axis=1)
-    alpha = np.linalg.eigvalsh(alpha).mean(axis=1)
-
-    data = {
-        "eps_real": eps.real,
-        "eps_imag": eps.imag,
-        "n_real": n.real,
-        "n_imag": n.imag,
-        "loss": loss,
+    return {
+        "eps_real":   np.real(eps),
+        "eps_imag":   np.imag(eps),
+        "n_real":     n_real,
+        "n_imag":     k,
+        "loss":       loss,
         "absorption": alpha,
     }
 
-    return data
 
-def print_n_real_file(data, energies, directory:Path):
-
-    filename = 'n_real.dat'
-
+def print_n_real_file(data, energies, directory: Path):
+    filename = "n_real.dat"
     if directory:
-            filename = join(directory, filename)
-
-    header = "energy(eV)"
-
-    header += " alpha"
-    data = np.stack((energies, data['n_real']), axis=1)
-
-    np.savetxt(filename, data, header=header)
-
-def generate_n_real(filename):
-     
-     directory = Path(filename).parent
-     
-     eps_full, energies = calc_dielectric(filename)
-
-     data = calc_absorption(eps_full, energies)
-
-     print_n_real_file(data, energies, directory)
+        filename = join(directory, filename)
+    out = np.stack((energies, data["n_real"]), axis=1)
+    np.savetxt(filename, out, header="energy(eV) n_real")
 
 
-def blank_flat(alpha, n, length): 
+def generate_n_real(optics_directory):
 
-    #Absorptance for flat scatterer, from Matlab script
-    the_c = np.arcsin(1/n[0])
-    theta = np.linspace(0.0, the_c, num=200)
-    a_len = len(alpha)
-    t_len = len(theta)
-    toft = np.zeros(a_len*t_len)
-    toft = toft.reshape(a_len, t_len)
-    absorb_tr = np.zeros(a_len)
+    filename = f'{optics_directory}/vasprun.xml'
 
-    for i, a_pt in enumerate(alpha):
-        for j, t_pt in enumerate(theta):
-            toft_pt = np.exp(((2*np.multiply((-a_pt), length))/np.cos(t_pt)))
-            toft[i, j] = toft_pt
-        a_t_1 = np.trapz((toft[i,:]*np.cos(theta)*np.sin(theta)), theta)
-        a_t_2 = np.trapz((np.cos(theta)*np.sin(theta)), theta)
-        absorb_tr[i] = 1 - (a_t_1/a_t_2)
-
-    absorb = absorb_tr.conjugate()
-    return(absorb)
+    eps_full, energies = calc_dielectric(filename)
+    data               = calc_absorption(eps_full, energies)
+    print_n_real_file(data, energies, optics_directory)
 
 
-def blank_lambert(alpha, n, length):
+def plot_absorption(optics_directory, xmin=0, xmax=6, gaussian=0.05):
 
-    #Absorptance for Lambertian scatterer coating, from Matlab script
-    x = np.multiply(2,np.multiply(alpha,length))
-    T = np.exp((-x)) - np.multiply(x, np.exp((-x))) + (x**2*sc.exp1(x))
-    R = 1.0/(np.multiply(n,n))
-    Abs = (1-T)/(1-T+(R*T))
-    Abs = np.nan_to_num(Abs)
-    Emi = (R*T)/(1-T+(R*T))
-
-    return(Abs)
-
-def blank_eta(spectrum, E, alpha, n, length, Qi, trap):
-    #For given scatterer, calculates Blank et al. eta
-    dE = E[1]-E[0]
-    if trap == 1:
-        Abs = blank_flat(alpha, n, length)
-    elif trap == 2:
-        Abs = blank_lambert(alpha, n, length)
-    
-    #np divide necessary to have array divide here?
-    phibb = 2*np.divide(np.divide(np.multiply(E,E),((h**3)*(c**2))),(np.exp(E/kT)-1))
-    phibb = np.nan_to_num(phibb) # NaNs to 0, as in Matlab
-
-    ps_E = spectrum[:, 0]
-    phi_sun = spectrum[:, 1]
-    
-    # works for all E values above 0.03? won't extrapolate for 0
-    # values < gap shouldn't be relevant?
-    phisun = 10000*np.interp(E, ps_E, phi_sun)
-        
-    Jsc = q*np.sum(Abs*phisun)*dE
-    J0rad = q*np.sum(Abs*phibb)*dE
-    
-    Rrad = 4*np.pi*np.sum(alpha*(n**2)*phibb)*dE
-    Rnrad = (Rrad-Qi*Rrad)/Qi
-    
-    pe = J0rad/(q*Rrad*length)
-    J0 = q*length*(Rnrad + pe*Rrad)
-    #Looks like this scans over only voltages between 0 and 2 V
-    #need testing for band gaps>2 eV?
-    V = np.linspace(0, 2, 1001)
-    Pmax = np.max(V*(Jsc - J0*(np.exp(V/kT)-1)))
-    eta = Pmax/1000
-
-    return(eta)
-
-def blank_parse(folder):
-    
-    # Parses outputs from current directory
-
-    abs_data = pd.read_table(f'{folder}/absorption.dat', sep=r"\s+",
-                                skiprows=1, header=None)
-    n_data = pd.read_table(f'{folder}/n_real.dat', sep=r"\s+",
-                    skiprows=1, header=None)
-    
-    E_p = list(abs_data[0])
-    alpha_p = list(abs_data[1])
-    n_p = list(n_data[1])
-
-    return{"E": E_p, "alpha": alpha_p, "n": n_p}
-
-def blank_calculate(spectrum, folder):
-
-    data = blank_parse(folder)
-
-    E = np.asarray(data["E"])
-    alpha = np.asarray(data["alpha"])
-    alpha = np.multiply(alpha, 100)
-    n = np.asarray(data["n"])
-
-    #Remove data for E>5eV, necessary for speed! Also done in Matlab
-
-    E = np.asarray([o for o in E if o <= 5])
-    alpha = alpha[0:(len(E))]
-    n = n[0:(len(E))]
-
-    #main, looping over lengths and Qi, outputs eta table
-    length_arr = np.logspace(-8.0, -3.0, num=36)
-    Qi_arr = np.logspace(0, -6, num=4)
-    trap = [1, 2]
-
-    for tr_pt in trap:
-        eta_arr = np.zeros(len(length_arr)*(len(Qi_arr)+1))
-        eta_arr = eta_arr.reshape(len(length_arr), (len(Qi_arr)+1))
-        for k, l_pt in enumerate(length_arr):
-            for l, q_pt in enumerate(Qi_arr):
-                eta_max = blank_eta(spectrum, E, alpha, n, l_pt, q_pt, tr_pt)
-                eta_arr[k, 0] = l_pt
-                eta_arr[k, l+1] = eta_max
-        if tr_pt == 1:
-            head="Thickness[m] \t Eta as fraction for Flat scatterer with Qi = 1.0, 0.01, 1E-4, 1E-6"
-            np.savetxt('flat_eta_out', eta_arr, header=head)
-        elif tr_pt == 2:
-            head="Thickness[m] \t Eta as fraction for Lambertian scatterer with Qi = 1.0, 0.01, 1E-4, 1E-6"
-            np.savetxt('lamb_eta_out', eta_arr, header=head)
-
-def plot_absorption(filename, xmin=0, xmax=6, gaussian=0.05):
-    fig, ax = plt.subplots(figsize=(3,3), dpi=150)
+    filename = f'{optics_directory}/vasprun.xml'
+    fig, ax = plt.subplots(figsize=(3, 3), dpi=150)
     optplot(filenames=filename, xmin=xmin, xmax=xmax, gaussian=gaussian, plt=plt)
     plt.show()
-    return
+
+def spectrum_select(spectrum_type):
+
+    use_slme = (spectrum_type == "AM1.5")
+
+    # --- solar / illuminant spectrum in wavelength space ---
+    if use_slme:
+        am15_path = os.path.join(os.path.dirname(slme_mod.__file__), "am1.5G.dat")
+        sol_wl, sol_irr = np.loadtxt(am15_path, usecols=[0, 1],
+                                      unpack=True, skiprows=2)  # nm, W m-2 nm-1
+    else:
+        spectrum = load_spectrum(spectrum_type)
+        sol_wl   = spectrum[:, 0]   # nm
+        sol_irr  = spectrum[:, 1]   # W m-2 nm-1
+
+    return sol_wl, sol_irr, use_slme
+
+def convert_spec(sol_wl, sol_irr):
+
+    sol_wl_m = sol_wl * 1e-9 # Convert wavelength to meters
+    sol_phot_flux = sol_irr * (sol_wl_m / (_h * _c))  # photons m-2 s-1 nm-1
+
+    return sol_wl_m, sol_phot_flux
+
+def calc_incident_power(sol_irr, sol_wl):
+
+    power_in = simpson(sol_irr, x=sol_wl)          # W m-2
+
+    return power_in
+
+def _bb_per_eV(E_eV):
+
+    # blackbody photon flux in energy space [photons m-2 s-1 eV-1] for pe integral
+
+    E_J = E_eV * _e
+    exp = np.clip(E_eV / ((_k / _e) * _T), 0, 700)
+    return (2*E_J**2) / (_h**3*_c**2) / (np.exp(exp) - 1.0 + 1e-300) * _e
+
+def bb_per_wl(sol_wl_m):
+
+    # blackbody photon flux in wavelength space [photons m-2 s-1 m-1]
+    bb_irr     = (2*_h*_c**2 / sol_wl_m**5) / (np.exp(_h*_c/(sol_wl_m*_k*_T)) - 1.0)
+    bb_phot_wl = bb_irr * (sol_wl_m / (_h * _c))
+
+    return bb_phot_wl
+
+def n_real_abs_fit(abs_file, n_real_file):
+
+    # --- absorption and n_real data (on the same energy grid) ---
+    energy_abs, alpha_cm = spectral.load_absorption(abs_file)
+    alpha_m = alpha_cm * 1e2   # cm-1 → m-1
+
+    nr_dat  = np.loadtxt(n_real_file, comments='#')
+    n_real  = np.interp(energy_abs, nr_dat[:, 0], nr_dat[:, 1])
+
+    return energy_abs, alpha_cm, alpha_m, n_real
+
+def interpolate_a(energy_abs, alpha_m, direct_gap, sol_wl):
+
+    # --- interpolate alpha onto solar wavelength grid (pymatgen style) ---
+    wl_alpha   = ((_c * _h_e) / (energy_abs + 1e-8)) * 1e9   # nm
+    alpha_func = interp1d(wl_alpha, alpha_m, kind='cubic',
+                          fill_value=(alpha_m[0], alpha_m[-1]),
+                          bounds_error=False)
+
+    wl_gap_nm    = (_c * _h_e / direct_gap) * 1e9
+    alpha_on_sol = np.zeros(len(sol_wl))
+    for i, wl in enumerate(sol_wl):
+        if wl < wl_gap_nm:
+            alpha_on_sol[i] = alpha_func(wl)
+
+    return alpha_on_sol
+
+
+def make_blank_plot(optics_directory, direct_gap, indirect_gap,
+                    spectrum_type="AM1.5", Qi=1.0, n=3.5, thickness_range=None):
+    
+    abs_file = f'{optics_directory}/absorption.dat'
+    n_real_file = f'{optics_directory}/n_real.dat'
+    
+    # Setup the spectrum and convert to units
+    sol_wl, sol_irr, use_slme = spectrum_select(spectrum_type)
+    sol_wl_m, sol_phot_flux = convert_spec(sol_wl, sol_irr)
+
+    # Calculate indicent power
+
+    power_in = calc_incident_power(sol_irr, sol_wl)
+        
+    bb_phot_wl = bb_per_wl(sol_wl_m)
+
+    energy_abs, alpha_cm, alpha_m, n_real = n_real_abs_fit(abs_file, n_real_file)
+    
+    eff_flat, eff_lam, eff_slme, thickness_range = thickness_calc(thickness_range, alpha_m, use_slme, n, 
+                                                                  energy_abs, alpha_cm, direct_gap, indirect_gap, n_real, bb_phot_wl, 
+                                                                  sol_wl_m, sol_phot_flux, sol_wl, Qi, power_in)
+            
+    plot_blank(use_slme, thickness_range, eff_slme, eff_lam, eff_flat)
+
+
+def power_efficiency(A_E, energy_abs, n_real, alpha_m, d):
+
+    phi_bb_E  = _bb_per_eV(energy_abs)
+
+    # pe denominator: ∫n²(E)·α(E)·φ_BB(E) dE  — independent of thickness
+    denom_int = simpson(n_real**2 * alpha_m * phi_bb_E, x=energy_abs)
+
+    # --- efficiency with full pe/Qi correction (Blank et al. eqs. 4-6) ---
+    numer_int = simpson(A_E * phi_bb_E, x=energy_abs)
+    pe  = min(numer_int / (4 * d * denom_int), 1.0)
+
+    return pe
+
+
+def _eta_d(d, A_sol, A_E, energy_abs, n_real, alpha_m, bb_phot_wl, sol_wl_m, sol_phot_flux, sol_wl, Qi, power_in):
+
+    pe = power_efficiency(A_E, energy_abs, n_real, alpha_m, d)
+
+    # External luminescence efficiency (Blank eq. after eq. 6)
+    Qe  = (pe * Qi) / (1.0 + (pe - 1.0) * Qi)
+
+    # J0_rad (standard detailed balance, wavelength space)
+    J0_rad = _e * np.pi * simpson(bb_phot_wl * A_sol, x=sol_wl_m)
+    J0     = J0_rad / Qe   # total saturation current
+
+    Jsc = _e * simpson(sol_phot_flux * A_sol, x=sol_wl)
+    if J0 <= 0 or Jsc <= 0:
+        return 0.0
+
+    def Jfn(V): return Jsc - J0 * (np.exp(_e*V / (_k*_T)) - 1.0)
+    def Pfn(V): return Jfn(V) * V
+    tv = 0.0; vs = 0.001
+    while Pfn(tv + vs) > Pfn(tv):
+        tv += vs
+    return Pfn(tv) / power_in * 100.0 
+
+def thickness_calc(thickness_range, alpha_m, use_slme, n, energy_abs, alpha_cm, direct_gap, indirect_gap, n_real, bb_phot_wl, sol_wl_m, sol_phot_flux, sol_wl, Qi, power_in):
+        
+        alpha_on_sol = interpolate_a(energy_abs, alpha_m, direct_gap, sol_wl)
+
+        if thickness_range is None:
+            thickness_range = np.logspace(-8, -3, 80)   # m
+
+        eff_flat = []; eff_lam = []; eff_slme = []
+
+        for d in thickness_range:
+            # absorptance on solar wavelength grid (for Jsc, J0_rad)
+            A_flat_sol = np.clip(1.0 - np.exp(-2.0 * alpha_on_sol * d), 0.0, 1.0)
+            A_lamb_sol = np.clip(1.0 - 1.0/(1.0 + 4.0*n**2 * alpha_on_sol * d), 0.0, 1.0)
+            # absorptance on energy grid (for pe numerator integral)
+            A_flat_E   = np.clip(1.0 - np.exp(-2.0 * alpha_m * d), 0.0, 1.0)
+            A_lamb_E   = np.clip(1.0 - 1.0/(1.0 + 4.0*n**2 * alpha_m * d), 0.0, 1.0)
+
+            eff_flat.append(_eta_d(d, A_flat_sol, A_flat_E, energy_abs, n_real, alpha_m, bb_phot_wl, sol_wl_m, sol_phot_flux, sol_wl, Qi, power_in))
+            eff_lam.append(_eta_d(d,  A_lamb_sol, A_lamb_E, energy_abs, n_real, alpha_m, bb_phot_wl, sol_wl_m, sol_phot_flux, sol_wl, Qi, power_in))
+
+            if use_slme:
+                eff_slme.append(slme_mod.slme(
+                    energy_abs, alpha_cm, direct_gap, indirect_gap,
+                    thickness=d, absorbance_in_inverse_centimeters=True))
+            
+        return eff_flat, eff_lam, eff_slme, thickness_range
+            
+def plot_blank(use_slme, thickness_range, eff_slme, eff_lam, eff_flat):
+
+    fig, ax = plt.subplots(figsize=(6, 4))
+
+    if use_slme:
+        ax.plot(thickness_range, eff_slme, color = 'blue', label="SLME")
+    ax.plot(thickness_range, eff_lam, color = 'green', label="Blank Lambertian")
+    ax.plot(thickness_range, eff_flat, color = 'orange', label="Blank Flat")
+    ax.set_xscale("log")
+    ax.set_xlabel("Film Thickness / m", labelpad=5)
+    ax.set_ylabel(r"Max PV Efficiency $(\eta_\mathrm{Max})$ / %")
+    ax.set_ylim([0, 35])
+    ax.margins(x=0)
+    ax.set_aspect(0.06)
+    ax.legend()
+    plt.tight_layout()
+    plt.show()
+
+def spectrum_nm_to_photon_flux(spectrum):
+    """Photon flux in wavelength space [photons m-2 s-1 nm-1]."""
+    wavelength_nm = spectrum[:, 0]
+    I             = spectrum[:, 1]
+    Phi           = (I * wavelength_nm) / hc_eV_nm
+    return wavelength_nm, Phi
+
+
+def spectrum_nm_to_photon_energy(spectrum):
+    """Convert irradiance [W m-2 nm-1] to photon flux [photons m-2 s-1 eV-1].
+
+    Uses the correct Jacobian I(E) = I(λ)|dλ/dE| then phi(E) = I(E)/E_J.
+    """
+
+    lam_nm = spectrum[:, 0]
+    I_lam  = spectrum[:, 1]
+    lam_m  = lam_nm * 1e-9
+    E_J    = _h * _c / lam_m
+    E_eV   = E_J / _e
+    I_E    = I_lam * hc_eV_nm / E_eV**2   # W m-2 eV-1
+    phi_E  = I_E / E_J                     # photons m-2 s-1 eV-1
+    idx    = np.argsort(E_eV)
+    return phi_E[idx], E_eV[idx]

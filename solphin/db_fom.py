@@ -84,6 +84,7 @@ def convert_spectrum(spectrum):
     return converted
 
 
+
 def photons_above_bandgap(E_gap, photon_spectrum):
     """Counts number of photons above given bandgap.
     
