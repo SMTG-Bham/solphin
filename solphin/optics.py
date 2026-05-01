@@ -9,15 +9,25 @@ from matplotlib import pyplot as plt
 import pymatgen.analysis.solar.slme as slme_mod
 import logging
 logging.getLogger('matplotlib.font_manager').disabled = True
-
+import os
+from scipy.integrate import simpson
+from scipy.interpolate import interp1d
+from scipy import constants
 
 h_eV = 4.135667696e-15   # eV s
 c    = 2.99792458e8       # m/s
 hc_eV_nm = 1239.84193    # eV nm
 
+_c   = constants.c
+_h   = constants.h
+_h_e = constants.h / constants.e
+_k   = constants.k
+_k_e = constants.k / constants.e
+_e   = constants.e
+_T   = 293.15
+
 
 def calc_dielectric(filename):
-    """Load dielectric function from vasprun.xml."""
     load_vasprun = Vasprun(filename)
     dielectric   = load_vasprun.dielectric
     energies     = np.array(dielectric[0])
@@ -28,12 +38,7 @@ def calc_dielectric(filename):
 
 
 def calc_absorption(eps_full, energies):
-    """Calculate optical quantities from the full dielectric tensor.
 
-    n_real / k / alpha use  mean(sqrt(ε_i))  per principal axis
-    (consistent with sumo).  eps_real / eps_imag / loss use mean(ε_i)
-    (trace / 3), which is correct for those scalar quantities.
-    """
     eps_eig = np.linalg.eigvals(eps_full)
 
     # Scalar averaged dielectric (for eps outputs and loss function)
@@ -79,22 +84,7 @@ def plot_absorption(filename, xmin=0, xmax=6, gaussian=0.05):
     optplot(filenames=filename, xmin=xmin, xmax=xmax, gaussian=gaussian, plt=plt)
     plt.show()
 
-
-def make_blank_plot(abs_file, n_real_file, direct_gap, indirect_gap,
-                    spectrum_type="AM1.5", Qi=1.0, n=3.5, thickness_range=None):
-
-    import os
-    from scipy.integrate import simpson
-    from scipy.interpolate import interp1d
-    from scipy import constants
-
-    _c   = constants.c
-    _h   = constants.h
-    _h_e = constants.h / constants.e
-    _k   = constants.k
-    _k_e = constants.k / constants.e
-    _e   = constants.e
-    _T   = 293.15
+def spectrum_select(spectrum_type):
 
     use_slme = (spectrum_type == "AM1.5")
 
@@ -108,19 +98,38 @@ def make_blank_plot(abs_file, n_real_file, direct_gap, indirect_gap,
         sol_wl   = spectrum[:, 0]   # nm
         sol_irr  = spectrum[:, 1]   # W m-2 nm-1
 
-    sol_wl_m = sol_wl * 1e-9
+    return sol_wl, sol_irr, use_slme
+
+def convert_spec(sol_wl, sol_irr):
+
+    sol_wl_m = sol_wl * 1e-9 # Convert wavelength to meters
     sol_phot_flux = sol_irr * (sol_wl_m / (_h * _c))  # photons m-2 s-1 nm-1
-    power_in      = simpson(sol_irr, x=sol_wl)          # W m-2
+
+    return sol_wl_m, sol_phot_flux
+
+def calc_incident_power(sol_irr, sol_wl):
+
+    power_in = simpson(sol_irr, x=sol_wl)          # W m-2
+
+    return power_in
+
+def _bb_per_eV(E_eV):
+
+    # blackbody photon flux in energy space [photons m-2 s-1 eV-1] for pe integral
+
+    E_J = E_eV * _e
+    exp = np.clip(E_eV / ((_k / _e) * _T), 0, 700)
+    return (2*E_J**2) / (_h**3*_c**2) / (np.exp(exp) - 1.0 + 1e-300) * _e
+
+def bb_per_wl(sol_wl_m):
 
     # blackbody photon flux in wavelength space [photons m-2 s-1 m-1]
     bb_irr     = (2*_h*_c**2 / sol_wl_m**5) / (np.exp(_h*_c/(sol_wl_m*_k*_T)) - 1.0)
     bb_phot_wl = bb_irr * (sol_wl_m / (_h * _c))
 
-    # blackbody photon flux in energy space [photons m-2 s-1 eV-1] for pe integral
-    def _bb_per_eV(E_eV):
-        E_J = E_eV * _e
-        exp = np.clip(E_eV / ((_k / _e) * _T), 0, 700)
-        return (2*E_J**2) / (_h**3*_c**2) / (np.exp(exp) - 1.0 + 1e-300) * _e
+    return bb_irr, bb_phot_wl
+
+def n_real_abs_fit(abs_file, n_real_file):
 
     # --- absorption and n_real data (on the same energy grid) ---
     energy_abs, alpha_cm = spectral.load_absorption(abs_file)
@@ -129,10 +138,9 @@ def make_blank_plot(abs_file, n_real_file, direct_gap, indirect_gap,
     nr_dat  = np.loadtxt(n_real_file, comments='#')
     n_real  = np.interp(energy_abs, nr_dat[:, 0], nr_dat[:, 1])
 
-    phi_bb_E  = _bb_per_eV(energy_abs)
+    return energy_abs, alpha_cm, alpha_m, n_real
 
-    # pe denominator: ∫n²(E)·α(E)·φ_BB(E) dE  — independent of thickness
-    denom_int = simpson(n_real**2 * alpha_m * phi_bb_E, x=energy_abs)
+def interpolate_a(energy_abs, alpha_m, direct_gap, sol_wl):
 
     # --- interpolate alpha onto solar wavelength grid (pymatgen style) ---
     wl_alpha   = ((_c * _h_e) / (energy_abs + 1e-8)) * 1e9   # nm
@@ -146,59 +154,89 @@ def make_blank_plot(abs_file, n_real_file, direct_gap, indirect_gap,
         if wl < wl_gap_nm:
             alpha_on_sol[i] = alpha_func(wl)
 
-    # fr factor (same as SLME, for indirect gap materials)
-    delta = direct_gap - indirect_gap
-    fr    = np.exp(-delta / (_k_e * _T))
+    return alpha_on_sol
+
+
+def make_blank_plot(abs_file, n_real_file, direct_gap, indirect_gap,
+                    spectrum_type="AM1.5", Qi=1.0, n=3.5, thickness_range=None):
+    
+    # Setup the spectrum and convert to units
+    sol_wl, sol_irr, use_slme = spectrum_select(spectrum_type)
+    sol_wl_m, sol_phot_flux = convert_spec(sol_wl, sol_irr)
+
+    # Calculate indicent power
+
+    power_in = calc_incident_power(sol_irr, sol_wl)
+        
+    bb_irr, bb_phot_wl = bb_per_wl(sol_wl_m)
+
+    energy_abs, alpha_cm, alpha_m, n_real = n_real_abs_fit(abs_file, n_real_file)
+
+    phi_bb_E  = _bb_per_eV(energy_abs)
+
+    alpha_on_sol = interpolate_a(energy_abs, alpha_m, direct_gap, sol_wl) 
+
+    eff_flat, eff_lam, eff_slme, thickness_range = thickness_calc(thickness_range, alpha_on_sol, alpha_m, use_slme, n, energy_abs, alpha_cm, direct_gap, indirect_gap, phi_bb_E, n_real, bb_phot_wl, sol_wl_m, sol_phot_flux, sol_wl, Qi, power_in)
+            
+    plot_blank(use_slme, thickness_range, eff_slme, eff_lam, eff_flat)
+
+
+def _eta_d(d, A_sol, A_E, phi_bb_E, energy_abs, n_real, alpha_m, bb_phot_wl, sol_wl_m, sol_phot_flux, sol_wl, Qi, power_in):
+
+    # pe denominator: ∫n²(E)·α(E)·φ_BB(E) dE  — independent of thickness
+    denom_int = simpson(n_real**2 * alpha_m * phi_bb_E, x=energy_abs)
 
     # --- efficiency with full pe/Qi correction (Blank et al. eqs. 4-6) ---
-    def _eta_d(d, A_sol, A_E):
-        numer_int = simpson(A_E * phi_bb_E, x=energy_abs)
-        pe  = min(numer_int / (4 * d * denom_int), 1.0)
+    numer_int = simpson(A_E * phi_bb_E, x=energy_abs)
+    pe  = min(numer_int / (4 * d * denom_int), 1.0)
 
-        # External luminescence efficiency (Blank eq. after eq. 6)
-        Qe  = (pe * Qi) / (1.0 + (pe - 1.0) * Qi)
+    # External luminescence efficiency (Blank eq. after eq. 6)
+    Qe  = (pe * Qi) / (1.0 + (pe - 1.0) * Qi)
 
-        # J0_rad (standard detailed balance, wavelength space)
-        J0_rad = _e * np.pi * simpson(bb_phot_wl * A_sol, x=sol_wl_m)
-        J0     = J0_rad / Qe   # total saturation current
+    # J0_rad (standard detailed balance, wavelength space)
+    J0_rad = _e * np.pi * simpson(bb_phot_wl * A_sol, x=sol_wl_m)
+    J0     = J0_rad / Qe   # total saturation current
 
-        # # fr correction for indirect gap (same as SLME)
-        # J0 = J0 / fr
+    Jsc = _e * simpson(sol_phot_flux * A_sol, x=sol_wl)
+    if J0 <= 0 or Jsc <= 0:
+        return 0.0
 
-        Jsc = _e * simpson(sol_phot_flux * A_sol, x=sol_wl)
-        if J0 <= 0 or Jsc <= 0:
-            return 0.0
+    def Jfn(V): return Jsc - J0 * (np.exp(_e*V / (_k*_T)) - 1.0)
+    def Pfn(V): return Jfn(V) * V
+    tv = 0.0; vs = 0.001
+    while Pfn(tv + vs) > Pfn(tv):
+        tv += vs
+    return Pfn(tv) / power_in * 100.0 
 
-        def Jfn(V): return Jsc - J0 * (np.exp(_e*V / (_k*_T)) - 1.0)
-        def Pfn(V): return Jfn(V) * V
-        tv = 0.0; vs = 0.001
-        while Pfn(tv + vs) > Pfn(tv):
-            tv += vs
-        return Pfn(tv) / power_in * 100.0
+def thickness_calc(thickness_range, alpha_on_sol, alpha_m, use_slme, n, energy_abs, alpha_cm, direct_gap, indirect_gap, phi_bb_E, n_real, bb_phot_wl, sol_wl_m, sol_phot_flux, sol_wl, Qi, power_in):
+        
+        if thickness_range is None:
+            thickness_range = np.logspace(-8, -3, 80)   # m
 
-    # --- thickness sweep ---
-    if thickness_range is None:
-        thickness_range = np.logspace(-8, -3, 80)   # m
+        eff_flat = []; eff_lam = []; eff_slme = []
 
-    eff_flat = []; eff_lam = []; eff_slme = []
+        for d in thickness_range:
+            # absorptance on solar wavelength grid (for Jsc, J0_rad)
+            A_flat_sol = np.clip(1.0 - np.exp(-2.0 * alpha_on_sol * d), 0.0, 1.0)
+            A_lamb_sol = np.clip(1.0 - 1.0/(1.0 + 4.0*n**2 * alpha_on_sol * d), 0.0, 1.0)
+            # absorptance on energy grid (for pe numerator integral)
+            A_flat_E   = np.clip(1.0 - np.exp(-2.0 * alpha_m * d), 0.0, 1.0)
+            A_lamb_E   = np.clip(1.0 - 1.0/(1.0 + 4.0*n**2 * alpha_m * d), 0.0, 1.0)
 
-    for d in thickness_range:
-        # absorptance on solar wavelength grid (for Jsc, J0_rad)
-        A_flat_sol = np.clip(1.0 - np.exp(-2.0 * alpha_on_sol * d), 0.0, 1.0)
-        A_lamb_sol = np.clip(1.0 - 1.0/(1.0 + 4.0*n**2 * alpha_on_sol * d), 0.0, 1.0)
-        # absorptance on energy grid (for pe numerator integral)
-        A_flat_E   = np.clip(1.0 - np.exp(-2.0 * alpha_m * d), 0.0, 1.0)
-        A_lamb_E   = np.clip(1.0 - 1.0/(1.0 + 4.0*n**2 * alpha_m * d), 0.0, 1.0)
+            eff_flat.append(_eta_d(d, A_flat_sol, A_flat_E, phi_bb_E, energy_abs, n_real, alpha_m, bb_phot_wl, sol_wl_m, sol_phot_flux, sol_wl, Qi, power_in))
+            eff_lam.append(_eta_d(d,  A_lamb_sol, A_lamb_E,phi_bb_E, energy_abs, n_real, alpha_m, bb_phot_wl, sol_wl_m, sol_phot_flux, sol_wl, Qi, power_in))
 
-        eff_flat.append(_eta_d(d, A_flat_sol, A_flat_E))
-        eff_lam.append(_eta_d(d,  A_lamb_sol, A_lamb_E))
-
-        if use_slme:
-            eff_slme.append(slme_mod.slme(
-                energy_abs, alpha_cm, direct_gap, indirect_gap,
-                thickness=d, absorbance_in_inverse_centimeters=True))
+            if use_slme:
+                eff_slme.append(slme_mod.slme(
+                    energy_abs, alpha_cm, direct_gap, indirect_gap,
+                    thickness=d, absorbance_in_inverse_centimeters=True))
+            
+        return eff_flat, eff_lam, eff_slme, thickness_range
+            
+def plot_blank(use_slme, thickness_range, eff_slme, eff_lam, eff_flat):
 
     fig, ax = plt.subplots(figsize=(6, 4))
+
     if use_slme:
         ax.plot(thickness_range, eff_slme, label="SLME")
     ax.plot(thickness_range, eff_lam,  label="Blank Lambertian")
@@ -213,7 +251,6 @@ def make_blank_plot(abs_file, n_real_file, direct_gap, indirect_gap,
     plt.tight_layout()
     plt.show()
 
-
 def spectrum_nm_to_photon_flux(spectrum):
     """Photon flux in wavelength space [photons m-2 s-1 nm-1]."""
     wavelength_nm = spectrum[:, 0]
@@ -227,8 +264,6 @@ def spectrum_nm_to_photon_energy(spectrum):
 
     Uses the correct Jacobian I(E) = I(λ)|dλ/dE| then phi(E) = I(E)/E_J.
     """
-    from scipy import constants
-    _h = constants.h; _c = constants.c; _e = constants.e
 
     lam_nm = spectrum[:, 0]
     I_lam  = spectrum[:, 1]
