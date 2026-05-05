@@ -1,0 +1,27 @@
+/rds/homes/p/puc369/scanlodo-pv-defects/miniconda3/envs/toolbox/bin/sumo-kgen -f -y
+Structure information:
+	Space group number: 44
+	International symbol: Imm2
+	Lattice type: orthorhombic
+
+k-point path:
+	R -> \Gamma -> X -> S -> W -> T
+
+k-points:
+	\Gamma: 0.0 0.0 0.0
+	S: 0.5 0.0 -0.5
+	R: 0.5 0.0 0.0
+	T: 0.5 -0.5 0.0
+	W: 0.75 -0.25 -0.25
+	X: 0.5 -0.5 -0.5
+
+k-point label indices:
+	R: 1
+	\Gamma: 39
+	X: 135
+	S: 194
+	W: 210
+	T: 244
+
+Found 244 total kpoints in path, do you want to split them up? (y/n)
+How many kpoints per file?

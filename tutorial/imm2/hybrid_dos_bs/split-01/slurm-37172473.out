@@ -1,0 +1,95 @@
+GCCcore/11.3.0
+zlib/1.2.12-GCCcore-11.3.0
+binutils/2.38-GCCcore-11.3.0
+GCC/11.3.0
+numactl/2.0.14-GCCcore-11.3.0
+XZ/5.2.5-GCCcore-11.3.0
+libxml2/2.9.13-GCCcore-11.3.0
+libpciaccess/0.16-GCCcore-11.3.0
+hwloc/2.7.1-GCCcore-11.3.0
+OpenSSL/1.1
+libevent/2.1.12-GCCcore-11.3.0
+UCX/1.12.1-GCCcore-11.3.0
+libfabric/1.15.1-GCCcore-11.3.0
+PMIx/4.1.2-GCCcore-11.3.0
+UCC/1.0.0-GCCcore-11.3.0
+OpenMPI/4.1.4-GCC-11.3.0
+OpenBLAS/0.3.20-GCC-11.3.0
+FlexiBLAS/3.2.0-GCC-11.3.0
+FFTW/3.3.10-GCC-11.3.0
+gompi/2022a
+FFTW.MPI/3.3.10-gompi-2022a
+ScaLAPACK/2.2.0-gompi-2022a-fb
+foss/2022a
+Szip/2.1.1-GCCcore-11.3.0
+HDF5/1.13.1-gompi-2022a
+The use of VASP is restricted. You must be a member of the correct Unix group for VASP to work.
+
+VASP/6.4.2-foss-2022a
+ M_divide: can not subdivide           52 nodes by           8
+ M_divide: can not subdivide           52 nodes by           8
+ M_divide: can not subdivide           52 nodes by           8
+ M_divide: can not subdivide           52 nodes by           8
+ M_divide: can not subdivide           52 nodes by           8
+ M_divide: can not subdivide           52 nodes by           8
+ M_divide: can not subdivide           52 nodes by           8
+ M_divide: can not subdivide           52 nodes by           8
+ M_divide: can not subdivide           52 nodes by           8
+ M_divide: can not subdivide           52 nodes by           8
+ M_divide: can not subdivide           52 nodes by           8
+ M_divide: can not subdivide           52 nodes by           8
+ M_divide: can not subdivide           52 nodes by           8
+ M_divide: can not subdivide           52 nodes by           8
+ M_divide: can not subdivide           52 nodes by           8
+ M_divide: can not subdivide           52 nodes by           8
+ M_divide: can not subdivide           52 nodes by           8
+ running   52 mpi-ranks, with    1 threads/rank, on    2 nodes
+ M_divide: can not subdivide           52 nodes by           8
+ M_divide: can not subdivide           52 nodes by           8
+ M_divide: can not subdivide           52 nodes by           8
+ M_divide: can not subdivide           52 nodes by           8
+ M_divide: can not subdivide           52 nodes by           8
+ M_divide: can not subdivide           52 nodes by           8
+ M_divide: can not subdivide           52 nodes by           8
+ M_divide: can not subdivide           52 nodes by           8
+ M_divide: can not subdivide           52 nodes by           8
+ M_divide: can not subdivide           52 nodes by           8
+ M_divide: can not subdivide           52 nodes by           8
+ M_divide: can not subdivide           52 nodes by           8
+ M_divide: can not subdivide           52 nodes by           8
+ M_divide: can not subdivide           52 nodes by           8
+ M_divide: can not subdivide           52 nodes by           8
+ M_divide: can not subdivide           52 nodes by           8
+ M_divide: can not subdivide           52 nodes by           8
+ M_divide: can not subdivide           52 nodes by           8
+ M_divide: can not subdivide           52 nodes by           8
+ M_divide: can not subdivide           52 nodes by           8
+ M_divide: can not subdivide           52 nodes by           8
+ M_divide: can not subdivide           52 nodes by           8
+ M_divide: can not subdivide           52 nodes by           8
+ M_divide: can not subdivide           52 nodes by           8
+ M_divide: can not subdivide           52 nodes by           8
+ M_divide: can not subdivide           52 nodes by           8
+ M_divide: can not subdivide           52 nodes by           8
+ M_divide: can not subdivide           52 nodes by           8
+ M_divide: can not subdivide           52 nodes by           8
+ M_divide: can not subdivide           52 nodes by           8
+ M_divide: can not subdivide           52 nodes by           8
+ M_divide: can not subdivide           52 nodes by           8
+ M_divide: can not subdivide           52 nodes by           8
+ M_divide: can not subdivide           52 nodes by           8
+ M_divide: can not subdivide           52 nodes by           8
+ distrk:  each k-point on    6 cores,    8 groups
+ distr:  one band on    1 cores,    6 groups
+[bear-pg0207u36a:3484903] *** An error occurred in MPI_Cart_sub
+[bear-pg0207u36a:3484903] *** reported by process [3685744641,50]
+[bear-pg0207u36a:3484903] *** on communicator MPI_COMM_WORLD
+[bear-pg0207u36a:3484903] *** MPI_ERR_COMM: invalid communicator
+[bear-pg0207u36a:3484903] *** MPI_ERRORS_ARE_FATAL (processes in this communicator will now abort,
+[bear-pg0207u36a:3484903] ***    and potentially your MPI job)
+ vasp.6.4.2 20Jul23 (build Oct 17 2023 11:49:23) complex                         
+ POSCAR found type information on POSCAR CuGeSe
+ POSCAR found :  3 types and       6 ions
+ Reading from existing POTCAR
+[bear-pg0207u33b.bear.cluster:1441690] 3 more processes have sent help message help-mpi-errors.txt / mpi_errors_are_fatal
+[bear-pg0207u33b.bear.cluster:1441690] Set MCA parameter "orte_base_help_aggregate" to 0 to see all help / error messages

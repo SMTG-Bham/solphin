@@ -1,0 +1,28 @@
++--------------------------------------------------------------------------+
+| Job on the BlueBEAR cluster:
+| Starting at Tue Feb 17 08:24:14 2026 for puc369(883164)
+| Identity jobid 37172473 jobname job.sh
+| Running against project scanlodo-pv-defects and in partition icelake-shared
+| Requested cpu=104,mem=416G,node=2,billing=104 - 8-08:00:00 walltime
+| Allocated cpu=104,mem=416G,node=2,billing=104
+| Assigned to nodes bear-pg0207u33b,bear-pg0207u36a
+| Command /rds/projects/s/scanlodo-pv-defects/Copper_Chalcogenides/Cu2GeSe3/Imm2/DOS_0.15_ISMEAR0/split-01/job.sh
+| WorkDir /rds/projects/s/scanlodo-pv-defects/Copper_Chalcogenides/Cu2GeSe3/Imm2/DOS_0.15_ISMEAR0/split-01
++--------------------------------------------------------------------------+
++--------------------------------------------------------------------------+
+| Finished at Tue Feb 17 08:24:36 2026 for puc369(883164) on the BlueBEAR Cluster
+| Required (00:44.476 cputime, 961K memory used) - 00:00:23 walltime
+| JobState COMPLETING - Reason NonZeroExitCode
+| Exitcode 5:0
++--------------------------------------------------------------------------+
+Job efficiency stats from seff for Job ID: 37172473
+Cluster: paddington
+User/Group: puc369/users
+State: FAILED (exit code 5)
+Nodes: 2
+Cores per node: 52
+CPU Utilized: 00:00:46
+CPU Efficiency: 1.92% of 00:39:52 core-walltime
+Job Wall-clock time: 00:00:23
+Memory Utilized: 961.00 KB
+Memory Efficiency: 0.00% of 416.00 GB
