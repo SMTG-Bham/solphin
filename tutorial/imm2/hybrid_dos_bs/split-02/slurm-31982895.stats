@@ -1,0 +1,17 @@
++--------------------------------------------------------------------------+
+| Job on the BlueBEAR cluster:
+| Starting at Wed Nov 26 00:29:30 2025 for puc369(883164)
+| Identity jobid 31982895 jobname job.sh
+| Running against project scanlodo-pv-defects and in partition icelake-shared
+| Requested cpu=104,mem=416G,node=2,billing=104 - 8-08:00:00 walltime
+| Allocated cpu=104,mem=416G,node=2,billing=104
+| Assigned to nodes bear-pg0104u15b,bear-pg0104u16b
+| Command /rds/projects/s/scanlodo-pv-defects/Copper_Chalcogenides_Raw/Cu2GeSe3/DOS_BS_Rerun/Imm2/DOS_0.15_ISMEAR0_New/split-02/job.sh
+| WorkDir /rds/projects/s/scanlodo-pv-defects/Copper_Chalcogenides_Raw/Cu2GeSe3/DOS_BS_Rerun/Imm2/DOS_0.15_ISMEAR0_New/split-02
++--------------------------------------------------------------------------+
++--------------------------------------------------------------------------+
+| Finished at Thu Dec  4 08:29:31 2025 for puc369(883164) on the BlueBEAR Cluster
+| Required (00:04.450 cputime, 94075165K memory used) - 8-08:00:00 walltime
+| JobState COMPLETING - Reason TimeLimit
+| Exitcode 0:15
++--------------------------------------------------------------------------+
