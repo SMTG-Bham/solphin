@@ -1,0 +1,29 @@
+/rds/homes/p/puc369/miniconda3/envs/toolbox/bin/sumo-kgen -f -y
+Structure information:
+	Space group number: 9
+	International symbol: Cc
+	Lattice type: monoclinic
+
+k-point path:
+	\Gamma -> Y -> V -> \Gamma -> A -> M -> L -> V
+
+k-points:
+	A: 0.0 0.0 0.5
+	\Gamma: 0.0 0.0 0.0
+	M: 0.5 0.5 0.5
+	L: 0.5 0.0 0.5
+	V: 0.5 0.0 0.0
+	Y: 0.5 0.5 0.0
+
+k-point label indices:
+	\Gamma: 1
+	Y: 33
+	V: 67
+	\Gamma: 101
+	A: 131
+	M: 163
+	L: 197
+	V: 227
+
+Found 227 total kpoints in path, do you want to split them up? (y/n)
+How many kpoints per file?

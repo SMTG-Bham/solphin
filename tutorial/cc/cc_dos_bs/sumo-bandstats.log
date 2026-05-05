@@ -1,0 +1,31 @@
+/rds/homes/p/puc369/miniconda3/envs/toolbox/bin/sumo-bandstats
+Direct band gap: 0.603 eV
+  k-point: [0.00, 0.00, 0.00]
+  k-point indices: 0, 100
+  Band indices: 54, 55
+
+Valence band maximum:
+  Energy: 3.476 eV
+  k-point: [0.00, 0.00, 0.00]
+  k-point location: \Gamma
+  k-point indices: 0, 100
+  Band indices: 54
+
+Conduction band minimum:
+  Energy: 4.079 eV
+  k-point: [0.00, 0.00, 0.00]
+  k-point location: \Gamma
+  k-point indices: 0, 100
+  Band indices: 55
+
+Using parabolic fitting of the band edges
+
+Hole effective masses:
+  m_h: -1.003 | band 54 | [0.00, 0.00, 0.00] (\Gamma) -> [0.50, 0.00, -0.00] (V)
+  m_h: -0.094 | band 54 | [0.00, 0.00, 0.00] (\Gamma) -> [0.50, 0.00, -0.00] (V)
+  m_h: -1.543 | band 54 | [0.00, 0.00, 0.00] (\Gamma) -> [0.00, 0.00, 0.00] (\Gamma)
+
+Electron effective masses:
+  m_e: 0.114 | band 55 | [0.00, 0.00, 0.00] (\Gamma) -> [0.50, 0.00, -0.00] (V)
+  m_e: 0.089 | band 55 | [0.00, 0.00, 0.00] (\Gamma) -> [0.50, 0.00, -0.00] (V)
+  m_e: 0.116 | band 55 | [0.00, 0.00, 0.00] (\Gamma) -> [0.00, 0.00, 0.00] (\Gamma)

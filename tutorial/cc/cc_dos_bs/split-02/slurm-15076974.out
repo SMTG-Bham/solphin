@@ -1,0 +1,340 @@
+GCCcore/11.3.0
+zlib/1.2.12-GCCcore-11.3.0
+binutils/2.38-GCCcore-11.3.0
+GCC/11.3.0
+numactl/2.0.14-GCCcore-11.3.0
+XZ/5.2.5-GCCcore-11.3.0
+libxml2/2.9.13-GCCcore-11.3.0
+libpciaccess/0.16-GCCcore-11.3.0
+hwloc/2.7.1-GCCcore-11.3.0
+OpenSSL/1.1
+libevent/2.1.12-GCCcore-11.3.0
+UCX/1.12.1-GCCcore-11.3.0
+libfabric/1.15.1-GCCcore-11.3.0
+PMIx/4.1.2-GCCcore-11.3.0
+UCC/1.0.0-GCCcore-11.3.0
+OpenMPI/4.1.4-GCC-11.3.0
+OpenBLAS/0.3.20-GCC-11.3.0
+FlexiBLAS/3.2.0-GCC-11.3.0
+FFTW/3.3.10-GCC-11.3.0
+gompi/2022a
+FFTW.MPI/3.3.10-gompi-2022a
+ScaLAPACK/2.2.0-gompi-2022a-fb
+foss/2022a
+Szip/2.1.1-GCCcore-11.3.0
+HDF5/1.13.1-gompi-2022a
+The use of VASP is restricted. You must be a member of the correct Unix group for VASP to work.
+
+VASP/6.4.2-foss-2022a
+ running   60 mpi-ranks, with    1 threads/rank, on    1 nodes
+ distrk:  each k-point on   12 cores,    5 groups
+ distr:  one band on    4 cores,    3 groups
+ vasp.6.4.2 20Jul23 (build Oct 17 2023 11:49:23) complex                         
+ POSCAR found type information on POSCAR CuGeSe
+ POSCAR found :  3 types and      12 ions
+ Reading from existing POTCAR
+ scaLAPACK will be used
+ Reading from existing POTCAR
+ LDA part: xc-table for Pade appr. of Perdew
+ -----------------------------------------------------------------------------
+|                                                                             |
+|           W    W    AA    RRRRR   N    N  II  N    N   GGGG   !!!           |
+|           W    W   A  A   R    R  NN   N  II  NN   N  G    G  !!!           |
+|           W    W  A    A  R    R  N N  N  II  N N  N  G       !!!           |
+|           W WW W  AAAAAA  RRRRR   N  N N  II  N  N N  G  GGG   !            |
+|           WW  WW  A    A  R   R   N   NN  II  N   NN  G    G                |
+|           W    W  A    A  R    R  N    N  II  N    N   GGGG   !!!           |
+|                                                                             |
+|     The number of bands has been changed from the values supplied in        |
+|     the INCAR file. This is a result of running the parallel version.       |
+|     The orbitals not found in the WAVECAR file will be initialized with     |
+|     random numbers, which is usually adequate. For correlated               |
+|     calculations, however, you should redo the groundstate calculation.     |
+|     I found NBANDS = 140. Now, NBANDS = 141.                                |
+|                                                                             |
+ -----------------------------------------------------------------------------
+
+ POSCAR, INCAR and KPOINTS ok, starting setup
+ FFT: planning ... GRIDC
+ FFT: planning ... GRID_SOFT
+ FFT: planning ... GRID
+ -----------------------------------------------------------------------------
+|                     _     ____    _    _    _____     _                     |
+|                    | |   |  _ \  | |  | |  / ____|   | |                    |
+|                    | |   | |_) | | |  | | | |  __    | |                    |
+|                    |_|   |  _ <  | |  | | | | |_ |   |_|                    |
+|                     _    | |_) | | |__| | | |__| |    _                     |
+|                    (_)   |____/   \____/   \_____|   (_)                    |
+|                                                                             |
+|     internal error in: mkpoints_full.F  at line: 1172                       |
+|                                                                             |
+|     internal error in SET_INDPW_FULL: insufficient memory (see wave.F       |
+|     safeguard) 1699 1698                                                    |
+|                                                                             |
+|     If you are not a developer, you should not encounter this problem.      |
+|     Please submit a bug report.                                             |
+|                                                                             |
+ -----------------------------------------------------------------------------
+
+ -----------------------------------------------------------------------------
+|                     _     ____    _    _    _____     _                     |
+|                    | |   |  _ \  | |  | |  / ____|   | |                    |
+|                    | |   | |_) | | |  | | | |  __    | |                    |
+|                    |_|   |  _ <  | |  | | | | |_ |   |_|                    |
+|                     _    | |_) | | |__| | | |__| |    _                     |
+|                    (_)   |____/   \____/   \_____|   (_)                    |
+|                                                                             |
+|     internal error in: mkpoints_full.F  at line: 1172                       |
+|                                                                             |
+|     internal error in SET_INDPW_FULL: insufficient memory (see wave.F       |
+|     safeguard) 1699 1698                                                    |
+|                                                                             |
+|     If you are not a developer, you should not encounter this problem.      |
+|     Please submit a bug report.                                             |
+|                                                                             |
+ -----------------------------------------------------------------------------
+
+ -----------------------------------------------------------------------------
+|                     _     ____    _    _    _____     _                     |
+|                    | |   |  _ \  | |  | |  / ____|   | |                    |
+|                    | |   | |_) | | |  | | | |  __    | |                    |
+|                    |_|   |  _ <  | |  | | | | |_ |   |_|                    |
+|                     _    | |_) | | |__| | | |__| |    _                     |
+|                    (_)   |____/   \____/   \_____|   (_)                    |
+|                                                                             |
+|     internal error in: mkpoints_full.F  at line: 1172                       |
+|                                                                             |
+|     internal error in SET_INDPW_FULL: insufficient memory (see wave.F       |
+|     safeguard) 1699 1698                                                    |
+|                                                                             |
+|     If you are not a developer, you should not encounter this problem.      |
+|     Please submit a bug report.                                             |
+|                                                                             |
+ -----------------------------------------------------------------------------
+
+ -----------------------------------------------------------------------------
+|                     _     ____    _    _    _____     _                     |
+|                    | |   |  _ \  | |  | |  / ____|   | |                    |
+|                    | |   | |_) | | |  | | | |  __    | |                    |
+|                    |_|   |  _ <  | |  | | | | |_ |   |_|                    |
+|                     _    | |_) | | |__| | | |__| |    _                     |
+|                    (_)   |____/   \____/   \_____|   (_)                    |
+|                                                                             |
+|     internal error in: mkpoints_full.F  at line: 1172                       |
+|                                                                             |
+|     internal error in SET_INDPW_FULL: insufficient memory (see wave.F       |
+|     safeguard) 1699 1698                                                    |
+|                                                                             |
+|     If you are not a developer, you should not encounter this problem.      |
+|     Please submit a bug report.                                             |
+|                                                                             |
+ -----------------------------------------------------------------------------
+
+ -----------------------------------------------------------------------------
+|                     _     ____    _    _    _____     _                     |
+|                    | |   |  _ \  | |  | |  / ____|   | |                    |
+|                    | |   | |_) | | |  | | | |  __    | |                    |
+|                    |_|   |  _ <  | |  | | | | |_ |   |_|                    |
+|                     _    | |_) | | |__| | | |__| |    _                     |
+|                    (_)   |____/   \____/   \_____|   (_)                    |
+|                                                                             |
+|     internal error in: mkpoints_full.F  at line: 1172                       |
+|                                                                             |
+|     internal error in SET_INDPW_FULL: insufficient memory (see wave.F       |
+|     safeguard) 1699 1698                                                    |
+|                                                                             |
+|     If you are not a developer, you should not encounter this problem.      |
+|     Please submit a bug report.                                             |
+|                                                                             |
+ -----------------------------------------------------------------------------
+
+ -----------------------------------------------------------------------------
+|                     _     ____    _    _    _____     _                     |
+|                    | |   |  _ \  | |  | |  / ____|   | |                    |
+|                    | |   | |_) | | |  | | | |  __    | |                    |
+|                    |_|   |  _ <  | |  | | | | |_ |   |_|                    |
+|                     _    | |_) | | |__| | | |__| |    _                     |
+|                    (_)   |____/   \____/   \_____|   (_)                    |
+|                                                                             |
+|     internal error in: mkpoints_full.F  at line: 1172                       |
+|                                                                             |
+|     internal error in SET_INDPW_FULL: insufficient memory (see wave.F       |
+|     safeguard) 1699 1698                                                    |
+|                                                                             |
+|     If you are not a developer, you should not encounter this problem.      |
+|     Please submit a bug report.                                             |
+|                                                                             |
+ -----------------------------------------------------------------------------
+
+ -----------------------------------------------------------------------------
+|                     _     ____    _    _    _____     _                     |
+|                    | |   |  _ \  | |  | |  / ____|   | |                    |
+|                    | |   | |_) | | |  | | | |  __    | |                    |
+|                    |_|   |  _ <  | |  | | | | |_ |   |_|                    |
+|                     _    | |_) | | |__| | | |__| |    _                     |
+|                    (_)   |____/   \____/   \_____|   (_)                    |
+|                                                                             |
+|     internal error in: mkpoints_full.F  at line: 1172                       |
+|                                                                             |
+|     internal error in SET_INDPW_FULL: insufficient memory (see wave.F       |
+|     safeguard) 1699 1698                                                    |
+|                                                                             |
+|     If you are not a developer, you should not encounter this problem.      |
+|     Please submit a bug report.                                             |
+|                                                                             |
+ -----------------------------------------------------------------------------
+
+ -----------------------------------------------------------------------------
+|                     _     ____    _    _    _____     _                     |
+|                    | |   |  _ \  | |  | |  / ____|   | |                    |
+|                    | |   | |_) | | |  | | | |  __    | |                    |
+|                    |_|   |  _ <  | |  | | | | |_ |   |_|                    |
+|                     _    | |_) | | |__| | | |__| |    _                     |
+|                    (_)   |____/   \____/   \_____|   (_)                    |
+|                                                                             |
+|     internal error in: mkpoints_full.F  at line: 1172                       |
+|                                                                             |
+|     internal error in SET_INDPW_FULL: insufficient memory (see wave.F       |
+|     safeguard) 1699 1698                                                    |
+|                                                                             |
+|     If you are not a developer, you should not encounter this problem.      |
+|     Please submit a bug report.                                             |
+|                                                                             |
+ -----------------------------------------------------------------------------
+
+ -----------------------------------------------------------------------------
+|                     _     ____    _    _    _____     _                     |
+|                    | |   |  _ \  | |  | |  / ____|   | |                    |
+|                    | |   | |_) | | |  | | | |  __    | |                    |
+|                    |_|   |  _ <  | |  | | | | |_ |   |_|                    |
+|                     _    | |_) | | |__| | | |__| |    _                     |
+|                    (_)   |____/   \____/   \_____|   (_)                    |
+|                                                                             |
+|     internal error in: mkpoints_full.F  at line: 1172                       |
+|                                                                             |
+|     internal error in SET_INDPW_FULL: insufficient memory (see wave.F       |
+|     safeguard) 1699 1698                                                    |
+|                                                                             |
+|     If you are not a developer, you should not encounter this problem.      |
+|     Please submit a bug report.                                             |
+|                                                                             |
+ -----------------------------------------------------------------------------
+
+ -----------------------------------------------------------------------------
+|                     _     ____    _    _    _____     _                     |
+|                    | |   |  _ \  | |  | |  / ____|   | |                    |
+|                    | |   | |_) | | |  | | | |  __    | |                    |
+|                    |_|   |  _ <  | |  | | | | |_ |   |_|                    |
+|                     _    | |_) | | |__| | | |__| |    _                     |
+|                    (_)   |____/   \____/   \_____|   (_)                    |
+|                                                                             |
+|     internal error in: mkpoints_full.F  at line: 1172                       |
+|                                                                             |
+|     internal error in SET_INDPW_FULL: insufficient memory (see wave.F       |
+|     safeguard) 1699 1698                                                    |
+|                                                                             |
+|     If you are not a developer, you should not encounter this problem.      |
+|     Please submit a bug report.                                             |
+|                                                                             |
+ -----------------------------------------------------------------------------
+
+ -----------------------------------------------------------------------------
+|                     _     ____    _    _    _____     _                     |
+|                    | |   |  _ \  | |  | |  / ____|   | |                    |
+|                    | |   | |_) | | |  | | | |  __    | |                    |
+|                    |_|   |  _ <  | |  | | | | |_ |   |_|                    |
+|                     _    | |_) | | |__| | | |__| |    _                     |
+|                    (_)   |____/   \____/   \_____|   (_)                    |
+|                                                                             |
+|     internal error in: mkpoints_full.F  at line: 1172                       |
+|                                                                             |
+|     internal error in SET_INDPW_FULL: insufficient memory (see wave.F       |
+|     safeguard) 1699 1698                                                    |
+|                                                                             |
+|     If you are not a developer, you should not encounter this problem.      |
+|     Please submit a bug report.                                             |
+|                                                                             |
+ -----------------------------------------------------------------------------
+
+ -----------------------------------------------------------------------------
+|                     _     ____    _    _    _____     _                     |
+|                    | |   |  _ \  | |  | |  / ____|   | |                    |
+|                    | |   | |_) | | |  | | | |  __    | |                    |
+|                    |_|   |  _ <  | |  | | | | |_ |   |_|                    |
+|                     _    | |_) | | |__| | | |__| |    _                     |
+|                    (_)   |____/   \____/   \_____|   (_)                    |
+|                                                                             |
+|     internal error in: mkpoints_full.F  at line: 1172                       |
+|                                                                             |
+|     internal error in SET_INDPW_FULL: insufficient memory (see wave.F       |
+|     safeguard) 1699 1698                                                    |
+|                                                                             |
+|     If you are not a developer, you should not encounter this problem.      |
+|     Please submit a bug report.                                             |
+|                                                                             |
+ -----------------------------------------------------------------------------
+
+ -----------------------------------------------------------------------------
+|                     _     ____    _    _    _____     _                     |
+|                    | |   |  _ \  | |  | |  / ____|   | |                    |
+|                    | |   | |_) | | |  | | | |  __    | |                    |
+|                    |_|   |  _ <  | |  | | | | |_ |   |_|                    |
+|                     _    | |_) | | |__| | | |__| |    _                     |
+|                    (_)   |____/   \____/   \_____|   (_)                    |
+|                                                                             |
+|     internal error in: mkpoints_full.F  at line: 1172                       |
+|                                                                             |
+|     internal error in SET_INDPW_FULL: insufficient memory (see wave.F       |
+|     safeguard) 1699 1698                                                    |
+|                                                                             |
+|     If you are not a developer, you should not encounter this problem.      |
+|     Please submit a bug report.                                             |
+|                                                                             |
+ -----------------------------------------------------------------------------
+
+ -----------------------------------------------------------------------------
+|                     _     ____    _    _    _____     _                     |
+|                    | |   |  _ \  | |  | |  / ____|   | |                    |
+|                    | |   | |_) | | |  | | | |  __    | |                    |
+|                    |_|   |  _ <  | |  | | | | |_ |   |_|                    |
+|                     _    | |_) | | |__| | | |__| |    _                     |
+|                    (_)   |____/   \____/   \_____|   (_)                    |
+|                                                                             |
+|     internal error in: mkpoints_full.F  at line: 1172                       |
+|                                                                             |
+|     internal error in SET_INDPW_FULL: insufficient memory (see wave.F       |
+|     safeguard) 1699 1698                                                    |
+|                                                                             |
+|     If you are not a developer, you should not encounter this problem.      |
+|     Please submit a bug report.                                             |
+|                                                                             |
+ -----------------------------------------------------------------------------
+
+ -----------------------------------------------------------------------------
+|                     _     ____    _    _    _____     _                     |
+|                    | |   |  _ \  | |  | |  / ____|   | |                    |
+|                    | |   | |_) | | |  | | | |  __    | |                    |
+|                    |_|   |  _ <  | |  | | | | |_ |   |_|                    |
+|                     _    | |_) | | |__| | | |__| |    _                     |
+|                    (_)   |____/   \____/   \_____|   (_)                    |
+|                                                                             |
+|     internal error in: mkpoints_full.F  at line: 1172                       |
+|                                                                             |
+|     internal error in SET_INDPW_FULL: insufficient memory (see wave.F       |
+|     safeguard) 1699 1698                                                    |
+|                                                                             |
+|     If you are not a developer, you should not encounter this problem.      |
+|     Please submit a bug report.                                             |
+|                                                                             |
+ -----------------------------------------------------------------------------
+
+--------------------------------------------------------------------------
+MPI_ABORT was invoked on rank 18 in communicator MPI_COMM_WORLD
+with errorcode 1.
+
+NOTE: invoking MPI_ABORT causes Open MPI to kill all MPI processes.
+You may or may not see output from other processes, depending on
+exactly when Open MPI kills them.
+--------------------------------------------------------------------------
+[bear-pg0104u27b.bear.cluster:2275558] 9 more processes have sent help message help-mpi-api.txt / mpi-abort
+[bear-pg0104u27b.bear.cluster:2275558] Set MCA parameter "orte_base_help_aggregate" to 0 to see all help / error messages

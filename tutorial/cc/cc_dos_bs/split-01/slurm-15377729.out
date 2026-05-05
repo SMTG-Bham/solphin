@@ -1,0 +1,69 @@
+GCCcore/11.3.0
+zlib/1.2.12-GCCcore-11.3.0
+binutils/2.38-GCCcore-11.3.0
+GCC/11.3.0
+numactl/2.0.14-GCCcore-11.3.0
+XZ/5.2.5-GCCcore-11.3.0
+libxml2/2.9.13-GCCcore-11.3.0
+libpciaccess/0.16-GCCcore-11.3.0
+hwloc/2.7.1-GCCcore-11.3.0
+OpenSSL/1.1
+libevent/2.1.12-GCCcore-11.3.0
+UCX/1.12.1-GCCcore-11.3.0
+libfabric/1.15.1-GCCcore-11.3.0
+PMIx/4.1.2-GCCcore-11.3.0
+UCC/1.0.0-GCCcore-11.3.0
+OpenMPI/4.1.4-GCC-11.3.0
+OpenBLAS/0.3.20-GCC-11.3.0
+FlexiBLAS/3.2.0-GCC-11.3.0
+FFTW/3.3.10-GCC-11.3.0
+gompi/2022a
+FFTW.MPI/3.3.10-gompi-2022a
+ScaLAPACK/2.2.0-gompi-2022a-fb
+foss/2022a
+Szip/2.1.1-GCCcore-11.3.0
+HDF5/1.13.1-gompi-2022a
+The use of VASP is restricted. You must be a member of the correct Unix group for VASP to work.
+
+VASP/6.4.2-foss-2022a
+ running   50 mpi-ranks, with    1 threads/rank, on    1 nodes
+ distrk:  each k-point on   10 cores,    5 groups
+ distr:  one band on    1 cores,   10 groups
+ vasp.6.4.2 20Jul23 (build Oct 17 2023 11:49:23) complex                         
+ POSCAR found type information on POSCAR CuGeSe
+ POSCAR found :  3 types and      12 ions
+ Reading from existing POTCAR
+ scaLAPACK will be used
+ Reading from existing POTCAR
+ LDA part: xc-table for Pade appr. of Perdew
+ POSCAR, INCAR and KPOINTS ok, starting setup
+ FFT: planning ... GRIDC
+ FFT: planning ... GRID_SOFT
+ FFT: planning ... GRID
+ WAVECAR not read
+ WARNING: random wavefunctions but no delay for mixing, default for NELMDL
+ entering main loop
+       N       E                     dE             d eps       ncg     rms          rms(c)
+DAV:   1    -0.476580976692E+04   -0.47658E+04   -0.35444E+04 55970   0.129E+03
+DAV:   2    -0.571602562877E+04   -0.95022E+03   -0.81112E+03 42280   0.424E+02
+DAV:   3    -0.596623668327E+04   -0.25021E+03   -0.23395E+03 44940   0.123E+02
+DAV:   4    -0.598447102654E+04   -0.18234E+02   -0.18004E+02 52480   0.378E+01
+DAV:   5    -0.567261169611E+02    0.59277E+04   -0.31734E+01 63130   0.408E+01    0.116E+01
+DAV:   6    -0.563432657872E+02    0.38285E+00   -0.29759E+00 59140   0.618E+00    0.791E+00
+DAV:   7    -0.562370201498E+02    0.10625E+00   -0.70061E-01 66050   0.656E+00    0.536E+00
+DAV:   8    -0.562166189641E+02    0.20401E-01   -0.24137E-01 65320   0.241E+00    0.321E+00
+DAV:   9    -0.561968749063E+02    0.19744E-01   -0.15169E-02 55720   0.440E-01    0.179E+00
+DAV:  10    -0.561913220771E+02    0.55528E-02   -0.61032E-03 63840   0.264E-01    0.895E-01
+DAV:  11    -0.561900303830E+02    0.12917E-02   -0.11800E-03 60240   0.131E-01    0.469E-01
+DAV:  12    -0.561897308486E+02    0.29953E-03   -0.41962E-04 55240   0.642E-02    0.250E-01
+DAV:  13    -0.561897159360E+02    0.14913E-04   -0.13705E-04 53200   0.323E-02    0.137E-01
+DAV:  14    -0.561897561900E+02   -0.40254E-04   -0.51716E-05 49200   0.188E-02    0.765E-02
+DAV:  15    -0.561897913218E+02   -0.35132E-04   -0.17539E-05 48960   0.110E-02    0.440E-02
+DAV:  16    -0.561898138273E+02   -0.22506E-04   -0.82594E-06 46350   0.748E-03    0.264E-02
+DAV:  17    -0.561898267772E+02   -0.12950E-04   -0.35298E-06 45980   0.545E-03    0.165E-02
+DAV:  18    -0.561898338250E+02   -0.70478E-05   -0.15567E-06 43250   0.387E-03    0.107E-02
+DAV:  19    -0.561898375365E+02   -0.37115E-05   -0.88154E-07 42410   0.407E-03    0.717E-03
+DAV:  20    -0.561898394542E+02   -0.19177E-05   -0.55178E-07 39550   0.495E-03    0.476E-03
+DAV:  21    -0.561898404439E+02   -0.98970E-06   -0.46890E-07 33840   0.546E-03
+   1 F= -.56189840E+02 E0= -.56189840E+02  d E =-.257385E-14
+ writing wavefunctions
