@@ -1,0 +1,20 @@
+/rds/homes/p/puc369/scanlodo-pv-defects/miniconda3/envs/toolbox/bin/sumo-bandplot --dos ../DOS_0.15_-5_cpu/Repeated/vasprun.xml --ymin -2 --ymax 2 -g 0.02
+Label positions:
+	0.0000: $\Gamma$
+	0.5272: Y
+	1.0809: V
+	1.6346: $\Gamma$
+	2.1210: A
+	2.6482: M
+	3.2019: L
+	3.6883: V
+findfont: Font family ['sans-serif'] not found. Falling back to DejaVu Sans.
+findfont: Generic family 'sans-serif' not found because none of the following families were found: Whitney Pro, Whitney Book Extended, Catamaran, Helvetica, Liberation Sans, Andale Sans, Arial
+findfont: Font family ['cursive'] not found. Falling back to DejaVu Sans.
+findfont: Generic family 'cursive' not found because none of the following families were found: Apple Chancery, Textile, Zapf Chancery, Sand, Script MT, Felipa, Comic Neue, Comic Sans MS, cursive
+findfont: Font family ['sans'] not found. Falling back to DejaVu Sans.
+findfont: Generic family 'sans' not found because none of the following families were found: Whitney Pro, Whitney Book Extended, Catamaran, Helvetica, Liberation Sans, Andale Sans, Arial
+findfont: Font family ['sans'] not found. Falling back to DejaVu Sans.
+findfont: Generic family 'sans' not found because none of the following families were found: Whitney Pro, Whitney Book Extended, Catamaran, Helvetica, Liberation Sans, Andale Sans, Arial
+findfont: Font family ['sans'] not found. Falling back to DejaVu Sans.
+findfont: Generic family 'sans' not found because none of the following families were found: Whitney Pro, Whitney Book Extended, Catamaran, Helvetica, Liberation Sans, Andale Sans, Arial

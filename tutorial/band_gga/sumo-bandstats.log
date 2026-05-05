@@ -1,0 +1,35 @@
+/home/puc369/miniconda3/envs/toolbox/bin/sumo-bandstats
+Direct band gap: 0.549 eV
+  k-point: [0.00, 0.00, 0.00]
+  k-point indices: 0, 178
+  Band indices: 7, 10
+
+Valence band maximum:
+  Energy: 2.053 eV
+  k-point: [0.00, 0.00, 0.00]
+  k-point location: \Gamma
+  k-point indices: 0, 178
+  k-point degeneracy: 1
+  Band indices: 7, 8, 9
+
+Conduction band minimum:
+  Energy: 2.601 eV
+  k-point: [0.00, 0.00, 0.00]
+  k-point location: \Gamma
+  k-point indices: 0, 178
+  k-point degeneracy: 1
+  Band indices: 10
+
+Using parabolic fitting of the band edges
+
+Hole effective masses:
+  m_h: -0.057 | band 7 | [0.00, 0.00, 0.00] (\Gamma) -> [0.50, 0.50, 0.50] (L)
+  m_h: -0.062 | band 7 | [0.00, 0.00, 0.00] (\Gamma) -> [0.50, 0.00, 0.50] (X)
+  m_h: -1.122 | band 8 | [0.00, 0.00, 0.00] (\Gamma) -> [0.50, 0.50, 0.50] (L)
+  m_h: -0.523 | band 8 | [0.00, 0.00, 0.00] (\Gamma) -> [0.50, 0.00, 0.50] (X)
+  m_h: -1.113 | band 9 | [0.00, 0.00, 0.00] (\Gamma) -> [0.50, 0.50, 0.50] (L)
+  m_h: -0.523 | band 9 | [0.00, 0.00, 0.00] (\Gamma) -> [0.50, 0.00, 0.50] (X)
+
+Electron effective masses:
+  m_e: 0.063 | band 10 | [0.00, 0.00, 0.00] (\Gamma) -> [0.50, 0.50, 0.50] (L)
+  m_e: 0.061 | band 10 | [0.00, 0.00, 0.00] (\Gamma) -> [0.50, 0.00, 0.50] (X)

@@ -23,7 +23,6 @@ _k   = sc.k
 _e   = sc.e
 _T   = 293.15
 
-
 def calc_dielectric(filename):
 
     '''

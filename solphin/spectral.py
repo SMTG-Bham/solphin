@@ -2,13 +2,6 @@ import numpy as np
 from scipy.integrate import simpson
 import scipy.constants as sc
 
-# q=1.60217662E-19
-# kT=0.0258519975 # eV for T=300K
-# k=0.000086173325 #eV/K
-# h=4.135667E-15 #eVs
-# c=2.9979E+8 #m/s
-
-
 h = sc.h        # Planck's constant (J·s)
 c = sc.c        # Speed of light (m/s)
 k = sc.k        # Boltzmann constant (J/K)

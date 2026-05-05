@@ -1,0 +1,18 @@
+SG=9
+name=Cc
+nsym=4
+spinor=False
+symmetries=
+1 0 0   0 1 0   0 0 1     0.0 0.0 0.0      1.0  0.0  0.0  1.0    0.0  0.0  0.0  0.0
+ time-reversal : False 
+
+1 0 0   0 -1 0   0 0 1     0.0 0.0 0.5      0.0  1.0  1.0  0.0    0.0  1.0  0.0  0.0
+ time-reversal : False 
+
+1 0 0   0 1 0   0 0 1     0.5 0.5 0.0      1.0  0.0  0.0  1.0    0.0  0.0  0.0  0.0
+ time-reversal : False 
+
+1 0 0   0 -1 0   0 0 1     0.5 0.5 0.5      0.0  1.0  1.0  0.0    0.0  1.0  0.0  0.0
+ time-reversal : False 
+
+
