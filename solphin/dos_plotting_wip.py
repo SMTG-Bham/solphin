@@ -6,26 +6,20 @@ from pymatgen.io.vasp import Vasprun
 import os, glob, numpy as np
 
 import warnings
-import glob
-import os
 from dataclasses import dataclass, field
 from typing import Optional, Tuple
 
-import numpy as np
 from scipy.ndimage import gaussian_filter1d
-
 from pymatgen.io.vasp import Vasprun
 from pymatgen.electronic_structure.bandstructure import BandStructure, BandStructureSymmLine
 from pymatgen.electronic_structure.core import Spin
+import scipy.constants as sc
+from scipy.constants import physical_constants as pc
 
 
-HBAR = 1.054571817e-34    # J·s
-M_E  = 9.1093837015e-31   # kg
-EV   = 1.602176634e-19    # J per eV
-
-# Sanity thresholds
-_M_EFF_MAX = 10.0   # m_e  — warn above this
-_R2_MIN    = 0.90   # warn below this
+HBAR = sc.hbar   # J·s
+M_E  = pc["atomic unit of mass"][0]   # kg
+EV   = sc.e    # J per eV
 
 
 def plot_dos(filename, xmin=-3, xmax=3, gaussian=0.05, save=False):
@@ -41,29 +35,27 @@ def plot_dos(filename, xmin=-3, xmax=3, gaussian=0.05, save=False):
 
 @dataclass
 class SegmentMass:
-    """Effective mass fitted along a single k-path segment."""
+
     label:       str    # e.g. "Γ→X"
     m_eff_rel:   float  # m* / m_e
     m_eff_si:    float  # kg
     fit_quality: float  # R²
     n_points:    int    # k-points used in fit
-    warnings:    list   = field(default_factory=list)
 
 
 @dataclass
 class EffectiveMassResult:
-    """Full anisotropic + averaged effective mass result for one carrier type."""
+
     m_eff_rel:   float       # harmonic mean m* / m_e
     m_eff_si:    float       # harmonic mean m* in kg
     segments:    list        # list[SegmentMass]
     E_edge:      float       # CBM (electrons) or VBM (holes) energy in eV
     k_edge:      np.ndarray  # edge k-point, Cartesian 1/m
     carrier:     str         # "electrons" or "holes"
-    warnings:    list        = field(default_factory=list)
 
     @property
     def E_c(self):
-        """Backwards-compatible alias for E_edge."""
+
         return self.E_edge
 
     def __str__(self):
@@ -80,39 +72,19 @@ class EffectiveMassResult:
             f"  {'Segment':<18} {'m* (mₑ)':>10} {'R²':>8} {'N pts':>7}",
             "  " + "-" * 47,
         ]
-        for seg in self.segments:
-            warn_flag = " ⚠" if seg.warnings else ""
-            if np.isfinite(seg.m_eff_rel):
-                lines.append(
-                    f"  {seg.label:<18} {seg.m_eff_rel:>10.4f} "
-                    f"{seg.fit_quality:>8.4f} {seg.n_points:>7}{warn_flag}"
-                )
-            else:
-                lines.append(
-                    f"  {seg.label:<18} {'N/A':>10} {'N/A':>8} "
-                    f"{seg.n_points:>7}{warn_flag}"
-                )
+
         lines += [
             "  " + "-" * 47,
             f"  {'Harmonic mean':<18} {self.m_eff_rel:>10.4f}",
             "=" * 60,
         ]
-        if self.warnings:
-            lines.append("\n  Warnings:")
-            for w in self.warnings:
-                lines.append(f"    ⚠ {w}")
+
         return "\n".join(lines)
 
 
 @dataclass
 class DOSResult:
-    """
-    Combined VASP + free-electron DOS result.
 
-    Always contains both electron and hole effective mass results when a
-    band structure was provided. The `carrier` field indicates which m* was
-    used in the free-electron DOS equation.
-    """
     energies:          np.ndarray
     vasp_dos:          np.ndarray        # states / eV / cell
     free_electron_dos: np.ndarray        # states / eV / m³
@@ -124,11 +96,10 @@ class DOSResult:
     carrier:           str               # "electrons" or "holes" — used in DOS
     em_electrons:      Optional[EffectiveMassResult] = None   # always computed
     em_holes:          Optional[EffectiveMassResult] = None   # always computed
-    warnings:          list              = field(default_factory=list)
 
     @property
     def em_result(self) -> Optional[EffectiveMassResult]:
-        """Return the EffectiveMassResult for the active carrier (DOS carrier)."""
+
         if self.carrier == "electrons":
             return self.em_electrons
         return self.em_holes
@@ -137,18 +108,16 @@ class DOSResult:
         return _format_dos_summary(self)
 
 
-def _is_soc(bs: BandStructure) -> bool:
-    """Return True if the band structure is from a SOC (non-collinear) calc."""
-    return len(bs.bands) == 1 and not bs.is_spin_polarized
+def _is_soc_vasprun(vr: Vasprun) -> bool:
+
+    try:
+        return bool(vr.incar.get("LSORBIT", False))
+    except Exception:
+        return False
 
 
 def _detect_spin_channel(bs: BandStructure, edge_info: dict) -> Spin:
-    """
-    Return the spin channel containing the band edge.
 
-    For SOC pymatgen uses Spin.up regardless of physical spin.
-    For collinear spin-polarised calculations picks the channel with the edge.
-    """
     if len(bs.bands) == 1:
         return Spin.up
     if Spin.up in edge_info["band_index"] and edge_info["band_index"][Spin.up]:
@@ -157,22 +126,7 @@ def _detect_spin_channel(bs: BandStructure, edge_info: dict) -> Spin:
 
 
 def _get_efermi(vr: Vasprun, path: str) -> float:
-    """
-    Return the Fermi level from a parsed Vasprun, falling back to a
-    second parse with parse_dos=True if vr.efermi is None.
 
-    Parameters
-    ----------
-    vr : Vasprun
-        Already-parsed Vasprun object (parse_dos=False).
-    path : str
-        Path to the vasprun.xml, used for the fallback parse.
-
-    Returns
-    -------
-    float
-        Fermi level in eV.
-    """
     efermi = vr.efermi
     if efermi is not None:
         return efermi
@@ -186,26 +140,9 @@ def _get_efermi(vr: Vasprun, path: str) -> float:
     if efermi is not None:
         return efermi
 
-    raise ValueError(
-        f"Could not determine Fermi level from '{path}'. "
-        "Check that the vasprun.xml is complete and not truncated."
-    )
-
 
 def _find_split_vaspruns(directory: str) -> Tuple[list, bool]:
-    """
-    Search `directory` for band structure vasprun(s).
 
-    Looks for split_*/vasprun.xml first (hybrid). Falls back to a single
-    vasprun.xml in the directory (GGA/SOC), but only if a KPOINTS file
-    is present alongside it — prevents accidentally using a DOS vasprun as
-    a band structure when both point to the same folder.
-
-    Returns
-    -------
-    paths : list[str]
-    is_split : bool
-    """
     pattern = os.path.join(directory, "split-*", "vasprun.xml")
     splits  = sorted(glob.glob(pattern))
 
@@ -226,32 +163,26 @@ def _find_split_vaspruns(directory: str) -> Tuple[list, bool]:
 
     raise FileNotFoundError(
         f"No split-*/vasprun.xml or vasprun.xml found in '{directory}'. "
-        f"Check that the path is correct."
     )
 
 
-def _parse_single_bs(path: str) -> BandStructureSymmLine:
-    """Parse a single band structure vasprun.xml into a BandStructureSymmLine."""
+def _parse_single_bs(path: str) -> tuple:
+
     vr           = Vasprun(path, parse_dos=False, parse_eigen=True)
     kpoints_file = os.path.join(os.path.dirname(os.path.abspath(path)), "KPOINTS")
     efermi       = _get_efermi(vr, path)
-    return vr.get_band_structure(
+    bs = vr.get_band_structure(
         kpoints_filename = kpoints_file if os.path.isfile(kpoints_file) else None,
         efermi           = efermi,
         line_mode        = True,
     )
+    return bs, _is_soc_vasprun(vr)
 
 
-def _merge_split_band_structures(vaspruns: list) -> BandStructureSymmLine:
-    """
-    Parse and concatenate split band structure vaspruns into a single
-    BandStructureSymmLine.
+def parse_split_bs(vaspruns: list) -> tuple:
 
-    Band counts are harmonised to the minimum across all splits to handle
-    SOC calculations where VASP occasionally writes an extra band in some
-    segments.
-    """
     parsed = []
+    is_soc = False
     for path in vaspruns:
         vr           = Vasprun(path, parse_dos=False, parse_eigen=True)
         kpoints_file = os.path.join(os.path.dirname(path), "KPOINTS")
@@ -262,6 +193,7 @@ def _merge_split_band_structures(vaspruns: list) -> BandStructureSymmLine:
                 f"Expected at {kpoints_file}."
             )
 
+        is_soc = is_soc or _is_soc_vasprun(vr)
         efermi = _get_efermi(vr, path)
         bs     = vr.get_band_structure(
             kpoints_filename = kpoints_file,
@@ -270,24 +202,23 @@ def _merge_split_band_structures(vaspruns: list) -> BandStructureSymmLine:
         )
         parsed.append(bs)
 
-    if len(parsed) == 1:
-        return parsed[0]
-
     ref = parsed[0]
 
-    # Harmonise band counts across splits (SOC often has ±1 band mismatch)
+    if len(parsed) == 1:
+        return parsed[0], is_soc, ref
+    
+    return parsed, is_soc, ref
+
+def band_match(ref, parsed):
+
     n_bands_min = {}
     for spin in ref.bands:
         counts = [bs.bands[spin].shape[0] for bs in parsed]
         n_bands_min[spin] = min(counts)
-        if len(set(counts)) > 1:
-            warnings.warn(
-                f"Band count mismatch across splits {counts} "
-                f"(spin={spin}) — truncating all to {n_bands_min[spin]} bands. "
-                "This is expected for SOC calculations.",
-                UserWarning,
-                stacklevel=2,
-            )
+
+    return n_bands_min
+
+def combine_band_kpoints(ref, parsed, n_bands_min):
 
     all_kpoints = []
     all_labels  = {}
@@ -311,14 +242,30 @@ def _merge_split_band_structures(vaspruns: list) -> BandStructureSymmLine:
     for spin in all_bands:
         all_bands[spin] = np.hstack(all_bands[spin])
 
-    # BandStructureSymmLine expects fractional coordinate arrays, not Kpoint objects
+    return all_kpoints, all_labels, all_bands
+
+def convert_kpoints(all_kpoints, all_labels):
+
     kpoints_frac = [kp.frac_coords for kp in all_kpoints]
     labels_dict  = {
         label: all_kpoints[idx].frac_coords
         for label, idx in all_labels.items()
     }
 
-    return BandStructureSymmLine(
+    return kpoints_frac, labels_dict
+
+
+def _merge_split_band_structures(vaspruns: list) -> tuple:
+
+    parsed, is_soc, ref = parse_split_bs(vaspruns)
+
+    n_bands_min = band_match(ref, parsed)
+
+    all_kpoints, all_labels, all_bands = combine_band_kpoints(ref, parsed, n_bands_min)
+
+    kpoints_frac, labels_dict = convert_kpoints(all_kpoints, all_labels)
+
+    bs_merged = BandStructureSymmLine(
         kpoints     = kpoints_frac,
         eigenvals   = all_bands,
         lattice     = ref.lattice_rec,
@@ -326,23 +273,11 @@ def _merge_split_band_structures(vaspruns: list) -> BandStructureSymmLine:
         labels_dict = labels_dict,
         structure   = ref.structure,
     )
+    return bs_merged, is_soc
 
 
-def _load_band_structure(source: str) -> BandStructureSymmLine:
-    """
-    Load a band structure from a directory or file path, auto-detecting
-    whether it is a split hybrid, single GGA, or SOC calculation.
+def _load_band_structure(source: str) -> tuple:
 
-    Parameters
-    ----------
-    source : str
-        Directory containing split-*/vasprun.xml or a single vasprun.xml,
-        or a direct path to a vasprun.xml file.
-
-    Returns
-    -------
-    BandStructureSymmLine
-    """
     if os.path.isdir(source):
         paths, is_split = _find_split_vaspruns(source)
         if is_split:
@@ -366,37 +301,7 @@ def _fit_segment_mass(
     n_points:     int,
     carrier:      str = "electrons",
 ) -> SegmentMass:
-    """
-    Fit a parabola to one k-path segment near the band edge.
 
-    For electrons: E(k) = E_c + (ħ²/2m*)|k - k_c|²  (positive curvature)
-    For holes:     E(k) = E_v - (ħ²/2m*)|k - k_v|²  (negative curvature)
-
-    In both cases dE is arranged to be positive so the slope is positive,
-    giving m* = ħ²/2·slope > 0.
-
-    Parameters
-    ----------
-    kpoints_cart : np.ndarray, shape (N, 3)
-        Cartesian k-points in 1/m.
-    energies : np.ndarray, shape (N,)
-        Band energies in eV.
-    edge_kidx : int
-        Index of the band edge k-point within this segment.
-    E_edge : float
-        CBM (electrons) or VBM (holes) energy in eV.
-    label : str
-        Segment label, e.g. "Γ→X".
-    n_points : int
-        k-points either side of the edge to include in fit.
-    carrier : str
-        "electrons" or "holes".
-
-    Returns
-    -------
-    SegmentMass
-    """
-    warns  = []
     k_edge = kpoints_cart[edge_kidx]
 
     i_lo  = max(0, edge_kidx - n_points)
@@ -419,27 +324,18 @@ def _fit_segment_mass(
     n_used = len(dk_sq)
 
     if n_used < 2:
-        msg = f"Segment {label}: fewer than 2 fit points — skipping."
-        warns.append(msg)
-        warnings.warn(msg, UserWarning, stacklevel=4)
         return SegmentMass(
             label=label, m_eff_rel=np.nan, m_eff_si=np.nan,
-            fit_quality=np.nan, n_points=n_used, warnings=warns,
+            fit_quality=np.nan, n_points=n_used
         )
 
     slope, intercept = np.polyfit(dk_sq, dE, 1)
 
     if slope <= 0:
-        direction = "upward" if carrier == "electrons" else "downward"
-        msg = (
-            f"Segment {label}: slope = {slope:.3e} — band does not curve "
-            f"{direction} at this point. Skipping."
-        )
-        warns.append(msg)
-        warnings.warn(msg, UserWarning, stacklevel=4)
+
         return SegmentMass(
             label=label, m_eff_rel=np.nan, m_eff_si=np.nan,
-            fit_quality=np.nan, n_points=n_used, warnings=warns,
+            fit_quality=np.nan, n_points=n_used,
         )
 
     m_eff_si  = HBAR**2 / (2.0 * slope)
@@ -450,22 +346,9 @@ def _fit_segment_mass(
     ss_tot  = np.sum((dE - np.mean(dE)) ** 2)
     r2      = 1.0 - ss_res / ss_tot if ss_tot > 0 else 1.0
 
-    if r2 < _R2_MIN:
-        msg = (
-            f"Segment {label}: poor parabolic fit (R² = {r2:.4f}). "
-            "Band may be non-parabolic in this direction."
-        )
-        warns.append(msg)
-        warnings.warn(msg, UserWarning, stacklevel=4)
-
-    if m_eff_rel > _M_EFF_MAX:
-        msg = f"Segment {label}: large m* = {m_eff_rel:.2f} mₑ — treat with caution."
-        warns.append(msg)
-        warnings.warn(msg, UserWarning, stacklevel=4)
-
     return SegmentMass(
         label=label, m_eff_rel=m_eff_rel, m_eff_si=m_eff_si,
-        fit_quality=r2, n_points=n_used, warnings=warns,
+        fit_quality=r2, n_points=n_used, 
     )
 
 
@@ -474,46 +357,18 @@ def get_effective_mass(
     n_points: int = 5,
     carrier:  str = "electrons",
 ) -> EffectiveMassResult:
-    """
-    Compute anisotropic and averaged effective masses at the CBM or VBM.
 
-    Supports all VASP band structure calculation types — the type is detected
-    automatically from the directory contents.
-
-    Parameters
-    ----------
-    source : str or BandStructure
-        - Directory path (GGA/hybrid/SOC — auto-detected)
-        - Path to a single vasprun.xml
-        - Pre-parsed BandStructure / BandStructureSymmLine object
-    n_points : int
-        k-points either side of the band edge per segment fit.
-    carrier : str
-        "electrons" — fit at CBM (n-type).
-        "holes"     — fit at VBM (p-type).
-
-    Returns
-    -------
-    EffectiveMassResult
-    """
     if carrier not in ("electrons", "holes"):
         raise ValueError(f"carrier must be 'electrons' or 'holes', got '{carrier}'.")
 
-    warns = []
-
-    # ------------------------------------------------------------------
-    # 1. Obtain the band structure
-    # ------------------------------------------------------------------
     if isinstance(source, (BandStructure, BandStructureSymmLine)):
-        bs = source
+        bs     = source
+        is_soc = False   # can't determine without vasprun — assume not SOC
     else:
-        bs = _load_band_structure(source)
-
-    # ------------------------------------------------------------------
-    # 2. SOC detection and metal check
-    # ------------------------------------------------------------------
-    if _is_soc(bs):
-        print("  SOC band structure detected — using Spin.up channel (non-collinear).")
+        bs, is_soc = _load_band_structure(source)
+        
+    if is_soc:
+        print("  SOC band structure detected (LSORBIT=.TRUE.) — using Spin.up channel.")
 
     try:
         gap = bs.get_band_gap()["energy"]
@@ -526,17 +381,8 @@ def get_effective_mass(
                 "Band structure indicates a metal — parabolic effective mass "
                 "is not applicable."
             )
-        else:
-            msg = (
-                "Band gap is zero or could not be determined but system is "
-                "not flagged as a metal. Proceeding with caution."
-            )
-            warns.append(msg)
-            warnings.warn(msg, UserWarning, stacklevel=2)
 
-    # ------------------------------------------------------------------
-    # 3. Locate band edge
-    # ------------------------------------------------------------------
+
     edge_info = bs.get_cbm() if carrier == "electrons" else bs.get_vbm()
     E_edge    = edge_info["energy"]
     spin      = _detect_spin_channel(bs, edge_info)
@@ -556,9 +402,7 @@ def get_effective_mass(
     if not edge_bands:
         edge_bands = [edge_band]
 
-    # ------------------------------------------------------------------
-    # 4. Anisotropic fit — one mass per k-path segment per degenerate band
-    # ------------------------------------------------------------------
+
     segment_masses = []
 
     if isinstance(bs, BandStructureSymmLine):
@@ -595,16 +439,9 @@ def get_effective_mass(
                     carrier      = carrier,
                 )
                 segment_masses.append(sm)
-                warns.extend(sm.warnings)
+
 
     else:
-        msg = (
-            "Band structure is not line-mode — fitting a single isotropic "
-            "mass. Supply a line-mode band structure for anisotropic results."
-        )
-        warns.append(msg)
-        warnings.warn(msg, UserWarning, stacklevel=2)
-
         band_all   = np.array(bs.bands[spin][edge_band])
         local_edge = (int(np.argmin(band_all)) if carrier == "electrons"
                       else int(np.argmax(band_all)))
@@ -618,7 +455,6 @@ def get_effective_mass(
             carrier      = carrier,
         )
         segment_masses.append(sm)
-        warns.extend(sm.warnings)
 
     if not segment_masses:
         raise ValueError(
@@ -626,9 +462,7 @@ def get_effective_mass(
             "Check that the band structure covers the CBM/VBM k-point."
         )
 
-    # ------------------------------------------------------------------
-    # 5. Harmonic mean scalar average
-    # ------------------------------------------------------------------
+
     valid = [s for s in segment_masses if np.isfinite(s.m_eff_rel) and s.m_eff_rel > 0]
 
     if not valid:
@@ -644,7 +478,6 @@ def get_effective_mass(
         E_edge    = E_edge,
         k_edge    = k_edge,
         carrier   = carrier,
-        warnings  = warns,
     )
 
 def free_electron_dos(
@@ -652,44 +485,23 @@ def free_electron_dos(
     E_c:      float,
     m_eff:    float = 1.0,
 ) -> np.ndarray:
-    """
-    Compute the free-electron (parabolic band) density of states:
 
-        DOS(E) = (1/2π²)(2 m* mₑ / ħ²)^(3/2) (E - E_c)^(1/2)
-
-    This is always evaluated from E_c (CBM) upward regardless of carrier type,
-    since the formula describes the conduction band DOS. For holes, the m*
-    fed into this equation is the hole effective mass, giving the equivalent
-    valence band DOS by symmetry.
-
-    Parameters
-    ----------
-    energies : np.ndarray
-        Energy values in eV.
-    E_c : float
-        Band edge (CBM) in eV.
-    m_eff : float
-        Effective mass relative to mₑ (electron or hole).
-
-    Returns
-    -------
-    np.ndarray
-        DOS in states / eV / m³, zero below E_c.
-    """
     prefactor = (1.0 / (2.0 * np.pi**2)) * (2.0 * m_eff * M_E / HBAR**2) ** 1.5
     dE        = np.maximum(energies - E_c, 0.0) * EV
     return prefactor * np.sqrt(dE) * EV
 
 
 def _format_em_table(em: EffectiveMassResult, is_dos_carrier: bool) -> list:
-    """Return formatted lines for one EffectiveMassResult block."""
+    
     edge_label  = "CBM" if em.carrier == "electrons" else "VBM"
+    sub = "ₑ" if em.carrier == "electrons" else "ₕ"
+
     carrier_str = em.carrier.capitalize()
     dos_marker  = "  ← used in DOS equation" if is_dos_carrier else ""
 
     lines = [
         f"  {carrier_str} (fitted at {edge_label} = {em.E_edge:.4f} eV)",
-        f"  {'Harmonic mean m*':<20}: {em.m_eff_rel:.4f} mₑ"
+        f"  {'Harmonic mean m*':<20}: {em.m_eff_rel:.4f} m{sub}"
         f"  ({em.m_eff_si:.4e} kg){dos_marker}",
     ]
 
@@ -700,41 +512,18 @@ def _format_em_table(em: EffectiveMassResult, is_dos_carrier: bool) -> list:
 
     lines += [
         "",
-        f"  {'Segment':<20} {'m* (mₑ)':>10} {'R²':>8} {'N pts':>7}",
+        f"{'Segment':<20} {'m*':>10} (m{sub}) {'R²':>8} {'N pts':>7}",
         "  " + "-" * 47,
     ]
 
-    for seg in em.segments:
-        warn_flag = "  ⚠" if seg.warnings else ""
-        if np.isfinite(seg.m_eff_rel):
-            lines.append(
-                f"  {seg.label:<20} {seg.m_eff_rel:>10.4f} "
-                f"{seg.fit_quality:>8.4f} {seg.n_points:>7}{warn_flag}"
-            )
-        else:
-            lines.append(
-                f"  {seg.label:<20} {'N/A':>10} {'N/A':>8} "
-                f"{seg.n_points:>7}{warn_flag}"
-            )
-
     lines.append(f"  {'Harmonic mean':<20} {em.m_eff_rel:>10.4f}")
-
-    if em.warnings:
-        for w in em.warnings:
-            lines.append(f"  ⚠ {w}")
 
     return lines
 
 
 def _format_dos_summary(result: "DOSResult") -> str:
-    """Return a formatted string summary of a DOSResult."""
-    edge_label = "CBM" if result.carrier == "electrons" else "VBM"
 
-    above_edge  = result.energies[result.energies >= result.E_c]
-    active_range = (
-        f"{result.E_c:.4f} → {above_edge[-1]:.4f} eV"
-        if len(above_edge) else "N/A"
-    )
+    edge_label = "CBM" if result.carrier == "electrons" else "VBM"
 
     fe_max   = np.max(result.free_electron_dos)
     vasp_max = np.max(result.vasp_dos)
@@ -747,10 +536,6 @@ def _format_dos_summary(result: "DOSResult") -> str:
         f"  Primary carrier     : {result.carrier.capitalize()}",
         f"  Band edge ({edge_label})     : {result.E_c:.4f} eV",
         f"  Cell volume         : {result.cell_volume_m3:.4e} m³",
-        f"  Energy range        : {result.energies[0]:.4f} → "
-                                 f"{result.energies[-1]:.4f} eV",
-        f"  Active DOS range    : {active_range}",
-        f"  DOS grid points     : {len(result.energies)}",
         "",
         "  ── Effective Masses " + "─" * 39,
     ]
@@ -790,28 +575,12 @@ def _format_dos_summary(result: "DOSResult") -> str:
         f"                        directly with VASP DOS in states/eV/cell",
     ]
 
-    if result.warnings:
-        lines += ["", "  ── Warnings " + "─" * 46]
-        for w in result.warnings:
-            lines.append(f"  ⚠ {w}")
-
     lines += ["=" * 60, ""]
     return "\n".join(lines)
 
 
 def print_dos_summary(result: "DOSResult") -> None:
-    """
-    Print a formatted summary of a DOSResult.
 
-    Shows both electron and hole effective masses, clearly marks which m*
-    was used in the free-electron DOS equation, and gives normalisation
-    guidance for overlaying the free-electron and VASP DOS.
-
-    Parameters
-    ----------
-    result : DOSResult
-        Output of compute_dos().
-    """
     print(_format_dos_summary(result))
 
 
@@ -824,51 +593,7 @@ def compute_dos(
     n_fit_points: int = 5,
     carrier:      str = "electrons",
 ) -> DOSResult:
-    """
-    Compute the VASP total DOS and free-electron DOS for any material.
-
-    Both electron and hole effective masses are always computed when a band
-    structure is provided. The `carrier` argument controls which m* is
-    substituted into the free-electron DOS equation.
-
-    Exactly one of `bs_vasprun`, `bs_directory`, or `m_eff` must be supplied.
-    The calculation type (GGA, hybrid, SOC) is detected automatically.
-
-      bs_directory  Path to the band structure directory:
-                    - GGA/SOC: directory containing vasprun.xml + KPOINTS
-                    - Hybrid:  directory containing split-01/, split-02/, ...
-
-      bs_vasprun    Shorthand: path directly to a single band structure vasprun.xml.
-
-      m_eff         Effective mass in units of mₑ, supplied directly.
-                    Only one carrier mass can be supplied this way — use
-                    a band structure for both carriers simultaneously.
-
-    Parameters
-    ----------
-    dos_vasprun : str
-        Path to the DOS/optics/band vasprun.xml (energies + VASP DOS).
-    bs_vasprun : str, optional
-        Path to a single band structure vasprun.xml.
-    bs_directory : str, optional
-        Path to the band structure directory.
-    m_eff : float, optional
-        Effective mass in units of mₑ (single carrier only).
-    sigma : float
-        Gaussian smearing in eV applied to the VASP DOS (0 = none).
-    n_fit_points : int
-        k-points either side of band edge used in each segment fit.
-    carrier : str
-        "electrons" (default) — use electron m* in DOS equation, n-type.
-        "holes"               — use hole m* in DOS equation, p-type.
-        Both masses are always computed from the band structure regardless.
-
-    Returns
-    -------
-    DOSResult
-        Contains energies, VASP DOS, free-electron DOS, and both electron
-        and hole EffectiveMassResult objects.
-    """
+  
     if carrier not in ("electrons", "holes"):
         raise ValueError(f"carrier must be 'electrons' or 'holes', got '{carrier}'.")
 
@@ -880,7 +605,6 @@ def compute_dos(
             "Provide exactly one of bs_vasprun, bs_directory, or m_eff — not multiple."
         )
 
-    warns = []
 
     # ------------------------------------------------------------------
     # Parse DOS vasprun
@@ -906,19 +630,17 @@ def compute_dos(
         source = bs_directory if bs_directory is not None else bs_vasprun
 
         # Load the band structure once, pass the object to avoid re-parsing
-        bs = _load_band_structure(source)
+        bs, _ = _load_band_structure(source)
 
         print("  Computing electron effective mass (CBM)...")
         try:
             em_electrons = get_effective_mass(bs, n_points=n_fit_points, carrier="electrons")
-            warns.extend(em_electrons.warnings)
         except Exception as e:
             warnings.warn(f"Electron m* fit failed: {e}", UserWarning, stacklevel=2)
 
         print("  Computing hole effective mass (VBM)...")
         try:
             em_holes = get_effective_mass(bs, n_points=n_fit_points, carrier="holes")
-            warns.extend(em_holes.warnings)
         except Exception as e:
             warnings.warn(f"Hole m* fit failed: {e}", UserWarning, stacklevel=2)
 
@@ -942,14 +664,8 @@ def compute_dos(
         m_eff_si  = m_eff * M_E
         cbm, vbm  = cdos.get_cbm_vbm()
         E_c       = cbm if carrier == "electrons" else vbm
-        if cdos.get_gap() == 0.0:
-            msg = "System appears metallic — free-electron DOS formula may not be meaningful."
-            warns.append(msg)
-            warnings.warn(msg, UserWarning, stacklevel=2)
 
-    # ------------------------------------------------------------------
-    # Free-electron DOS — always evaluated from CBM upward
-    # ------------------------------------------------------------------
+
     cbm_energy = E_c if carrier == "electrons" else cdos.get_cbm_vbm()[0]
     fe_dos     = free_electron_dos(energies, cbm_energy, m_eff=m_eff_rel)
 
@@ -965,5 +681,4 @@ def compute_dos(
         carrier           = carrier,
         em_electrons      = em_electrons,
         em_holes          = em_holes,
-        warnings          = warns,
     )
