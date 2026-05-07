@@ -13,7 +13,28 @@ warnings.filterwarnings(action="ignore",message="invalid value encountered in mu
 
 
 def photons_above_bandgap_plot(spectrum, Egap, ax=None):
-    """Plot of photons above bandgap as a function of bandgap"""
+    """
+    Plots the number of photons above a given bandgap as a function of bandgap energy.
+
+    This function evaluates and visualizes the integrated photon flux above a bandgap
+    threshold across a spectral dataset. It can either plot on a provided Matplotlib
+    axis or create a standalone figure.
+
+    Parameters:
+        spectrum(np.array): 2D array where:
+            - column 0 is photon energy or wavelength value (as used by db_fom)
+            - column 1 is spectral intensity or irradiance data
+        Egap(float): bandgap energy in eV at which to evaluate and highlight
+            the photon flux above the bandgap.
+        ax(matplotlib.axes.Axes or None): optional Matplotlib axis object.
+            If provided, the plot is drawn on this axis; otherwise a new figure
+            is created.
+
+    Returns:
+        matplotlib.axes.Axes or None: returns the axis object if provided,
+            otherwise displays the plot and returns None.
+    """
+
     a = np.copy(spectrum)
     for row in a:
         # print row
@@ -44,7 +65,24 @@ def photons_above_bandgap_plot(spectrum, Egap, ax=None):
         plt.show()
 
 def iv_curve_plot(spectrum, Egap, Tcell, power=False):
-    """Plots the ideal IV curve, or the ideal power for a given material"""
+    """
+    Plots the ideal current-voltage (IV) curve or power-voltage curve for a photovoltaic material.
+
+    This function computes the voltage-dependent current density using a detailed-balance
+    model and optionally converts it into output power. It visualizes either the IV curve
+    or the power curve depending on the input flag.
+
+    Parameters:
+        spectrum(np.array): spectral dataset used for detailed-balance calculations.
+            Format is expected to be compatible with db_fom functions.
+        Egap(float): bandgap energy in eV of the material.
+        Tcell(float): cell temperature in Kelvin.
+        power(bool): if True, plots power vs voltage curve;
+            if False, plots current density vs voltage curve.
+
+    Returns:
+        None
+    """
     v_open = db_fom.voc(Egap, spectrum, Tcell)
     v = np.linspace(0, v_open)
     if power:
@@ -61,7 +99,27 @@ def iv_curve_plot(spectrum, Egap, Tcell, power=False):
         plt.plot(v, i, color='#231123')
 
 def iv_curve_plot_2(spectrum, Egap, Tcell, power=False, ax1=None, ax2=None):
-    """Plots the ideal IV curve, and the ideal power for a given material"""
+    """
+    Plots the ideal current-voltage (IV) curve and power-voltage curve for a photovoltaic material.
+
+    This function computes the voltage-dependent current density and power output using a
+    detailed-balance photovoltaic model. It supports plotting either on existing Matplotlib
+    axes or creating a new dual-axis figure.
+
+    Parameters:
+        spectrum(np.array): spectral dataset used for detailed-balance calculations.
+            Format must be compatible with db_fom functions.
+        Egap(float): bandgap energy in eV of the material.
+        Tcell(float): cell temperature in Kelvin.
+        power(bool): unused flag (kept for compatibility; power is always plotted).
+        ax1(matplotlib.axes.Axes or None): primary axis for current density.
+            If None, a new figure is created.
+        ax2(matplotlib.axes.Axes or None): secondary axis for power curve.
+            Used only when ax1 is provided.
+
+    Returns:
+        None
+    """
     v_open = db_fom.voc(Egap, spectrum, Tcell)
     v = np.linspace(0, v_open)
 
@@ -95,6 +153,26 @@ def iv_curve_plot_2(spectrum, Egap, Tcell, power=False, ax1=None, ax2=None):
         fig.set_dpi(150)
 
 def sq_limit_plot(spectrum, Egap, Tcell, ax=None):
+    """
+    Plots the Shockley–Queisser (SQ) efficiency limit as a function of bandgap energy.
+
+    This function computes and visualizes the theoretical maximum photovoltaic efficiency
+    for a given spectrum using a detailed-balance model. It highlights the efficiency at a
+    specified bandgap energy and optionally plots on a provided Matplotlib axis.
+
+    Parameters:
+        spectrum(np.array): spectral dataset used for detailed-balance calculations.
+            Format must be compatible with db_fom functions.
+        Egap(float): bandgap energy in eV at which the SQ efficiency is highlighted.
+        Tcell(float): cell temperature in Kelvin.
+        ax(matplotlib.axes.Axes or None): optional Matplotlib axis object.
+            If provided, the plot is drawn on this axis; otherwise a new figure
+            is created.
+
+    Returns:
+        None or matplotlib.axes.Axes:
+            Returns the axis object if provided; otherwise displays the plot.
+    """
     # Plot the famous SQ limit
     a = np.copy(spectrum)
 
@@ -130,6 +208,30 @@ def sq_limit_plot(spectrum, Egap, Tcell, ax=None):
 
 
 def plot_db_combined(spectrum, Egap, Tcell, spectrum_type, fig=None, axes=None, ax2=None):
+    """
+    Generates a combined detailed-balance photovoltaic analysis figure.
+
+    This function creates a multi-panel plot summarizing key photovoltaic performance
+    metrics for a given spectrum and material bandgap. It includes:
+    (1) photons above bandgap,
+    (2) ideal IV and power curves,
+    (3) Shockley–Queisser efficiency limit.
+
+    Parameters:
+        spectrum(np.array): spectral dataset used for detailed-balance calculations.
+        Egap(float): bandgap energy in eV.
+        Tcell(float): cell temperature in Kelvin.
+        spectrum_type(string): label for the spectrum used (e.g., AM1.5).
+        fig(matplotlib.figure.Figure or None): optional existing figure object.
+            If None, a new figure is created.
+        axes(matplotlib.axes.Axes or None): optional array of axes for subplots.
+            If None, a new 1x3 subplot grid is created.
+        ax2(matplotlib.axes.Axes or None): optional secondary y-axis for IV plot
+            power curve.
+
+    Returns:
+        None
+    """
 
     if not fig:
         fig, axes = plt.subplots(1,3, figsize=(14,3), dpi=120)
@@ -143,6 +245,23 @@ def plot_db_combined(spectrum, Egap, Tcell, spectrum_type, fig=None, axes=None, 
     fig.suptitle("$E_{gap}$" + f"= {Egap} eV, T = {Tcell} K, {spectrum_type} Spectrum", y=1.1)
 
 def plot_db_combined_interactive(Tmin=1, Tmax=1000, Emin=0.1, Emax=3.1):
+    """
+    Creates an interactive photovoltaic detailed-balance visualization dashboard.
+
+    This function builds an interactive Jupyter widget interface that allows users to
+    explore photovoltaic performance metrics as a function of bandgap, temperature,
+    and illumination spectrum. It dynamically updates combined plots including photon
+    flux above bandgap, IV/power curves, and Shockley–Queisser efficiency limits.
+
+    Parameters:
+        Tmin(int): minimum allowed operating temperature in Kelvin.
+        Tmax(int): maximum allowed operating temperature in Kelvin.
+        Emin(float): minimum bandgap energy in eV.
+        Emax(float): maximum bandgap energy in eV.
+
+    Returns:
+        None
+    """
     plt.close("all")
     fig, axes = plt.subplots(1,3, figsize=(12,3), dpi=120, constrained_layout=True)
     ax2 = axes[1].twinx()
@@ -150,6 +269,8 @@ def plot_db_combined_interactive(Tmin=1, Tmax=1000, Emin=0.1, Emax=3.1):
     fig.canvas.header_visible = False      # hides the figure “header” in JupyterLab
     fig.canvas.footer_visible = False      # hides the footer
     fig.canvas.toolbar_visible = False     # hides the toolbar
+
+    # wrapping that clear axes and redrwas combined DB plots
 
     def plot_combined_wrapper(Egap, Tcell, spectrum_type):
 
