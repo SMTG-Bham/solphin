@@ -516,6 +516,19 @@ def _format_em_table(em: EffectiveMassResult, is_dos_carrier: bool) -> list:
         "  " + "-" * 47,
     ]
 
+    for seg in em.segments:
+
+        if np.isfinite(seg.m_eff_rel):
+            lines.append(
+                f"  {seg.label:<20} {seg.m_eff_rel:>10.4f}"
+                f"        {seg.fit_quality:>8.4f} {seg.n_points:>7}"
+            )
+        else:
+            lines.append(
+                f"  {seg.label:<20} {'N/A':>10}"
+                f"        {'N/A':>8} {seg.n_points:>7}"
+            )
+
     lines.append(f"  {'Harmonic mean':<20} {em.m_eff_rel:>10.4f}")
 
     return lines
