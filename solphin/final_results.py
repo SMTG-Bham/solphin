@@ -3,7 +3,7 @@ from solphin.db_fom import max_eff
 
 # Calculating equation 33 from the FOM paper
 
-def Crovetto_efficiency(E_gap, photon_spectrum, alpha, tau, sigma, dos_mass, dop_density, epsilon, mu, Tcell):
+def FOM_PV_efficiency(E_gap, photon_spectrum, alpha, tau, sigma, dos_mass, dop_density, epsilon, mu, Tcell):
 
     ''' Calculates the final value for the photovoltaic figure of merit from Crovetto 2024
     
@@ -45,7 +45,7 @@ def Crovetto_efficiency(E_gap, photon_spectrum, alpha, tau, sigma, dos_mass, dop
 
 # Crovetto efficiency realtive to SQ limit
 
-def SQ_relative_Crovetto_efficiency(E_gap, photon_spectrum, alpha, tau, sigma, dos_mass, dop_density, epsilon, mu, Tcell):
+def SQ_relative_FOM_PV_efficiency(E_gap, photon_spectrum, alpha, tau, sigma, dos_mass, dop_density, epsilon, mu, Tcell):
 
     ''' Calculates the final value for the photovoltaic figure of merit relative to the SQ limit from Crovetto 2024
     
@@ -65,7 +65,7 @@ def SQ_relative_Crovetto_efficiency(E_gap, photon_spectrum, alpha, tau, sigma, d
         efficiency(float): Percentage photovoltaic figure of merit efficiency relative to the SQ limit.
     '''
 
-    Crovetto_eff = Crovetto_efficiency(E_gap, photon_spectrum, alpha, tau, sigma, dos_mass, dop_density, epsilon, mu, Tcell)
+    Crovetto_eff = FOM_PV_efficiency(E_gap, photon_spectrum, alpha, tau, sigma, dos_mass, dop_density, epsilon, mu, Tcell)
     SQ = max_eff(E_gap, photon_spectrum, Tcell)
 
     SQ_relative = Crovetto_eff / SQ

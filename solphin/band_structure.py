@@ -13,8 +13,6 @@ from pymatgen.electronic_structure.bandstructure import BandStructureSymmLine
 from pymatgen.io.vasp.inputs import Kpoints
 
 from sumo.symmetry.kpoints import get_path_data
-
-# from sumo.cli.kgen import _parse_ibzkpt
 from sumo.plotting.bs_plotter import SBSPlotter
 from sumo.plotting.dos_plotter import SDOSPlotter
 from sumo.electronic_structure.dos import load_dos
