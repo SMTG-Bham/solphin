@@ -15,6 +15,32 @@ q = sc.e        # Elementary charge (Coulombs)
 # Convert the spectrum to the useful units - taken from https://github.com/kaklin/sq-limit?tab=readme-ov-file
 
 def load_spectrum(spectrum_type):
+    """
+    Loads a predefined spectral irradiance dataset from bundled resource files.
+
+    This function selects a spectrum based on a predefined set of illumination sources
+    (e.g. solar AM1.5, LEDs, fluorescent, photopic response), loads the corresponding
+    CSV file from package resources, and returns it as a numerical array.
+
+    Parameters:
+        spectrum_type(string): identifier for the desired spectrum.
+            Supported options:
+            - "AM1.5"
+            - "Fluorescent"
+            - "Blue LED"
+            - "Green LED"
+            - "Red LED"
+            - "White LED"
+            - "IR LED"
+            - "Photopic"
+
+            If an unrecognised value is provided, the function defaults to "AM1.5".
+
+    Returns:
+        spectrum(np.array): 2D array where:
+            - column 0 is wavelength (nm)
+            - column 1 is spectral irradiance
+    """
 
     if spectrum_type == "AM1.5":
         filename = 'ASTMG173.csv'
