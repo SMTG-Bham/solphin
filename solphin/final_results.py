@@ -3,9 +3,9 @@ from solphin.db_fom import max_eff
 
 # Calculating equation 33 from the FOM paper
 
-def FOM_PV_efficiency(E_gap, photon_spectrum, alpha, tau, sigma, dos_mass, dop_density, epsilon, mu, Tcell):
+def SQ_relative_FOM_PV_efficiency(E_gap, photon_spectrum, alpha, tau, sigma, dos_mass, dop_density, epsilon, mu, Tcell):
 
-    ''' Calculates the final value for the photovoltaic figure of merit from Crovetto 2024
+    ''' Calculates the final value for the photovoltaic figure of merit from Crovetto 2024 as a percentage of the Shockley Queisser efficiency limit.
     
     Parameters:
         E_gap(float): Optical Band Gap in eV  
@@ -45,9 +45,9 @@ def FOM_PV_efficiency(E_gap, photon_spectrum, alpha, tau, sigma, dos_mass, dop_d
 
 # Crovetto efficiency realtive to SQ limit
 
-def SQ_relative_FOM_PV_efficiency(E_gap, photon_spectrum, alpha, tau, sigma, dos_mass, dop_density, epsilon, mu, Tcell):
+def FOM_PV_efficiency(E_gap, photon_spectrum, alpha, tau, sigma, dos_mass, dop_density, epsilon, mu, Tcell):
 
-    ''' Calculates the final value for the photovoltaic figure of merit relative to the SQ limit from Crovetto 2024
+    ''' Calculates the final value for the photovoltaic figure of merit independant of the SQ limit from Crovetto 2024
     
     Parameters:
         E_gap(float): Optical Band Gap in eV  
@@ -65,9 +65,9 @@ def SQ_relative_FOM_PV_efficiency(E_gap, photon_spectrum, alpha, tau, sigma, dos
         efficiency(float): Percentage photovoltaic figure of merit efficiency relative to the SQ limit.
     '''
 
-    Crovetto_eff = FOM_PV_efficiency(E_gap, photon_spectrum, alpha, tau, sigma, dos_mass, dop_density, epsilon, mu, Tcell)
+    Crovetto_eff = SQ_relative_FOM_PV_efficiency(E_gap, photon_spectrum, alpha, tau, sigma, dos_mass, dop_density, epsilon, mu, Tcell)
     SQ = max_eff(E_gap, photon_spectrum, Tcell)
 
-    SQ_relative = Crovetto_eff / SQ
+    SQ_relative = (Crovetto_eff/100) * SQ
 
     return SQ_relative
