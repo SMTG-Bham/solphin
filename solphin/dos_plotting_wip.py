@@ -480,7 +480,7 @@ def get_effective_mass(
     )
 
 
-def _format_em_table(em: EffectiveMassResult, edge: float, is_dos_carrier: bool) -> list:
+def _format_em_table(em: EffectiveMassResult, edge: float, is_dos_carrier: bool, fit: float) -> list:
     
     edge_label  = "CBM" if em.carrier == "electrons" else "VBM"
     sub = "ₑ" if em.carrier == "electrons" else "ₕ"
@@ -492,6 +492,7 @@ def _format_em_table(em: EffectiveMassResult, edge: float, is_dos_carrier: bool)
         f"  {carrier_str} (fitted at {edge_label}: {edge:.3f} eV)",
         f"  {'Harmonic mean m*':<20}: {em.m_eff_rel:.3f} m{sub}"
         f"  ({em.m_eff_si:.3e} kg){dos_marker}",
+        f"  Fit quality {em.carrier}   : {fit:.3f} R²"
         "",
     ]
 
@@ -521,6 +522,7 @@ def _format_dos_summary(result: "DOSResult") -> str:
             result.em_electrons,
             result.cbm,
             is_dos_carrier=(result.carrier == "electrons"),
+            fit=result.fit_quality_e
         )
     else:
         lines.append("  Electrons : m* supplied directly — no band structure fit.")
@@ -533,15 +535,10 @@ def _format_dos_summary(result: "DOSResult") -> str:
             result.em_holes,
             result.vbm,
             is_dos_carrier=(result.carrier == "holes"),
+            fit=result.fit_quality_h
         )
     else:
         lines.append("  Holes : mₕ* supplied directly — no band structure fit.")
-
-    lines += [
-        "  "+"─" * 58,
-        f"  Fit quality electrons   : {result.fit_quality_e:.3f} R²",
-        f"  Fit quality holes       : {result.fit_quality_h:.3f} R²"
-    ]
 
     lines += ["=" * 60, ""]
     return "\n".join(lines)
