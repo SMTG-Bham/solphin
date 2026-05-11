@@ -42,4 +42,4 @@ def SQ_relative_FOM_PV_efficiency(E_gap, photon_spectrum, alpha, tau, sigma, dos
     SQ_efficiency = SQ / ((1 + fraction) * denom_bracket)
     efficiency = ((1 + fraction) * denom_bracket)
 
-    return SQ_efficiency, efficiency
+    return SQ, SQ_efficiency, efficiency
