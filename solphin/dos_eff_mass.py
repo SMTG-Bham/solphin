@@ -6,10 +6,9 @@ from pymatgen.io.vasp import Vasprun
 import os, glob, numpy as np
 
 import warnings
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional, Tuple
 
-from scipy.ndimage import gaussian_filter1d
 from pymatgen.io.vasp import Vasprun
 from pymatgen.electronic_structure.bandstructure import BandStructure, BandStructureSymmLine
 from pymatgen.electronic_structure.core import Spin
