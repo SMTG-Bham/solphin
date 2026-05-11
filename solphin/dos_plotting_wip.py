@@ -85,17 +85,14 @@ class EffectiveMassResult:
 @dataclass
 class DOSResult:
 
-    energies:          np.ndarray
-    vasp_dos:          np.ndarray        # states / eV / cell
-    free_electron_dos: np.ndarray        # states / eV / m³
-    E_c:               float             # band edge used in DOS equation (eV)
-    m_eff_rel:         float             # m* / m_e used in DOS equation
-    m_eff_si:          float             # kg
-    fit_quality:       Optional[float]   # mean R² for the DOS carrier
+    fit_quality_e :    Optional[float]   # mean R² for the DOS carrier
+    fit_quality_h :    Optional[float]
     cell_volume_m3:    float             # m³
     carrier:           str               # "electrons" or "holes" — used in DOS
-    em_electrons:      Optional[EffectiveMassResult] = None   # always computed
+    em_electrons:      Optional[EffectiveMassResult] = None   # always computed 
     em_holes:          Optional[EffectiveMassResult] = None   # always computed
+    cbm:               Optional[EffectiveMassResult] = None   # always computed
+    vbm:               Optional[EffectiveMassResult] = None   # always computed
 
     @property
     def em_result(self) -> Optional[EffectiveMassResult]:
@@ -480,16 +477,6 @@ def get_effective_mass(
         carrier   = carrier,
     )
 
-def free_electron_dos(
-    energies: np.ndarray,
-    E_c:      float,
-    m_eff:    float = 1.0,
-) -> np.ndarray:
-
-    prefactor = (1.0 / (2.0 * np.pi**2)) * (2.0 * m_eff * M_E / HBAR**2) ** 1.5
-    dE        = np.maximum(energies - E_c, 0.0) * EV
-    return prefactor * np.sqrt(dE) * EV
-
 
 def _format_em_table(em: EffectiveMassResult, is_dos_carrier: bool) -> list:
     
@@ -497,39 +484,14 @@ def _format_em_table(em: EffectiveMassResult, is_dos_carrier: bool) -> list:
     sub = "ₑ" if em.carrier == "electrons" else "ₕ"
 
     carrier_str = em.carrier.capitalize()
-    dos_marker  = "  ← used in DOS equation" if is_dos_carrier else ""
+    dos_marker  = "  ← dos_mass" if is_dos_carrier else ""
 
     lines = [
-        f"  {carrier_str} (fitted at {edge_label} = {em.E_edge:.4f} eV)",
-        f"  {'Harmonic mean m*':<20}: {em.m_eff_rel:.4f} m{sub}"
-        f"  ({em.m_eff_si:.4e} kg){dos_marker}",
-    ]
-
-    valid_segs = [s for s in em.segments if np.isfinite(s.fit_quality)]
-    if valid_segs:
-        mean_r2 = np.mean([s.fit_quality for s in valid_segs])
-        lines.append(f"  {'Mean fit quality R²':<20}: {mean_r2:.4f}")
-
-    lines += [
+        f"  {carrier_str} (fitted at {edge_label})",
+        f"  {'Harmonic mean m*':<20}: {em.m_eff_rel:.3f} m{sub}"
+        f"  ({em.m_eff_si:.3e} kg){dos_marker}",
         "",
-        f"{'Segment':<20} {'m*':>10} (m{sub}) {'R²':>8} {'N pts':>7}",
-        "  " + "-" * 47,
     ]
-
-    for seg in em.segments:
-
-        if np.isfinite(seg.m_eff_rel):
-            lines.append(
-                f"  {seg.label:<20} {seg.m_eff_rel:>10.4f}"
-                f"        {seg.fit_quality:>8.4f} {seg.n_points:>7}"
-            )
-        else:
-            lines.append(
-                f"  {seg.label:<20} {'N/A':>10}"
-                f"        {'N/A':>8} {seg.n_points:>7}"
-            )
-
-    lines.append(f"  {'Harmonic mean':<20} {em.m_eff_rel:>10.4f}")
 
     return lines
 
@@ -538,19 +500,16 @@ def _format_dos_summary(result: "DOSResult") -> str:
 
     edge_label = "CBM" if result.carrier == "electrons" else "VBM"
 
-    fe_max   = np.max(result.free_electron_dos)
-    vasp_max = np.max(result.vasp_dos)
-
     lines = [
         "",
         "=" * 60,
         "  DOS Result Summary",
         "=" * 60,
         f"  Primary carrier     : {result.carrier.capitalize()}",
-        f"  Band edge ({edge_label})     : {result.E_c:.4f} eV",
-        f"  Cell volume         : {result.cell_volume_m3:.4e} m³",
+        f"  Band edge ({edge_label})     : {result.E_c:.3f} eV",
+        f"  Cell volume         : {result.cell_volume_m3:.3e} m³",
         "",
-        "  ── Effective Masses " + "─" * 39,
+        "  ── Effective Masses " + "─" * 38,
     ]
 
     # Electrons block
@@ -574,18 +533,9 @@ def _format_dos_summary(result: "DOSResult") -> str:
         lines.append("  Holes : mₕ* supplied directly — no band structure fit.")
 
     lines += [
-        "",
-        "  ── Free-Electron DOS " + "─" * 37,
-        f"  Equation            : DOS(E) = (1/2π²)(2m*mₑ/ħ²)^(3/2)(E-E_c)^(1/2)",
-        f"  m* used             : {result.m_eff_rel:.4f} mₑ  "
-                                 f"({result.carrier} harmonic mean)",
-        f"  E_c used            : {result.E_c:.4f} eV  ({edge_label})",
-        f"  Units               : states / eV / m³",
-        f"  Peak value          : {fe_max:.4e} states/eV/m³",
-        f"  VASP DOS peak       : {vasp_max:.4e} states/eV/cell",
-        f"  Normalisation note  : divide free-electron DOS by cell volume",
-        f"                        ({result.cell_volume_m3:.3e} m³) to compare",
-        f"                        directly with VASP DOS in states/eV/cell",
+        "  "+"─" * 58,
+        f"  Fit quality electrons   : {result.fit_quality_e:.3f} R²",
+        f"  Fit quality holes       : {result.fit_quality_h:.3f} R²"
     ]
 
     lines += ["=" * 60, ""]
@@ -618,26 +568,16 @@ def compute_dos(
             "Provide exactly one of bs_vasprun, bs_directory, or m_eff — not multiple."
         )
 
-
-    # ------------------------------------------------------------------
-    # Parse DOS vasprun
-    # ------------------------------------------------------------------
     vr       = Vasprun(dos_vasprun, parse_dos=True, parse_eigen=False)
     cdos     = vr.complete_dos
-    energies = cdos.energies
-    vasp_dos = cdos.get_densities()
     vol_m3   = vr.final_structure.volume * 1e-30
 
-    if sigma > 0:
-        de       = energies[1] - energies[0]
-        vasp_dos = gaussian_filter1d(vasp_dos, sigma=sigma / de)
-
-    # ------------------------------------------------------------------
-    # Effective masses — always compute both carriers from band structure
-    # ------------------------------------------------------------------
     em_electrons = None
     em_holes     = None
-    fit_quality  = None
+    fit_quality_electrons  = None
+    fit_quality_holes = None
+    cbm = None
+    vbm = None
 
     if bs_vasprun is not None or bs_directory is not None:
         source = bs_directory if bs_directory is not None else bs_vasprun
@@ -648,50 +588,39 @@ def compute_dos(
         print("  Computing electron effective mass (CBM)...")
         try:
             em_electrons = get_effective_mass(bs, n_points=n_fit_points, carrier="electrons")
+            valid_segs  = [s for s in em_electrons.segments if np.isfinite(s.fit_quality)]
+            fit_quality_electrons = np.mean([s.fit_quality for s in valid_segs]) if valid_segs else None
+            cbm = em_electrons.E_edge
+
         except Exception as e:
             warnings.warn(f"Electron m* fit failed: {e}", UserWarning, stacklevel=2)
 
         print("  Computing hole effective mass (VBM)...")
         try:
             em_holes = get_effective_mass(bs, n_points=n_fit_points, carrier="holes")
+            valid_segs  = [s for s in em_holes.segments if np.isfinite(s.fit_quality)]
+            fit_quality_holes = np.mean([s.fit_quality for s in valid_segs]) if valid_segs else None
+            vbm = em_holes.E_edge
+
         except Exception as e:
             warnings.warn(f"Hole m* fit failed: {e}", UserWarning, stacklevel=2)
 
-        # Select the active carrier result for the DOS equation
-        em_active = em_electrons if carrier == "electrons" else em_holes
-        if em_active is None:
-            raise ValueError(
-                f"Effective mass fit for '{carrier}' failed — "
-                "cannot compute free-electron DOS. See warnings above."
-            )
-
-        m_eff_rel   = em_active.m_eff_rel
-        m_eff_si    = em_active.m_eff_si
-        E_c         = em_active.E_edge
-        valid_segs  = [s for s in em_active.segments if np.isfinite(s.fit_quality)]
-        fit_quality = np.mean([s.fit_quality for s in valid_segs]) if valid_segs else None
-
     else:
         # m_eff supplied directly — single carrier only
-        m_eff_rel = m_eff
-        m_eff_si  = m_eff * M_E
         cbm, vbm  = cdos.get_cbm_vbm()
         E_c       = cbm if carrier == "electrons" else vbm
 
+    vbm_zeroed = vbm - vbm
+    cbm_zeroed = cbm - vbm
 
-    cbm_energy = E_c if carrier == "electrons" else cdos.get_cbm_vbm()[0]
-    fe_dos     = free_electron_dos(energies, cbm_energy, m_eff=m_eff_rel)
 
     return DOSResult(
-        energies          = energies,
-        vasp_dos          = vasp_dos,
-        free_electron_dos = fe_dos,
-        E_c               = E_c,
-        m_eff_rel         = m_eff_rel,
-        m_eff_si          = m_eff_si,
-        fit_quality       = fit_quality,
+        fit_quality_e     = fit_quality_electrons,
+        fit_quality_h     = fit_quality_holes,
         cell_volume_m3    = vol_m3,
         carrier           = carrier,
         em_electrons      = em_electrons,
         em_holes          = em_holes,
+        cbm               = cbm_zeroed,
+        vbm               = vbm_zeroed
     )
