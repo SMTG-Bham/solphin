@@ -39,35 +39,7 @@ def SQ_relative_FOM_PV_efficiency(E_gap, photon_spectrum, alpha, tau, sigma, dos
     SQ_eff = max_eff(E_gap, photon_spectrum, Tcell)
     SQ = SQ_eff * 100
 
-    efficiency = SQ / ((1 + fraction) * denom_bracket)
+    SQ_efficiency = SQ / ((1 + fraction) * denom_bracket)
+    efficiency = ((1 + fraction) * denom_bracket)
 
-    return efficiency
-
-# Crovetto efficiency realtive to SQ limit
-
-def FOM_PV_efficiency(E_gap, photon_spectrum, alpha, tau, sigma, dos_mass, dop_density, epsilon, mu, Tcell):
-
-    ''' Calculates the final value for the photovoltaic figure of merit independant of the SQ limit from Crovetto 2024
-    
-    Parameters:
-        E_gap(float): Optical Band Gap in eV  
-        photon_spectrum(numpy.ndarrray): Converted input spectrum from DB_FOM.convert_spectrum y: Number of photons (Np/m2/s/dE) x: Energy (eV)
-        alpha(float): Spectral average of incident light in cm⁻¹
-        tau(float): Non-radiative recombination lifetime in s
-        sigma(float): Spectral dispersion of the absorption coefficient spectrum, unitless
-        dos_mass(float): Density of States effective mass in m₀
-        dop_density(float): Doping density in cm⁻³
-        epsilon(float): Static dielectric constant, unitless
-        mu(float): Charge carrier mobility in cm²V⁻¹s⁻¹
-        Tcell(float): Operating temperature of the cell in K
-
-    Returns:
-        efficiency(float): Percentage photovoltaic figure of merit efficiency relative to the SQ limit.
-    '''
-
-    Crovetto_eff = SQ_relative_FOM_PV_efficiency(E_gap, photon_spectrum, alpha, tau, sigma, dos_mass, dop_density, epsilon, mu, Tcell)
-    SQ = max_eff(E_gap, photon_spectrum, Tcell)
-
-    SQ_relative = (Crovetto_eff/100) * SQ
-
-    return SQ_relative
+    return SQ_efficiency, efficiency
