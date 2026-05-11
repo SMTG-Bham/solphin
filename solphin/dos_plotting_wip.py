@@ -89,10 +89,12 @@ class DOSResult:
     fit_quality_h :    Optional[float]
     cell_volume_m3:    float             # m³
     carrier:           str               # "electrons" or "holes" — used in DOS
+    final_result:      float   # always computed
     em_electrons:      Optional[EffectiveMassResult] = None   # always computed 
     em_holes:          Optional[EffectiveMassResult] = None   # always computed
     cbm:               Optional[EffectiveMassResult] = None   # always computed
     vbm:               Optional[EffectiveMassResult] = None   # always computed
+    
 
     @property
     def em_result(self) -> Optional[EffectiveMassResult]:
@@ -478,7 +480,7 @@ def get_effective_mass(
     )
 
 
-def _format_em_table(em: EffectiveMassResult, is_dos_carrier: bool) -> list:
+def _format_em_table(em: EffectiveMassResult, edge: float, is_dos_carrier: bool) -> list:
     
     edge_label  = "CBM" if em.carrier == "electrons" else "VBM"
     sub = "ₑ" if em.carrier == "electrons" else "ₕ"
@@ -487,7 +489,7 @@ def _format_em_table(em: EffectiveMassResult, is_dos_carrier: bool) -> list:
     dos_marker  = "  ← dos_mass" if is_dos_carrier else ""
 
     lines = [
-        f"  {carrier_str} (fitted at {edge_label})",
+        f"  {carrier_str} (fitted at {edge_label}: {edge:.3f} eV)",
         f"  {'Harmonic mean m*':<20}: {em.m_eff_rel:.3f} m{sub}"
         f"  ({em.m_eff_si:.3e} kg){dos_marker}",
         "",
@@ -499,6 +501,7 @@ def _format_em_table(em: EffectiveMassResult, is_dos_carrier: bool) -> list:
 def _format_dos_summary(result: "DOSResult") -> str:
 
     edge_label = "CBM" if result.carrier == "electrons" else "VBM"
+    edge_value = result.cbm if result.carrier == "electrons" else result.vbm
 
     lines = [
         "",
@@ -506,7 +509,7 @@ def _format_dos_summary(result: "DOSResult") -> str:
         "  DOS Result Summary",
         "=" * 60,
         f"  Primary carrier     : {result.carrier.capitalize()}",
-        f"  Band edge ({edge_label})     : {result.E_c:.3f} eV",
+        f"  Band edge ({edge_label})     : {edge_value:.3f} eV",
         f"  Cell volume         : {result.cell_volume_m3:.3e} m³",
         "",
         "  ── Effective Masses " + "─" * 38,
@@ -516,6 +519,7 @@ def _format_dos_summary(result: "DOSResult") -> str:
     if result.em_electrons is not None:
         lines += _format_em_table(
             result.em_electrons,
+            result.cbm,
             is_dos_carrier=(result.carrier == "electrons"),
         )
     else:
@@ -527,6 +531,7 @@ def _format_dos_summary(result: "DOSResult") -> str:
     if result.em_holes is not None:
         lines += _format_em_table(
             result.em_holes,
+            result.vbm,
             is_dos_carrier=(result.carrier == "holes"),
         )
     else:
@@ -608,7 +613,6 @@ def compute_dos(
     else:
         # m_eff supplied directly — single carrier only
         cbm, vbm  = cdos.get_cbm_vbm()
-        E_c       = cbm if carrier == "electrons" else vbm
 
     vbm_zeroed = vbm - vbm
     cbm_zeroed = cbm - vbm
@@ -619,8 +623,10 @@ def compute_dos(
         fit_quality_h     = fit_quality_holes,
         cell_volume_m3    = vol_m3,
         carrier           = carrier,
+        final_result      = em_electrons.m_eff_rel, 
         em_electrons      = em_electrons,
         em_holes          = em_holes,
         cbm               = cbm_zeroed,
         vbm               = vbm_zeroed
+        
     )
