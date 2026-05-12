@@ -140,7 +140,7 @@ def generate_n_real(optics_directory):
     print_n_real_file(data, energies, optics_directory)
 
 
-def plot_absorption(optics_directory, xmin=0, xmax=6, gaussian=0.05):
+def plot_absorption(optics_directory, xmin=0, xmax=6, gaussian=0.05, **kwargs):
 
     """
     Plots the optical absorption spectrum from a VASP optics calculation.
@@ -160,8 +160,7 @@ def plot_absorption(optics_directory, xmin=0, xmax=6, gaussian=0.05):
     """
 
     filename = f'{optics_directory}/vasprun.xml'
-    fig, ax = plt.subplots(figsize=(3, 3), dpi=150)
-    optplot(filenames=filename, xmin=xmin, xmax=xmax, gaussian=gaussian, plt=plt)
+    optplot(filenames=filename, xmin=xmin, xmax=xmax, gaussian=gaussian, directory=optics_directory, **kwargs)
     plt.show()
 
 def spectrum_select(spectrum_type):
