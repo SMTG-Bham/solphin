@@ -195,6 +195,14 @@ def calculate_spectral_dispersion(filtered_abs_coff, matched_irradiance, filtere
     Returns:
         spectral_dispersion(float): weighted spectral dispersion of log(absorption coefficient).
     """
+
+    valid_data = [
+    (a, irr)
+    for a, irr in zip(filtered_abs_coff, matched_irradiance)
+    if a > 0 and np.isfinite(a)
+    ]
+
+    filtered_abs_coff, matched_irradiance = zip(*valid_data)
     # Convert to log scale
     log_alpha = [np.log(a) for a in filtered_abs_coff]
 
