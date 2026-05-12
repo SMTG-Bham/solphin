@@ -5,7 +5,7 @@ from importlib.resources import files
 
 logging.basicConfig(level=logging.INFO)
 
-''' This section details the calculation of the detailed balance limit efficiency and associated values.'''
+""" This section details the calculation of the detailed balance limit efficiency and associated values."""
 
 h = sc.h        # Planck's constant (J·s)
 c = sc.c        # Speed of light (m/s)
@@ -15,6 +15,32 @@ q = sc.e        # Elementary charge (Coulombs)
 # Convert the spectrum to the useful units - taken from https://github.com/kaklin/sq-limit?tab=readme-ov-file
 
 def load_spectrum(spectrum_type):
+    """
+    Loads a predefined spectral irradiance dataset from bundled resource files.
+
+    This function selects a spectrum based on a predefined set of illumination sources
+    (e.g. solar AM1.5, LEDs, fluorescent, photopic response), loads the corresponding
+    CSV file from package resources, and returns it as a numerical array.
+
+    Parameters:
+        spectrum_type(string): identifier for the desired spectrum.
+            Supported options:
+            - "AM1.5"
+            - "Fluorescent"
+            - "Blue LED"
+            - "Green LED"
+            - "Red LED"
+            - "White LED"
+            - "IR LED"
+            - "Photopic"
+
+            If an unrecognised value is provided, the function defaults to "AM1.5".
+
+    Returns:
+        spectrum(np.array): 2D array where:
+            - column 0 is wavelength (nm)
+            - column 1 is spectral irradiance
+    """
 
     if spectrum_type == "AM1.5":
         filename = 'ASTMG173.csv'
@@ -101,7 +127,7 @@ def photons_above_bandgap(E_gap, photon_spectrum):
     return np.trapz(y[::-1], x[::-1])
 
 def rr0(E_gap, photon_spectrum, Tcell):
-    '''
+    """
     Calculates the radiative recombination rate at 0 Quasi-Fermi Level splitting. 
 
     Parameters: 
@@ -112,12 +138,11 @@ def rr0(E_gap, photon_spectrum, Tcell):
     Returns:
         Radiative recomination rate(float) in cm⁻³s⁻¹ 
 
-    '''
+    """
     k_eV = k / q
     h_eV = h / q
     const = (2 * np.pi) / (c**2 * h_eV**3)
 
-    k_eV = k / q
     E = photon_spectrum[::-1, ]  # in increasing order of bandgap energy
     egap_index = np.where(E[:, 0] >= E_gap)
     numerator = E[:, 0]**2
@@ -131,7 +156,7 @@ def rr0(E_gap, photon_spectrum, Tcell):
     return result[0]
 
 def recomb_rate(E_gap, photon_spectrum, voltage, Tcell):
-    '''
+    """
     Calculates the radiative recombination rate. 
 
     Parameters: 
@@ -143,13 +168,13 @@ def recomb_rate(E_gap, photon_spectrum, voltage, Tcell):
     Returns:
         Radiative recomination rate(float) in cm⁻³s⁻¹ 
 
-    '''
+    """
 
     print ('recomb rate')
     return q * rr0(E_gap, photon_spectrum) * np.exp(q * voltage / (k * Tcell))
 
 def current_density(E_gap, photon_spectrum, voltage, Tcell):
-    '''
+    """
     Calculates the current density. 
 
     Parameters: 
@@ -161,14 +186,14 @@ def current_density(E_gap, photon_spectrum, voltage, Tcell):
     Returns:
         Current density (float):  Current that flows across a cross sectional area in C cm⁻³s⁻¹. 
 
-    '''
+    """
 
     return q * (photons_above_bandgap(E_gap, photon_spectrum) - rr0(E_gap, photon_spectrum, Tcell) * np.exp(q * voltage / (k * Tcell)))
 
 
 def jsc(E_gap, photon_spectrum, Tcell):
 
-    '''
+    """
     Calculates the current density. 
 
     Parameters: 
@@ -178,13 +203,13 @@ def jsc(E_gap, photon_spectrum, Tcell):
     Returns:
         Short circuit current density (float):  Current that flows across a cross sectional area at 0 applied voltage in C cm⁻³s⁻¹.  
 
-    '''
+    """
     
     return current_density(E_gap, photon_spectrum, 0, Tcell)
 
 
 def voc(E_gap, photon_spectrum, Tcell):
-    '''
+    """
     Calculates the open circuit voltage.
 
     Parameters: 
@@ -195,14 +220,14 @@ def voc(E_gap, photon_spectrum, Tcell):
     Returns:
         Open circuit voltage (float):  Maximum voltage across a solar cell with no current flow in V. 
 
-    '''
+    """
 
     # print 'voc'
     return (k * Tcell / q) * np.log(photons_above_bandgap(E_gap, photon_spectrum) / rr0(E_gap, photon_spectrum, Tcell))
 
 def v_at_mpp(E_gap, photon_spectrum):
 
-    '''
+    """
     Calculates the voltage at maximum power point (mpp) of a solar cell.
 
     Parameters: 
@@ -212,7 +237,7 @@ def v_at_mpp(E_gap, photon_spectrum):
     Returns:
         Voltage at MPP (float):  Voltage across a solar cell at the maximum power point in V. 
 
-    '''
+    """
 
     v_open = voc(E_gap, photon_spectrum)
     # print v_open
@@ -223,7 +248,7 @@ def v_at_mpp(E_gap, photon_spectrum):
 
 def j_at_mpp(E_gap, photon_spectrum):
 
-    '''
+    """
     Calculates the current at maximum power point (mpp) of a solar cell.
 
     Parameters: 
@@ -233,14 +258,14 @@ def j_at_mpp(E_gap, photon_spectrum):
     Returns:
        Current at MPP (float):  Current across a solar cell at the maximum power point. 
 
-    '''
+    """
 
     return max_power(E_gap, photon_spectrum) / v_at_mpp(E_gap, photon_spectrum)
 
 
 def max_power(E_gap, photon_spectrum, Tcell):
 
-    '''
+    """
     Calculates the maximum power of a solar cell.
 
     Parameters: 
@@ -251,7 +276,7 @@ def max_power(E_gap, photon_spectrum, Tcell):
     Returns:
        Maximum power (float):  Maximum power of the solar cell in V C cm⁻³ s⁻¹. 
 
-    '''
+    """
 
     v_open = voc(E_gap, photon_spectrum, Tcell)
     v = np.linspace(0, v_open)
@@ -261,7 +286,7 @@ def max_power(E_gap, photon_spectrum, Tcell):
 
 def max_eff(E_gap, photon_spectrum, Tcell):
 
-    '''
+    """
     Calculates the maximum efficiency of a solar cell.
 
     Parameters: 
@@ -271,7 +296,7 @@ def max_eff(E_gap, photon_spectrum, Tcell):
 
     Returns:
        Maximum efficiency (float):  Maximum effeciency of the solar cell relative to the total irradiance in %.
-    '''
+    """
 
     photon_spectrum_1 = photon_spectrum[::-1, 1] 
     photon_spectrum_0 = photon_spectrum[::-1, 0]
@@ -281,7 +306,7 @@ def max_eff(E_gap, photon_spectrum, Tcell):
 
 def FillFactor(E_gap, photon_spectrum, Tcell):
 
-    '''
+    """
     Calculates the fill factor of a solar cell.
 
     Parameters: 
@@ -291,7 +316,7 @@ def FillFactor(E_gap, photon_spectrum, Tcell):
 
     Returns:
        fill_factor (float):  The fill factor of a solar cell.
-    '''
+    """
 
     j_sc = jsc(E_gap, photon_spectrum)
     v_oc = voc(E_gap, photon_spectrum, Tcell)
