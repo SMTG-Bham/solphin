@@ -27,5 +27,9 @@ If using the `VASP` input file generation functionality, please ensure that your
 PMG_VASP_PSP_DIR: <Path to VASP pseudopotential top directory>
 ```
 
+## Acknowledgements
+
+The developers Philippa U Cox and Peter P Russell would like to thank Alexander G Squires and David O Scanlon for their guidance on this project, Brooke Busbee for her work on the branding and Jacob Baggott for his assistance. 
+
 
 
