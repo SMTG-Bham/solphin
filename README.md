@@ -32,10 +32,10 @@ PMG_VASP_PSP_DIR: <Path to VASP pseudopotential top directory>
 
 ## Citation
 If you use `solphin` in your work, please cite the following:
-* Philippa U. Cox, Peter P. Russell, Alexander G. Squires, David O. Scanlon. Solphin, 2026, https://github.com/SMTG-Bham/solphin/
+* Philippa U. Cox, Peter P. Russell, Andrea Crovetto, Alexander G. Squires, David O. Scanlon. Solphin, 2026, https://github.com/SMTG-Bham/solphin/
 * Crovetto, A., 2024. A phenomenological figure of merit for photovoltaic materials. Journal of Physics: Energy, 6(2), p.025009.
 * Alex M. Ganose, Adam J. Jackson, David O. Scanlon. sumo: Command-line tools for plotting and analysis of periodic ab initio calculations. Journal of Open Source Software, 2018 3 (28), 717, doi:10.21105/joss.00717.
 
 ## Acknowledgements
 
-The developers Philippa U. Cox and Peter P. Russell would like to thank Alexander G. Squires and David O. Scanlon for their guidance on this project, Brooke Busbee for her work on the branding and Jacob Baggott for his assistance. 
+The developers Philippa U. Cox and Peter P. Russell would like to thank Alexander G. Squires, Andrea Crovetto and David O. Scanlon for their guidance on this project, Brooke Busbee for her work on the branding and Jacob Baggott for his assistance. 
