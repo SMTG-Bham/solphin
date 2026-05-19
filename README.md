@@ -15,7 +15,7 @@
 `solphin` is currently only installable through the following method:
 
 ```
-git clone https://<PATOKEN>@github.com/SMTG-Bham/PV-FoM
+git clone https://github.com/SMTG-Bham/PV-FoM
 ```
 
 Navigate into `solphin` and run:
