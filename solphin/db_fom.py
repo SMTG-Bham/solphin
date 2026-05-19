@@ -100,7 +100,7 @@ def convert_spectrum(spectrum):
     """
     converted = np.copy(spectrum)
     converted[:, 0] = converted[:, 0] * 1e-9  # wavelength to m
-    converted[:, 1] = converted[:, 1] / 1e-9  # irradiance to W/m2/m (from W/m2/nm)
+    converted[:, 1] = converted[:, 1] * 1e-9  # irradiance to W/m2/m (from W/m2/nm)
 
     E = h * c / converted[:, 0]
     d_lambda_d_E = h * c / E**2
@@ -188,7 +188,7 @@ def current_density(E_gap, photon_spectrum, voltage, Tcell):
 
     """
 
-    return q * (photons_above_bandgap(E_gap, photon_spectrum) - rr0(E_gap, photon_spectrum, Tcell) * np.exp(q * voltage / (k * Tcell)))
+    return q * (photons_above_bandgap(E_gap, photon_spectrum) - rr0(E_gap, photon_spectrum, Tcell) * np.exp(q * voltage / (k * Tcell)) -1)
 
 
 def jsc(E_gap, photon_spectrum, Tcell):
@@ -222,8 +222,11 @@ def voc(E_gap, photon_spectrum, Tcell):
 
     """
 
-    # print 'voc'
-    return (k * Tcell / q) * np.log(photons_above_bandgap(E_gap, photon_spectrum) / rr0(E_gap, photon_spectrum, Tcell))
+    Jph = photons_above_bandgap(E_gap, photon_spectrum)
+    J0 = rr0(E_gap, photon_spectrum, Tcell)
+
+
+    return (k * Tcell / q) * np.log( Jph / J0 + 1)
 
 def v_at_mpp(E_gap, photon_spectrum):
 
