@@ -8,6 +8,8 @@
 
 `solphin` is a code developed to assist with the characterisation of novel photovoltaic materials with `VASP`. It combines detailed balance analysis with other tools such as the photovoltaic figure of merit proposed by A. Crovetto, Spectroscopic Limited Maximum Efficiency (SLME), Blank et. al. Maximum Efficiency and optical absorption plots to provide a full picture of a material's theoretical photovoltaic efficiency. The code supports the automatic generation of `VASP` input files for the required calculations based on an initial crystal structure.
 
+**Please note that Solphin is still in early stage testing and development**
+
 <img width="1076" height="596" alt="solphin_1 drawio" src="https://github.com/user-attachments/assets/0f981e7a-fcf3-4ec0-a2ef-01980a3f56ee" />
 
 ## Installation 
