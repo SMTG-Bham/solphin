@@ -344,7 +344,10 @@ def get_band_structure(band_directory:str|Path, splits:int) -> BandStructureSymm
     """
 
     if splits > 1:
-        vaspruns = glob(f"{band_directory}/split-*/vasprun.xml")
+        vaspruns = sorted(
+        glob(f"{band_directory}/split-*/vasprun.xml"),
+        key=lambda x: int(Path(x).parent.name.split("-")[-1])
+    )
 
     else:
         vaspruns = [f"{band_directory}/vasprun.xml"]
