@@ -167,7 +167,7 @@ def write_kpoint_files(
             # hybrid calculation so set k-point weights to 0
             kpt_weights = ibzkpt.kpts_weights + [0] * len(kpt_split)
             kpt_split = ibzkpt.kpts + kpt_split
-            label_split = [""] * len(ibzkpt.labels) + label_split
+            label_split = [""] * len(ibzkpt.kpts) + label_split
         else:
             # non-SCF calculation so set k-point weights to 1
             kpt_weights = [1] * len(kpt_split)
