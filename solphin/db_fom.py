@@ -111,7 +111,7 @@ def convert_spectrum(spectrum):
 
 
 
-def photons_above_bandgap(E_gap, photon_spectrum):
+def _photons_above_bandgap(E_gap, photon_spectrum):
     """Counts number of photons above given bandgap.
     
     Parameters:
@@ -126,7 +126,7 @@ def photons_above_bandgap(E_gap, photon_spectrum):
     x = photon_spectrum[indexes, 0][0]
     return np.trapz(y[::-1], x[::-1])
 
-def rr0(E_gap, photon_spectrum, Tcell):
+def _rr0(E_gap, photon_spectrum, Tcell):
     """
     Calculates the radiative recombination rate at 0 Quasi-Fermi Level splitting. 
 
@@ -171,7 +171,7 @@ def recomb_rate(E_gap, photon_spectrum, voltage, Tcell):
     """
 
     print ('recomb rate')
-    return q * rr0(E_gap, photon_spectrum) * np.exp(q * voltage / (k * Tcell))
+    return q * _rr0(E_gap, photon_spectrum) * np.exp(q * voltage / (k * Tcell))
 
 def current_density(E_gap, photon_spectrum, voltage, Tcell):
     """
@@ -188,8 +188,7 @@ def current_density(E_gap, photon_spectrum, voltage, Tcell):
 
     """
 
-    return q * (photons_above_bandgap(E_gap, photon_spectrum) - rr0(E_gap, photon_spectrum, Tcell) * np.exp(q * voltage / (k * Tcell))-1)
-
+    return q * (_photons_above_bandgap(E_gap, photon_spectrum) - _rr0(E_gap, photon_spectrum, Tcell) * np.exp(q * voltage / (k * Tcell))-1)
 
 def jsc(E_gap, photon_spectrum, Tcell):
 
@@ -207,7 +206,6 @@ def jsc(E_gap, photon_spectrum, Tcell):
     
     return current_density(E_gap, photon_spectrum, 0, Tcell)
 
-
 def voc(E_gap, photon_spectrum, Tcell):
     """
     Calculates the open circuit voltage.
@@ -222,8 +220,8 @@ def voc(E_gap, photon_spectrum, Tcell):
 
     """
 
-    Jph = photons_above_bandgap(E_gap, photon_spectrum)
-    J0 = rr0(E_gap, photon_spectrum, Tcell)
+    Jph = _photons_above_bandgap(E_gap, photon_spectrum)
+    J0 = _rr0(E_gap, photon_spectrum, Tcell)
 
 
     return (k * Tcell / q) * np.log( Jph / J0 +1)
@@ -248,7 +246,6 @@ def v_at_mpp(E_gap, photon_spectrum):
     index = np.where(v * current_density(E_gap, photon_spectrum, v)==max(v * current_density(E_gap, photon_spectrum, v)))
     return v[index][0]
 
-
 def j_at_mpp(E_gap, photon_spectrum):
 
     """
@@ -264,7 +261,6 @@ def j_at_mpp(E_gap, photon_spectrum):
     """
 
     return max_power(E_gap, photon_spectrum) / v_at_mpp(E_gap, photon_spectrum)
-
 
 def max_power(E_gap, photon_spectrum, Tcell):
 
@@ -286,7 +282,6 @@ def max_power(E_gap, photon_spectrum, Tcell):
     index = np.where(v * current_density(E_gap, photon_spectrum, v, Tcell)==max(v * current_density(E_gap, photon_spectrum, v, Tcell)))
     return max(v * current_density(E_gap, photon_spectrum, v, Tcell))
 
-
 def max_eff(E_gap, photon_spectrum, Tcell):
 
     """
@@ -307,7 +302,7 @@ def max_eff(E_gap, photon_spectrum, Tcell):
     irradiance =  np.trapz(photon_spectrum_1 * q * photon_spectrum_0, photon_spectrum_0)
     return max_power(E_gap, photon_spectrum, Tcell) / irradiance
 
-def FillFactor(E_gap, photon_spectrum, Tcell):
+def fill_factor(E_gap, photon_spectrum, Tcell):
 
     """
     Calculates the fill factor of a solar cell.
@@ -329,5 +324,3 @@ def FillFactor(E_gap, photon_spectrum, Tcell):
     fill_factor = (j_mpp * v_mpp) / (j_sc, v_oc)
 
     return fill_factor
-
-

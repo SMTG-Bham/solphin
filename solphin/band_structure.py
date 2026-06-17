@@ -103,7 +103,7 @@ def generate_band_structure_path(
     return canonical_structure, (canonical_kpoints, canonical_labels) # type: ignore
 
 #Simplified version of sumo.io.vasp.write_kpoint_files
-def write_kpoint_files(
+def _write_kpoint_files(
     directory:str|Path,
     kpoints:NDArray,
     labels:list[str],
@@ -290,7 +290,7 @@ def write_band_structure_calculation(
         except OSError:
             pass
 
-    folders = write_kpoint_files(
+    folders = _write_kpoint_files(
         directory=band_directory,
         kpoints=kpoints,
         labels=labels,

@@ -7,7 +7,7 @@ c = sc.c        # Speed of light (m/s)
 k = sc.k        # Boltzmann constant (J/K)
 q = sc.e        # Elementary charge (Coulombs)
 
-def load_absorption(abs_file):
+def _load_absorption(abs_file):
     """
     Loads absorption coefficient data from a file.
 
@@ -33,7 +33,7 @@ def load_absorption(abs_file):
 
     return abs_energy_eV, abs_coeff
 
-def wavelength_conv(abs_energy_eV):
+def _wavelength_conv(abs_energy_eV):
     """
     Converts photon energy values to wavelength in nanometers.
 
@@ -52,7 +52,7 @@ def wavelength_conv(abs_energy_eV):
 
     return abs_wavelength_nm
 
-def extract_int_limits(E_gap):
+def _extract_int_limits(E_gap):
     """
     Determines wavelength integration limits based on a material band gap.
 
@@ -76,7 +76,7 @@ def extract_int_limits(E_gap):
 
 # Make the truncated spectras
 
-def truncate_abs_spectra(E_gap, abs_energy_eV, abs_coeff):
+def _truncate_abs_spectra(E_gap, abs_energy_eV, abs_coeff):
      """
     Filters absorption spectra to include only wavelengths within a band-gap-defined range.
 
@@ -96,9 +96,9 @@ def truncate_abs_spectra(E_gap, abs_energy_eV, abs_coeff):
             filtered wavelength range.
     """
 
-     wavelength_min, Eg_wavelength = extract_int_limits(E_gap)
+     wavelength_min, Eg_wavelength = _extract_int_limits(E_gap)
 
-     abs_wavelength_nm = wavelength_conv(abs_energy_eV)
+     abs_wavelength_nm = _wavelength_conv(abs_energy_eV)
 
      filtered_pairs = [(wl, val) for wl, val in zip(abs_wavelength_nm, abs_coeff) if wavelength_min <= wl <= Eg_wavelength]
 
@@ -106,7 +106,7 @@ def truncate_abs_spectra(E_gap, abs_energy_eV, abs_coeff):
 
      return filtered_wavelengths_abs, filtered_abs_coff
 
-def truncate_light_spectra(spectrum, E_gap):
+def _truncate_light_spectra(spectrum, E_gap):
      """
     Truncates a light spectrum to a wavelength range defined by a material band gap.
 
@@ -126,7 +126,7 @@ def truncate_light_spectra(spectrum, E_gap):
         filtered_irradiance_spec(tuple or list): corresponding spectral irradiance values.
     """
 
-     wavelength_min, Eg_wavelength = extract_int_limits(E_gap)
+     wavelength_min, Eg_wavelength = _extract_int_limits(E_gap)
 
      spectrum = np.copy(spectrum)
 
@@ -139,7 +139,7 @@ def truncate_light_spectra(spectrum, E_gap):
 
      return filtered_wavelengths_spec, filtered_irradiance_spec  
 
-def match_wavelengths(filtered_wavelengths_abs, filtered_wavelengths_spec, filtered_irradiance_spec):
+def _match_wavelengths(filtered_wavelengths_abs, filtered_wavelengths_spec, filtered_irradiance_spec):
     """
     Matches absorption wavelengths to the closest wavelengths in a light spectrum
     and returns corresponding irradiance values.
@@ -282,10 +282,10 @@ def generate_spectral_parameters(optics_directory, spectrum, E_gap):
 
     abs_file = f'{optics_directory}/absorption.dat'
 
-    abs_energy_eV, abs_coeff = load_absorption(abs_file)
-    filtered_wavelengths_abs, filtered_abs_coff = truncate_abs_spectra(E_gap, abs_energy_eV, abs_coeff)
-    filtered_wavelengths_spec, filtered_irradiance_spec  = truncate_light_spectra(spectrum, E_gap)
-    matched_irradiance = match_wavelengths(filtered_wavelengths_abs, filtered_wavelengths_spec, filtered_irradiance_spec)
+    abs_energy_eV, abs_coeff = _load_absorption(abs_file)
+    filtered_wavelengths_abs, filtered_abs_coff = _truncate_abs_spectra(E_gap, abs_energy_eV, abs_coeff)
+    filtered_wavelengths_spec, filtered_irradiance_spec  = _truncate_light_spectra(spectrum, E_gap)
+    matched_irradiance = _match_wavelengths(filtered_wavelengths_abs, filtered_wavelengths_spec, filtered_irradiance_spec)
 
     spectral_average = calculate_spectral_average(filtered_abs_coff, matched_irradiance, filtered_wavelengths_abs)
     spectral_dispersion = calculate_spectral_dispersion(filtered_abs_coff, matched_irradiance, filtered_wavelengths_abs)

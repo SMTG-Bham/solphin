@@ -58,7 +58,7 @@ def plot_dos(filename, xmin=-3, xmax=3, gaussian=0.05, save=False):
 
 
 @dataclass
-class SegmentMass:
+class _SegmentMass:
 
     label:       str    # e.g. "Γ→X"
     m_eff_rel:   float  # m* / m_e
@@ -68,7 +68,7 @@ class SegmentMass:
 
 
 @dataclass
-class EffectiveMassResult:
+class _EffectiveMassResult:
 
     m_eff_rel:   float       # harmonic mean m* / m_e
     m_eff_si:    float       # harmonic mean m* in kg
@@ -114,14 +114,14 @@ class DOSResult:
     cell_volume_m3:    float             # m³
     carrier:           str               # "electrons" or "holes" — used in DOS
     final_result:      float   # always computed
-    em_electrons:      Optional[EffectiveMassResult] = None   # always computed 
-    em_holes:          Optional[EffectiveMassResult] = None   # always computed
-    cbm:               Optional[EffectiveMassResult] = None   # always computed
-    vbm:               Optional[EffectiveMassResult] = None   # always computed
+    em_electrons:      Optional[_EffectiveMassResult] = None   # always computed 
+    em_holes:          Optional[_EffectiveMassResult] = None   # always computed
+    cbm:               Optional[_EffectiveMassResult] = None   # always computed
+    vbm:               Optional[_EffectiveMassResult] = None   # always computed
     
 
     @property
-    def em_result(self) -> Optional[EffectiveMassResult]:
+    def em_result(self) -> Optional[_EffectiveMassResult]:
 
         if self.carrier == "electrons":
             return self.em_electrons
@@ -319,7 +319,7 @@ def _parse_single_bs(path: str) -> tuple:
     return bs, _is_soc_vasprun(vr)
 
 
-def parse_split_bs(vaspruns: list) -> tuple:
+def _parse_split_bs(vaspruns: list) -> tuple:
     """
     Parses one or more split VASP band structure calculations.
 
@@ -388,7 +388,7 @@ def parse_split_bs(vaspruns: list) -> tuple:
     
     return parsed, is_soc, ref
 
-def band_match(ref, parsed):
+def _band_match(ref, parsed):
     """
     Determines the minimum number of bands shared across parsed band structures.
 
@@ -424,7 +424,7 @@ def band_match(ref, parsed):
 
     return n_bands_min
 
-def combine_band_kpoints(ref, parsed, n_bands_min):
+def _combine_band_kpoints(ref, parsed, n_bands_min):
     """
     Combines k-points, labels, and band eigenvalues from split band structures.
 
@@ -489,7 +489,7 @@ def combine_band_kpoints(ref, parsed, n_bands_min):
 
     return all_kpoints, all_labels, all_bands
 
-def convert_kpoints(all_kpoints, all_labels):
+def _convert_kpoints(all_kpoints, all_labels):
     """
     Converts k-point objects into fractional coordinates and label mappings.
 
@@ -566,13 +566,13 @@ def _merge_split_band_structures(vaspruns: list) -> tuple:
             reference lattice and structure
     """
 
-    parsed, is_soc, ref = parse_split_bs(vaspruns)
+    parsed, is_soc, ref = _parse_split_bs(vaspruns)
 
-    n_bands_min = band_match(ref, parsed)
+    n_bands_min = _band_match(ref, parsed)
 
-    all_kpoints, all_labels, all_bands = combine_band_kpoints(ref, parsed, n_bands_min)
+    all_kpoints, all_labels, all_bands = _combine_band_kpoints(ref, parsed, n_bands_min)
 
-    kpoints_frac, labels_dict = convert_kpoints(all_kpoints, all_labels)
+    kpoints_frac, labels_dict = _convert_kpoints(all_kpoints, all_labels)
 
     bs_merged = BandStructureSymmLine(
         kpoints     = kpoints_frac,
@@ -648,7 +648,7 @@ def _fit_segment_mass(
     label:        str,
     n_points:     int,
     carrier:      str = "electrons",
-) -> SegmentMass:
+) -> _SegmentMass:
     """
     Fits a parabolic effective mass from a band edge segment.
 
@@ -723,7 +723,7 @@ def _fit_segment_mass(
     n_used = len(dk_sq)
 
     if n_used < 2:
-        return SegmentMass(
+        return _SegmentMass(
             label=label, m_eff_rel=np.nan, m_eff_si=np.nan,
             fit_quality=np.nan, n_points=n_used
         )
@@ -732,7 +732,7 @@ def _fit_segment_mass(
 
     if slope <= 0:
 
-        return SegmentMass(
+        return _SegmentMass(
             label=label, m_eff_rel=np.nan, m_eff_si=np.nan,
             fit_quality=np.nan, n_points=n_used,
         )
@@ -745,7 +745,7 @@ def _fit_segment_mass(
     ss_tot  = np.sum((dE - np.mean(dE)) ** 2)
     r2      = 1.0 - ss_res / ss_tot if ss_tot > 0 else 1.0
 
-    return SegmentMass(
+    return _SegmentMass(
         label=label, m_eff_rel=m_eff_rel, m_eff_si=m_eff_si,
         fit_quality=r2, n_points=n_used, 
     )
@@ -755,7 +755,7 @@ def get_effective_mass(
     source:   "str | BandStructure",
     n_points: int = 5,
     carrier:  str = "electrons",
-) -> EffectiveMassResult:
+) -> _EffectiveMassResult:
     """
     Computes the effective mass from a band structure using parabolic fitting.
 
@@ -925,7 +925,7 @@ def get_effective_mass(
     m_eff_rel_avg = 1.0 / np.mean([1.0 / s.m_eff_rel for s in valid])
     m_eff_si_avg  = m_eff_rel_avg * M_E
 
-    return EffectiveMassResult(
+    return _EffectiveMassResult(
         m_eff_rel = m_eff_rel_avg,
         m_eff_si  = m_eff_si_avg,
         segments  = segment_masses,
@@ -935,7 +935,7 @@ def get_effective_mass(
     )
 
 
-def _format_em_table(em: EffectiveMassResult, edge: float, is_dos_carrier: bool, fit: float) -> list:
+def _format_em_table(em: _EffectiveMassResult, edge: float, is_dos_carrier: bool, fit: float) -> list:
     """
     Formats a human-readable summary table for effective mass results.
 
@@ -1068,6 +1068,7 @@ def _format_dos_summary(result: "DOSResult") -> str:
     return "\n".join(lines)
 
 
+
 def print_dos_summary(result: "DOSResult") -> None:
     """
     Prints a formatted summary of DOS-based effective mass results.
@@ -1090,7 +1091,6 @@ def print_dos_summary(result: "DOSResult") -> None:
     """
 
     print(_format_dos_summary(result))
-
 
 def compute_dos(
     dos_vasprun:  str,

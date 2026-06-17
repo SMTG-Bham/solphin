@@ -38,13 +38,13 @@ def photons_above_bandgap_plot(spectrum, Egap, ax=None):
     a = np.copy(spectrum)
     for row in a:
         # print row
-        row[1] = db_fom.photons_above_bandgap(row[0], spectrum)
+        row[1] = db_fom._photons_above_bandgap(row[0], spectrum)
 
     canvas = ax if ax else plt
     
     canvas.plot(a[:, 0], a[:, 1], color='#231123')
 
-    p_above_1_1 = db_fom.photons_above_bandgap(Egap, spectrum)
+    p_above_1_1 = db_fom._photons_above_bandgap(Egap, spectrum)
     canvas.plot([Egap], [p_above_1_1], 'ro')#, color='#FF6666')
     canvas.text(Egap+0.05, p_above_1_1, '{:.4}eV, {:.4}'.format(Egap, p_above_1_1))
 
@@ -98,7 +98,7 @@ def iv_curve_plot(spectrum, Egap, Tcell, power=False):
         plt.title('IV Curve')
         plt.plot(v, i, color='#231123')
 
-def iv_curve_plot_2(spectrum, Egap, Tcell, power=False, ax1=None, ax2=None):
+def iv_pv_curve_plot(spectrum, Egap, Tcell, power=False, ax1=None, ax2=None):
     """
     Plots the ideal current-voltage (IV) curve and power-voltage curve for a photovoltaic material.
 
@@ -238,7 +238,7 @@ def plot_db_combined(spectrum, Egap, Tcell, spectrum_type, fig=None, axes=None, 
         ax2 = axes[1].twinx()
 
     photons_above_bandgap_plot(spectrum, Egap, ax=axes[0])
-    iv_curve_plot_2(spectrum, Egap, Tcell, ax1=axes[1], ax2=ax2)
+    iv_pv_curve_plot(spectrum, Egap, Tcell, ax1=axes[1], ax2=ax2)
     sq_limit_plot(spectrum, Egap, Tcell, ax=axes[2])
 
     fig.subplots_adjust(wspace=0.5)
@@ -251,7 +251,7 @@ def plot_db_combined_interactive(Tmin=1, Tmax=1000, Emin=0.1, Emax=3.1):
     This function builds an interactive Jupyter widget interface that allows users to
     explore photovoltaic performance metrics as a function of bandgap, temperature,
     and illumination spectrum. It dynamically updates combined plots including photon
-    flux above bandgap, IV/power curves, and Shockley–Queisser efficiency limits.
+    flux above bandgap, IV/power curves, and Shockley-Queisser efficiency limits.
 
     Parameters:
         Tmin(int): minimum allowed operating temperature in Kelvin.
@@ -270,7 +270,7 @@ def plot_db_combined_interactive(Tmin=1, Tmax=1000, Emin=0.1, Emax=3.1):
     fig.canvas.footer_visible = False      # hides the footer
     fig.canvas.toolbar_visible = False     # hides the toolbar
 
-    # wrapping that clear axes and redrwas combined DB plots
+    # wrapping that clear axes and redraws combined DB plots
 
     def plot_combined_wrapper(Egap, Tcell, spectrum_type):
 
