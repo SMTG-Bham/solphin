@@ -347,24 +347,7 @@
             "NSW": 1,
             "ICORELEVEL": 1
         },
-        "hubbard_u": {
-            "LDAUU": {"Mn": 3.9, "Ni": 6.2},
-            "LDAUL": {"Mn": 2, "Ni": 2},
-            "LDAU": true
-        },
-        "lobster": {"ISYM": 0, "NSW": 0, "LORBIT": 14, "LWAVE": true, "ISMEAR": -5},
         "ncl": {"ALGO": "ALL", "LSORBIT": true, "ISYM": -1},
-        "timings": {},
-        "metal": {"ISMEAR": 1, "SIGMA": 0.2},
-        "nve_temperature_rescale": {"SMASS": -1},
-        "nvt": {"SMASS": 3},
-        "forces": { 
-            "ADDGRID": true,
-            "EDIFF": 1e-8,
-            "NELMIN": 5,
-            "ISYM": -1,
-            "NSW": 1,
-            "LREAL": "False"
-        }
+        "timings": {}
     }
 }
