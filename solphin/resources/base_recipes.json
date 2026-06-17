@@ -219,31 +219,6 @@
             "SIGMA": 0.02,
             "LORBIT": 14,
             "NEDOS": 2000
-        },
-        "DD_hybrid": {
-            "PREC": "Accurate",
-            "ALGO": "Normal",
-            "ENCUT": 500,
-            "NELM": 200,
-            "NELMIN": 2,
-            "EDIFF": 1e-06,
-            "GGA": "PE",
-            "ISYM": 3,
-            "HFSCREEN": 1.7,
-            "LMODELHF": true,
-            "PRECFOCK": "Fast",
-            "TIME": 0.30,
-            "LHFCALC": true,
-            "AEXX": 0.1,
-            "LASPH": true,
-            "LREAL": false,
-            "EDIFFG": -0.01,
-            "NSW": 0,
-            "IBRION": 1,
-            "ISMEAR": 0,
-            "SIGMA": 0.02,
-            "LORBIT": 14,
-            "NEDOS": 2000
         }
     },
     "POTCAR_FUNCTIONAL": "PBE_64",
@@ -372,24 +347,7 @@
             "NSW": 1,
             "ICORELEVEL": 1
         },
-        "hubbard_u": {
-            "LDAUU": {"Mn": 3.9, "Ni": 6.2},
-            "LDAUL": {"Mn": 2, "Ni": 2},
-            "LDAU": true
-        },
-        "lobster": {"ISYM": 0, "NSW": 0, "LORBIT": 14, "LWAVE": true, "ISMEAR": -5},
         "ncl": {"ALGO": "ALL", "LSORBIT": true, "ISYM": -1},
-        "timings": {},
-        "metal": {"ISMEAR": 1, "SIGMA": 0.2},
-        "nve_temperature_rescale": {"SMASS": -1},
-        "nvt": {"SMASS": 3},
-        "forces": { 
-            "ADDGRID": true,
-            "EDIFF": 1e-8,
-            "NELMIN": 5,
-            "ISYM": -1,
-            "NSW": 1,
-            "LREAL": "False"
-        }
+        "timings": {}
     }
 }
