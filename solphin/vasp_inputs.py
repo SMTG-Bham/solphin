@@ -46,7 +46,7 @@ def _load_config(fname: str) -> Dict[str, Dict[str, Union[str, Dict[str, str]]]]
         config = json.load(f)
     return config
 
-def determine_potcar_functional(
+def _determine_potcar_functional(
     recipe: str,
     potcar_functional: Optional[str],
     config: Dict[str, Dict[str, Union[str, Dict[str, str]]]],
@@ -81,7 +81,7 @@ def determine_potcar_functional(
     return config["POTCAR_FUNCTIONAL"]
 
 
-def prepare_incar(
+def _prepare_incar(
     recipe: str,
     patches: List[str],
     config: Dict[str, Dict[str, Union[str, Dict[str, str]]]],
@@ -118,7 +118,7 @@ def prepare_incar(
                 incar.update(config["PATCHES"][patch])
     return incar
 
-def create_vasp_set(
+def _create_vasp_set(
     structure: Structure,
     incar: Dict[str, Union[str, int, float]],
     potcar_functional: str,
@@ -156,7 +156,7 @@ def create_vasp_set(
         **calc_kwargs,
     )
 
-def prepare_vdw_tags(recipe: str, patches: List[str]) -> Dict[str, Union[int, float]]:
+def _prepare_vdw_tags(recipe: str, patches: List[str]) -> Dict[str, Union[int, float]]:
     """
     Generates VASP INCAR tags for van der Waals (vdW) corrections.
 
@@ -202,7 +202,7 @@ def prepare_vdw_tags(recipe: str, patches: List[str]) -> Dict[str, Union[int, fl
                     "CPARAM": 0.0093}
     return {}
 
-def apply_patches(
+def _apply_patches(
     vasp_set: VaspInputSet,
     patches: List[str],
     recipe: str,
@@ -240,7 +240,7 @@ def apply_patches(
         vasp_set.user_kpoints_settings = Kpoints(kpts=((1, 1, 1)))
 
     if "vdw_d3_bj" in patches or "vdw_d3" in patches or "vdw_d4":
-        vdw_tags = prepare_vdw_tags(recipe, patches)
+        vdw_tags = _prepare_vdw_tags(recipe, patches)
         vasp_set.user_incar_settings.update(vdw_tags)
 
     if "lobster" in patches and "NBANDS" not in vasp_set.user_incar_settings:
@@ -290,11 +290,11 @@ def write_vasp_calculation(
     patches = patches or []
 
     config = _load_config("base_recipes.json")
-    potcar_functional = determine_potcar_functional(recipe, potcar_functional, config)
-    incar = prepare_incar(recipe, patches, config)
-    vasp_set = create_vasp_set(
+    potcar_functional = _determine_potcar_functional(recipe, potcar_functional, config)
+    incar = _prepare_incar(recipe, patches, config)
+    vasp_set = _create_vasp_set(
         structure, incar, potcar_functional, config, **calc_kwargs
     )
 
-    apply_patches(vasp_set, patches, recipe, incar)
+    _apply_patches(vasp_set, patches, recipe, incar)
     vasp_set.write_input(out_dir)

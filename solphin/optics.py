@@ -68,8 +68,7 @@ def calc_absorption(eps_full, energies):
             eps_real(np.array): real part of the averaged dielectric function.
             eps_imag(np.array): imaginary part of the averaged dielectric function.
             n_real(np.array): real part of the complex refractive index.
-            n_imag(np.array): imaginary part of the complex refractive index
-                (extinction coefficient, k).
+            n_imag(np.array): imaginary part of the complex refractive index (extinction coefficient, k).
             loss(np.array): energy loss function Im(-1/ε).
             absorption(np.array): absorption coefficient in m^-1.
     """
@@ -163,7 +162,7 @@ def plot_absorption(optics_directory, xmin=0, xmax=6, gaussian=0.05, **kwargs):
     optplot(filenames=filename, xmin=xmin, xmax=xmax, gaussian=gaussian, directory=optics_directory, **kwargs)
     plt.show()
 
-def spectrum_select(spectrum_type):
+def _spectrum_select(spectrum_type):
     """
     Selects and loads a solar or illuminant spectrum.
 
@@ -195,7 +194,7 @@ def spectrum_select(spectrum_type):
 
     return sol_wl, sol_irr, use_slme
 
-def convert_spec(sol_wl, sol_irr):
+def _convert_spec(sol_wl, sol_irr):
     """
     Converts a spectral irradiance distribution into photon flux.
 
@@ -215,7 +214,7 @@ def convert_spec(sol_wl, sol_irr):
 
     return sol_wl_m, sol_phot_flux
 
-def calc_incident_power(sol_irr, sol_wl):
+def _calc_incident_power(sol_irr, sol_wl):
     """
     Calculates the total incident power from a spectral irradiance distribution.
 
@@ -255,7 +254,7 @@ def _bb_per_eV(E_eV):
     exp = np.clip(E_eV / ((_k / _e) * _T), 0, 700)
     return (2*E_J**2) / (_h**3*_c**2) / (np.exp(exp) - 1.0 + 1e-300) * _e
 
-def bb_per_wl(sol_wl_m):
+def _bb_per_wl(sol_wl_m):
     """
     Computes the blackbody photon flux spectrum in wavelength space.
 
@@ -276,7 +275,7 @@ def bb_per_wl(sol_wl_m):
 
     return bb_phot_wl
 
-def n_real_abs_fit(abs_file, n_real_file):
+def _n_real_abs_fit(abs_file, n_real_file):
 
     """
     Loads absorption data and interpolates the real refractive index onto the same energy grid.
@@ -300,7 +299,7 @@ def n_real_abs_fit(abs_file, n_real_file):
     """
 
     # --- absorption and n_real data (on the same energy grid) ---
-    energy_abs, alpha_cm = spectral.load_absorption(abs_file)
+    energy_abs, alpha_cm = spectral._load_absorption(abs_file)
     alpha_m = alpha_cm * 1e2   # cm-1 → m-1
 
     nr_dat  = np.loadtxt(n_real_file, comments='#')
@@ -308,7 +307,7 @@ def n_real_abs_fit(abs_file, n_real_file):
 
     return energy_abs, alpha_cm, alpha_m, n_real
 
-def interpolate_a(energy_abs, alpha_m, direct_gap, sol_wl):
+def _interpolate_a(energy_abs, alpha_m, direct_gap, sol_wl):
     """
     Interpolates the absorption coefficient onto a solar wavelength grid,
     with a cutoff below the direct band gap.
@@ -375,18 +374,18 @@ def make_blank_plot(optics_directory, direct_gap, indirect_gap,
     n_real_file = f'{optics_directory}/n_real.dat'
     
     # Setup the spectrum and convert to units
-    sol_wl, sol_irr, use_slme = spectrum_select(spectrum_type)
-    sol_wl_m, sol_phot_flux = convert_spec(sol_wl, sol_irr)
+    sol_wl, sol_irr, use_slme = _spectrum_select(spectrum_type)
+    sol_wl_m, sol_phot_flux = _convert_spec(sol_wl, sol_irr)
 
     # Calculate indicent power
 
-    power_in = calc_incident_power(sol_irr, sol_wl)
+    power_in = _calc_incident_power(sol_irr, sol_wl)
         
-    bb_phot_wl = bb_per_wl(sol_wl_m)
+    bb_phot_wl = _bb_per_wl(sol_wl_m)
 
-    energy_abs, alpha_cm, alpha_m, n_real = n_real_abs_fit(abs_file, n_real_file)
+    energy_abs, alpha_cm, alpha_m, n_real = _n_real_abs_fit(abs_file, n_real_file)
     
-    eff_flat, eff_lam, eff_slme, thickness_range = thickness_calc(thickness_range, alpha_m, use_slme, n, 
+    eff_flat, eff_lam, eff_slme, thickness_range = _thickness_calc(thickness_range, alpha_m, use_slme, n, 
                                                                   energy_abs, alpha_cm, direct_gap, indirect_gap, n_real, bb_phot_wl, 
                                                                   sol_wl_m, sol_phot_flux, sol_wl, Qi, power_in)
             
@@ -471,7 +470,7 @@ def _eta_d(d, A_sol, A_E, energy_abs, n_real, alpha_m, bb_phot_wl, sol_wl_m, sol
         tv += vs
     return Pfn(tv) / power_in * 100.0 
 
-def thickness_calc(thickness_range, alpha_m, use_slme, n, energy_abs, alpha_cm, direct_gap, indirect_gap, n_real, bb_phot_wl, sol_wl_m, sol_phot_flux, sol_wl, Qi, power_in):
+def _thickness_calc(thickness_range, alpha_m, use_slme, n, energy_abs, alpha_cm, direct_gap, indirect_gap, n_real, bb_phot_wl, sol_wl_m, sol_phot_flux, sol_wl, Qi, power_in):
         """
     Computes thickness-dependent power conversion efficiencies using different optical models.
 
@@ -503,7 +502,7 @@ def thickness_calc(thickness_range, alpha_m, use_slme, n, energy_abs, alpha_cm, 
         eff_slme(list): SLME efficiency values (empty if use_slme is False).
         thickness_range(np.array): thickness values used for evaluation.
     """
-        alpha_on_sol = interpolate_a(energy_abs, alpha_m, direct_gap, sol_wl)
+        alpha_on_sol = _interpolate_a(energy_abs, alpha_m, direct_gap, sol_wl)
 
         if thickness_range is None:
             thickness_range = np.logspace(-8, -3, 80)   # m
@@ -564,7 +563,7 @@ def plot_blank(use_slme, thickness_range, eff_slme, eff_lam, eff_flat):
     plt.tight_layout()
     plt.show()
 
-def spectrum_nm_to_photon_flux(spectrum):
+def _spectrum_nm_to_photon_flux(spectrum):
     """
     Converts a spectral irradiance dataset into photon flux in wavelength space.
 
@@ -585,8 +584,7 @@ def spectrum_nm_to_photon_flux(spectrum):
     Phi           = (I * wavelength_nm) / hc_eV_nm
     return wavelength_nm, Phi
 
-
-def spectrum_nm_to_photon_energy(spectrum):
+def _spectrum_nm_to_photon_energy(spectrum):
     """
     Converts a spectral irradiance distribution from wavelength space into
     photon flux in energy space.

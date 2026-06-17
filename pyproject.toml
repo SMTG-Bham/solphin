@@ -26,7 +26,8 @@ dependencies = [
   "mpmath",
   "pathlib",
   "typing_extensions",
-  "monty"
+  "monty",
+  "ipywidgets"
 ]
 
 [project.urls]

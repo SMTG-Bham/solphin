@@ -16,5 +16,3 @@ NELMIN = 2
 NSW = 0
 PREC = Accurate
 SIGMA = 0.02
-NCORE = 4
-KPAR = 180
