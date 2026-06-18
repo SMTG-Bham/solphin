@@ -355,7 +355,7 @@ def get_band_structure(band_directory:str|Path, splits:int) -> BandStructureSymm
     bandstructures = []
     for vr_file in vaspruns:
         vr = BSVasprun(vr_file, parse_projected_eigen=False)
-        bs = vr.get_band_structure(line_mode=True, efermi="smart")
+        bs = vr.get_band_structure(line_mode=True, efermi="smart") 
         bandstructures.append(bs)
         
     bs:BandStructureSymmLine = get_reconstructed_band_structure(bandstructures)

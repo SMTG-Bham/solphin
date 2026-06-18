@@ -856,7 +856,6 @@ def get_effective_mass(
     if not edge_bands:
         edge_bands = [edge_band]
 
-
     segment_masses = []
 
     if isinstance(bs, BandStructureSymmLine):
@@ -917,12 +916,12 @@ def get_effective_mass(
         )
 
 
-    valid = [s for s in segment_masses if np.isfinite(s.m_eff_rel) and s.m_eff_rel > 0]
+    valid = [s.m_eff_rel for s in segment_masses if np.isfinite(s.m_eff_rel)]
 
     if not valid:
         raise ValueError("All segment fits failed. Cannot compute an average m*.")
 
-    m_eff_rel_avg = 1.0 / np.mean([1.0 / s.m_eff_rel for s in valid])
+    m_eff_rel_avg = np.cbrt(np.prod(valid))
     m_eff_si_avg  = m_eff_rel_avg * M_E
 
     return _EffectiveMassResult(
