@@ -321,7 +321,7 @@ def write_band_structure_calculation(
         if not hybrid:
             shutil.copy(src=scf_charge, dst=os.path.join(directory, "CHGCAR")) # type: ignore
 
-def _is_soc_vasprun(vr: Vasprun) -> bool:
+def _is_soc_vasprun(vr: BSVasprun) -> bool:
     """
     Determines whether a VASP calculation includes spin–orbit coupling (SOC).
 
