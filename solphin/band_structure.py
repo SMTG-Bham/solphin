@@ -321,6 +321,28 @@ def write_band_structure_calculation(
         if not hybrid:
             shutil.copy(src=scf_charge, dst=os.path.join(directory, "CHGCAR")) # type: ignore
 
+def _is_soc_vasprun(vr: Vasprun) -> bool:
+    """
+    Determines whether a VASP calculation includes spin–orbit coupling (SOC).
+
+    This function checks the INCAR settings stored within a Vasprun object for
+    the presence of the `LSORBIT` flag, which indicates that spin–orbit coupling
+    was enabled during the calculation.
+
+    Parameters:
+        vr(Vasprun): Parsed VASP run object containing INCAR settings and
+            calculation metadata.
+
+    Returns:
+        bool: True if spin–orbit coupling was enabled (`LSORBIT = True`),
+            otherwise False. Returns False if the INCAR data cannot be accessed.
+    """
+
+    try:
+        return bool(vr.incar.get("LSORBIT", False))
+    except Exception:
+        return False
+
 
 def get_band_structure(band_directory:str|Path, splits:int) -> BandStructureSymmLine:
     """
@@ -360,7 +382,7 @@ def get_band_structure(band_directory:str|Path, splits:int) -> BandStructureSymm
         
     bs:BandStructureSymmLine = get_reconstructed_band_structure(bandstructures)
 
-    return bs
+    return bs, _is_soc_vasprun(vr)
 
 #Simplified version of sumo.cli.bandplot
 def plot_band_structure(
