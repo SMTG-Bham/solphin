@@ -10,6 +10,8 @@ from dataclasses import dataclass
 from typing import Optional
 
 from pymatgen.io.vasp import Vasprun
+from pymatgen.core.structure import Structure
+from vasp_inputs import write_vasp_calculation
 from pymatgen.io.vasp.inputs import Kpoints
 from pymatgen.electronic_structure.bandstructure import BandStructure, BandStructureSymmLine
 from pymatgen.electronic_structure.core import Spin
@@ -91,8 +93,8 @@ def _generate_local_kpoints(
 def write_local_kpoints(
         folder:str,
         k0_frac:NDArray,
-        mesh:tuple=(5,5,5),
-        delta:float=0.01
+        mesh:tuple,
+        delta:float
         ):
     
     """
@@ -115,6 +117,23 @@ def write_local_kpoints(
         kpts_weights=[1]*len(kpoints),)
     
     kp.write_file(f"{folder}/KPOINTS")
+
+def write_eff_mass(k0_frac:NDArray,
+                   structure:Structure,
+                   functional:str,
+                   encut:int,
+                   folder:str="eff_mass",
+                    mesh:tuple=(5,5,5),
+                    delta:float=0.01):
+    
+    write_local_kpoints(folder, k0_frac, mesh, delta)
+
+    write_vasp_calculation(
+    structure=structure, 
+    recipe=functional, 
+    out_dir=folder, 
+    patches=["eff_mass"], 
+    user_incar_settings={"ENCUT": encut})
 
 
 # Density of states tables and original methodolody. 
