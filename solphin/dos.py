@@ -161,44 +161,6 @@ def _detect_spin_channel(bs: BandStructure, edge_info: dict) -> Spin:
         return Spin.up
     return Spin.down
 
-
-def _get_efermi(vr: Vasprun, path: str) -> float:
-    """
-    Retrieves the Fermi energy from a VASP calculation.
-
-    This function first attempts to obtain the Fermi level directly from an
-    existing `Vasprun` object. If the value is unavailable, it retries by
-    reloading the vasprun file with DOS parsing enabled, which can recover
-    missing electronic structure information in some cases.
-
-    Parameters:
-        vr(Vasprun): Parsed VASP run object containing calculation results.
-
-        path(str): Path to the vasprun.xml file used to reload the calculation
-            with DOS parsing enabled if necessary.
-
-    Returns:
-        float: Fermi energy in eV if successfully retrieved.
-
-    Raises:
-        ValueError: If the Fermi energy cannot be determined from either the
-            provided `Vasprun` object or the reparsed vasprun file.
-    """
-
-    efermi = vr.efermi
-    if efermi is not None:
-        return efermi
-
-    try:
-        vr_dos = Vasprun(path, parse_dos=True, parse_eigen=False)
-        efermi = vr_dos.efermi
-    except Exception:
-        pass
-
-    if efermi is not None:
-        return efermi
-
-
 def _fit_segment_mass(
     kpoints_cart: np.ndarray,
     energies:     np.ndarray,
