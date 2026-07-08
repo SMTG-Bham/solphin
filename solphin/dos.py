@@ -8,6 +8,7 @@ from numpy.typing import NDArray
 import warnings
 from dataclasses import dataclass
 from typing import Optional
+from pathlib import Path
 
 from pymatgen.io.vasp import Vasprun
 from pymatgen.core.structure import Structure
@@ -108,6 +109,8 @@ def write_local_kpoints(
     """
 
     kpoints = _generate_local_kpoints(k0_frac, mesh, delta)
+    folder = Path(folder)
+    folder.mkdir(parents=True, exist_ok=True)
 
     kp = Kpoints(
         comment="Local k-mesh for effective mass",
