@@ -11,7 +11,7 @@ from typing import Optional
 
 from pymatgen.io.vasp import Vasprun
 from pymatgen.core.structure import Structure
-from vasp_inputs import write_vasp_calculation
+from solphin.vasp_inputs import write_vasp_calculation
 from pymatgen.io.vasp.inputs import Kpoints
 from pymatgen.electronic_structure.bandstructure import BandStructure, BandStructureSymmLine
 from pymatgen.electronic_structure.core import Spin
