@@ -2,7 +2,6 @@ from matplotlib import pyplot as plt
 from sumo.cli.dosplot import dosplot
 import logging
 logging.getLogger('matplotlib.font_manager').disabled = True
-from pymatgen.io.vasp import Vasprun
 import numpy as np
 
 import warnings
@@ -619,7 +618,7 @@ def compute_dos(
     bs_vasprun:   Optional[str] = None,
     bs_directory: Optional[str] = None,
     m_eff:        Optional[float] = None,
-    sigma:        float = 0.05,
+    splits:       int = 1,
     n_fit_points: int = 5,
     carrier:      str = "electrons",
 ) -> DOSResult:
@@ -705,7 +704,7 @@ def compute_dos(
         source = bs_directory if bs_directory is not None else bs_vasprun
 
         # Load the band structure once, pass the object to avoid re-parsing
-        bs, _ = _load_band_structure(source)
+        bs, _ = get_band_structure(source, splits= splits)
 
         print("  Computing electron effective mass (CBM)...")
         try:
