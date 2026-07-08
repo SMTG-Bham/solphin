@@ -58,12 +58,10 @@ def plot_dos(filename, xmin=-3, xmax=3, gaussian=0.05, save=False):
     plt.show()
     return
 
-# Need to generate a tight kmesh around the cbm/vbm
-
 def _generate_local_kpoints(
         k0_frac:NDArray,
-        mesh:tuple=(5,5,5),
-        delta:float=0.01
+        mesh:tuple,
+        delta:float
     ):
 
     """
@@ -90,7 +88,33 @@ def _generate_local_kpoints(
 
     return np.array(pts)
 
+def write_local_kpoints(
+        folder:str,
+        k0_frac:NDArray,
+        mesh:tuple=(5,5,5),
+        delta:float=0.01
+        ):
+    
+    """
+    Generates the denser KPOINTS VASP file for the kpoints around the CBM/VBM.
 
+    Parameters:
+        folder(string): location of the calculation folder.
+        k0_frac(array): Fractional coordinates of the CBM/VBM and/or most direct bandgap.
+        mesh(tuple): Number of k-points in each direction.
+        delta(float): Maximum displacement from the k-point centre in fractional reciprocal coordinates
+    """
+
+    kpoints = _generate_local_kpoints(k0_frac, mesh, delta)
+
+    kp = Kpoints(
+        comment="Local k-mesh for effective mass",
+        style=Kpoints.supported_modes.Reciprocal,
+        num_kpts=len(kpoints),
+        kpts=kpoints.tolist(),
+        kpts_weights=[1]*len(kpoints),)
+    
+    kp.write_file(f"{folder}/KPOINTS")
 
 
 # Density of states tables and original methodolody. 
