@@ -3,12 +3,14 @@ from sumo.cli.dosplot import dosplot
 import logging
 logging.getLogger('matplotlib.font_manager').disabled = True
 import numpy as np
+from numpy.typing import NDArray
 
 import warnings
 from dataclasses import dataclass
 from typing import Optional
 
 from pymatgen.io.vasp import Vasprun
+from pymatgen.io.vasp.inputs import Kpoints
 from pymatgen.electronic_structure.bandstructure import BandStructure, BandStructureSymmLine
 from pymatgen.electronic_structure.core import Spin
 import scipy.constants as sc
@@ -56,6 +58,42 @@ def plot_dos(filename, xmin=-3, xmax=3, gaussian=0.05, save=False):
     plt.show()
     return
 
+# Need to generate a tight kmesh around the cbm/vbm
+
+def _generate_local_kpoints(
+        k0_frac:NDArray,
+        mesh:tuple=(5,5,5),
+        delta:float=0.01
+    ):
+
+    """
+    Creates a dense k-mesh around the cbm/vbm single k-point.
+
+    Parameters:
+        k0_frac(array): Fractional coordinates of the CBM/VBM and/or most direct bandgap.
+        mesh(tuple): Number of k-points in each direction.
+        delta(float): Maximum displacement from the k-point centre in fractional reciprocal coordinates
+    """
+
+    nx, ny, nz = mesh 
+
+    xs = np.linspace(-delta, delta, nx)
+    ys = np.linspace(-delta, delta, ny)
+    zs = np.linspace(-delta, delta, nz)
+
+    pts = []
+
+    for dx in xs:
+        for dy in ys:
+            for dz in zs:
+                pts.append(k0_frac + np.array([dx,dy,dz]))
+
+    return np.array(pts)
+
+
+
+
+# Density of states tables and original methodolody. 
 
 @dataclass
 class _SegmentMass:
