@@ -61,6 +61,10 @@ def plot_dos(filename, xmin=-3, xmax=3, gaussian=0.05, save=False):
     plt.show()
     return
 
+'''
+Density of states effect mass classes.
+'''
+
 @dataclass
 class _DOSEffectiveMassResult:
 
@@ -109,3 +113,27 @@ class _DOSEffectiveMassResult:
 
         return "\n".join(lines)
 
+@dataclass
+
+class DOSResult:
+
+    fit_quality_e: Optional[float]
+    fit_quality_h: Optional[float]
+    cell_volume_m3: float
+    carrier: str
+    final_result: float
+    em_electrons: Optional[_DOSEffectiveMassResult] = None
+    em_holes: Optional[_DOSEffectiveMassResult] = None
+    cbm: Optional[float] = None
+    vbm: Optional[float] = None
+
+    @property 
+    def em_result(self) -> Optional[_DOSEffectiveMassResult]:
+
+        if self.carrier == "electrons":
+            return self.em_electrons
+
+        return self.em_holes
+
+    def __str__(self):
+        return _format_dos_summary(self)
