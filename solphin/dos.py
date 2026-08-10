@@ -817,9 +817,3 @@ def compute_dos(
 
 
     return result
-
-
-
-
-
-    
