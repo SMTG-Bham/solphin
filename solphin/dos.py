@@ -346,6 +346,211 @@ def get_dos_effective_mass(
     fit_coefficient=float(A),
     )
 
+def test_dos_mass_windows(
+    dos_vasprun: str,
+    carrier: str = "electrons",
+    windows=(0.05, 0.10, 0.15, 0.20, 0.30),
+    min_dos: float = 0.0,
+):
+    """
+    Test how sensitive the fitted DOS effective mass is to
+    the chosen fitting window.
+    """
+
+    print("")
+    print("=" * 78)
+
+    print(
+        f"  Crovetto DOS effective-mass convergence "
+        f"({carrier})"
+    )
+
+    print("=" * 78)
+
+    print(
+        f"{'Window / eV':>12} "
+        f"{'m_DOS / m_e':>15} "
+        f"{'R²':>12} "
+        f"{'N':>8}"
+    )
+
+    print("-" * 78)
+
+    results = []
+
+    for window in windows:
+
+        try:
+
+            result = get_dos_effective_mass(
+                dos_vasprun=dos_vasprun,
+                carrier=carrier,
+                energy_window=window,
+                min_dos=min_dos,
+            )
+
+            print(
+                f"{window:12.4f} "
+                f"{result.m_eff_rel:15.6f} "
+                f"{result.fit_quality:12.6f} "
+                f"{result.n_points:8d}"
+            )
+
+            results.append(
+                result
+            )
+
+        except ValueError as exc:
+
+            print(
+                f"{window:12.4f} "
+                f"FAILED: {exc}"
+            )
+
+    print("=" * 78)
+    print("")
+
+    return results
+
+def _format_em_table(
+    em: _DOSEffectiveMassResult,
+    edge: float,
+    is_dos_carrier: bool,
+    fit: Optional[float],
+) -> list:
+
+    edge_label = (
+        "CBM"
+        if em.carrier == "electrons"
+        else "VBM"
+    )
+
+    sub = (
+        "ₑ"
+        if em.carrier == "electrons"
+        else "ₕ"
+    )
+
+    marker = (
+        "  ← Crovetto DOS mass"
+        if is_dos_carrier
+        else ""
+    )
+
+    fit_text = (
+        f"{fit:.6f}"
+        if fit is not None
+        else "N/A"
+    )
+
+    return [
+        f"  {em.carrier.capitalize()} "
+        f"(fitted at {edge_label}: {edge:.3f} eV)",
+
+        f"  {'DOS effective mass':<22}: "
+        f"{em.m_eff_rel:.6f} m{sub}"
+        f"  ({em.m_eff_si:.3e} kg)"
+        f"{marker}",
+
+        f"  {'Fit quality':<22}: "
+        f"{fit_text} R²",
+
+        f"  {'Points fitted':<22}: "
+        f"{em.n_points}",
+
+        f"  {'Energy window':<22}: "
+        f"{em.energy_window:.4f} eV",
+
+        "",
+    ]
+
+def _format_dos_summary(
+    result: "DOSResult",
+) -> str:
+
+    edge_label = (
+        "CBM"
+        if result.carrier == "electrons"
+        else "VBM"
+    )
+
+    edge_value = (
+        result.cbm
+        if result.carrier == "electrons"
+        else result.vbm
+    )
+
+    lines = [
+        "",
+        "=" * 60,
+        "  DOS Result Summary",
+        "=" * 60,
+        f"  Primary carrier     : "
+        f"{result.carrier.capitalize()}",
+        f"  Band edge ({edge_label})     : "
+        f"{edge_value:.3f} eV",
+        f"  Cell volume         : "
+        f"{result.cell_volume_m3:.3e} m³",
+        "",
+        "  ── Crovetto DOS Effective Masses "
+        + "─" * 23,
+    ]
+
+    if result.em_electrons is not None:
+
+        lines += _format_em_table(
+            result.em_electrons,
+            result.cbm,
+            is_dos_carrier=(
+                result.carrier == "electrons"
+            ),
+            fit=result.fit_quality_e,
+        )
+
+    else:
+
+        lines.append(
+            "  Electrons: DOS effective mass not calculated."
+        )
+
+    lines.append("")
+
+    if result.em_holes is not None:
+
+        lines += _format_em_table(
+            result.em_holes,
+            result.vbm,
+            is_dos_carrier=(
+                result.carrier == "holes"
+            ),
+            fit=result.fit_quality_h,
+        )
+
+    else:
+
+        lines.append(
+            "  Holes: DOS effective mass not calculated."
+        )
+
+    lines += [
+        "=" * 60,
+        "",
+    ]
+
+    return "\n".join(
+        lines
+    )
+
+def print_dos_summary(
+    result: "DOSResult",
+) -> None:
+
+    print(
+        _format_dos_summary(
+            result
+        )
+    )
+
 
 
 
