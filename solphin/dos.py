@@ -24,6 +24,8 @@ from solphin.band_structure import get_band_structure
 HBAR = sc.hbar   # J·s
 M_E  = pc["atomic unit of mass"][0]   # kg
 EV   = sc.e    # J per eV
+MIN_DOS_FIT_R2 = 0.80
+MIN_DOS_FIT_POINTS = 10
 
 
 def plot_dos(filename, xmin=-3, xmax=3, gaussian=0.05, save=False):
@@ -551,6 +553,95 @@ def print_dos_summary(
         )
     )
 
+def _check_dos_fit_quality(
+    result: _DOSEffectiveMassResult,
+    dos_vasprun: str,
+    windows=(0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.40),
+    min_dos: float = 0.0,
+) -> bool:
+
+    poor_fit = (
+        result.fit_quality < MIN_DOS_FIT_R2
+        and result.n_points < MIN_DOS_FIT_POINTS
+    )
+
+    if not poor_fit:
+        return True
+
+    print("")
+    print("!" * 70)
+    print("  WARNING: DOS EFFECTIVE-MASS FIT IS POORLY RESOLVED")
+    print("!" * 70)
+
+    print(
+        f"  Carrier            : {result.carrier}"
+    )
+
+    print(
+        f"  Fitted mass        : "
+        f"{result.m_eff_rel:.6f} m_e"
+    )
+
+    print(
+        f"  Fit quality        : "
+        f"R² = {result.fit_quality:.6f}"
+    )
+
+    print(
+        f"  DOS points fitted  : "
+        f"{result.n_points}"
+    )
+
+    print("")
+    print(
+        "  This DOS calculation does not contain enough "
+        "well-resolved"
+    )
+    print(
+        "  near-edge DOS data to determine the Crovetto "
+        "DOS effective"
+    )
+    print(
+        "  mass reliably."
+    )
+
+    print("")
+    print(
+        "  Consider either:"
+    )
+    print(
+        "    1. Re-running the DOS calculation with a "
+        "denser regular k-point grid."
+    )
+    print(
+        "    2. Supplying an alternative effective-mass "
+        "estimate if a denser"
+    )
+    print(
+        "       hybrid-functional calculation is "
+        "prohibitively expensive."
+    )
+
+    print("")
+    print(
+        "  The current fitted mass should therefore be "
+        "treated as provisional."
+    )
+
+    print("")
+    print(
+        "  Fitting-window behaviour:"
+    )
+
+    test_dos_mass_windows(
+        dos_vasprun=dos_vasprun,
+        carrier=result.carrier,
+        windows=windows,
+        min_dos=min_dos,
+    )
+
+    return False
+
 def compute_dos(
     dos_vasprun: str,
     m_eff: Optional[float] = None,
@@ -661,6 +752,7 @@ def compute_dos(
                 stacklevel=2,
             )
 
+
     if m_eff is not None:
 
         final_result = float(
@@ -691,7 +783,7 @@ def compute_dos(
             em_holes.m_eff_rel
         )
 
-    return DOSResult(
+    result = DOSResult(
         fit_quality_e=fit_quality_e,
         fit_quality_h=fit_quality_h,
 
@@ -707,6 +799,24 @@ def compute_dos(
         cbm=cbm_zeroed,
         vbm=vbm_zeroed,
     )
+
+    if m_eff is None:
+
+        if carrier == "electrons":
+            selected_em = em_electrons
+        else:
+            selected_em = em_holes
+
+        if selected_em is not None:
+
+            _check_dos_fit_quality(
+                result=selected_em,
+                dos_vasprun=dos_vasprun,
+                min_dos=min_dos,
+            )
+
+
+    return result
 
 
 
