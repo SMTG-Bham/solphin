@@ -61,3 +61,51 @@ def plot_dos(filename, xmin=-3, xmax=3, gaussian=0.05, save=False):
     plt.show()
     return
 
+@dataclass
+class _DOSEffectiveMassResult:
+
+    carrier: str
+    m_eff_rel: float
+    m_eff_si: float
+    fit_quality: float 
+    n_points: int
+    E_edge: float
+    energy_window: float
+    fit_coefficient: float 
+
+    @property 
+    def E_c(self):
+        return self.E_edge
+
+    def __str__(self):
+
+        edge_label = (
+            "CBM"
+            if self.carrier == "electrons"
+            else "VBM"
+        )
+
+        sub = (
+            "ₑ"
+            if self.carrier == "electrons"
+            else "ₕ"
+        )
+
+        lines = [
+            "",
+            "=" * 60,
+            f" DOS Effective Mass ({self.carrier.capitalize()})",
+            "=" * 60,
+            f" Band edge ({edge_label}) : {self.E_edge:.6f} eV",
+                        f"  Energy window     : {self.energy_window:.4f} eV",
+            f"  Points used       : {self.n_points}",
+            f"  Fit quality       : {self.fit_quality:.6f} R²",
+            "",
+            f"  DOS effective mass: {self.m_eff_rel:.6f} m{sub}",
+            f"                    : {self.m_eff_si:.6e} kg",
+            "=" * 60,
+            "",
+        ]
+
+        return "\n".join(lines)
+
