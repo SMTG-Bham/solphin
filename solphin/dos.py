@@ -551,6 +551,162 @@ def print_dos_summary(
         )
     )
 
+def compute_dos(
+    dos_vasprun: str,
+    m_eff: Optional[float] = None,
+    carrier: str = "electrons",
+    energy_window: float = 0.15,
+    min_dos: float = 0.0,
+) -> DOSResult:
+
+    if carrier not in (
+        "electrons",
+        "holes",
+    ):
+
+        raise ValueError(
+            "carrier must be "
+            "'electrons' or 'holes'."
+        )
+
+    vr = Vasprun(
+        dos_vasprun,
+        parse_dos=True,
+        parse_eigen=False,
+    )
+
+    cdos = (
+        vr.complete_dos
+    )
+
+    vol_m3 = (
+        vr.final_structure.volume
+        * 1.0e-30
+    )
+
+    cbm, vbm = (
+        cdos.get_cbm_vbm()
+    )
+
+    # Reference energies to VBM = 0
+    cbm_zeroed = (
+        cbm - vbm
+    )
+
+    vbm_zeroed = 0.0
+
+    em_electrons = None
+    em_holes = None
+
+    fit_quality_e = None
+    fit_quality_h = None
+
+    if m_eff is None:
+
+        print(
+            "  Computing electron "
+            "Crovetto DOS effective mass..."
+        )
+
+        try:
+
+            em_electrons = (
+                get_dos_effective_mass(
+                    dos_vasprun=dos_vasprun,
+                    carrier="electrons",
+                    energy_window=energy_window,
+                    min_dos=min_dos,
+                )
+            )
+
+            fit_quality_e = (
+                em_electrons.fit_quality
+            )
+
+        except Exception as exc:
+
+            warnings.warn(
+                "Electron DOS effective-mass fit failed: "
+                f"{exc}",
+                UserWarning,
+                stacklevel=2,
+            )
+
+        print(
+            "  Computing hole "
+            "Crovetto DOS effective mass..."
+        )
+
+        try:
+
+            em_holes = (
+                get_dos_effective_mass(
+                    dos_vasprun=dos_vasprun,
+                    carrier="holes",
+                    energy_window=energy_window,
+                    min_dos=min_dos,
+                )
+            )
+
+            fit_quality_h = (
+                em_holes.fit_quality
+            )
+
+        except Exception as exc:
+
+            warnings.warn(
+                "Hole DOS effective-mass fit failed: "
+                f"{exc}",
+                UserWarning,
+                stacklevel=2,
+            )
+
+    if m_eff is not None:
+
+        final_result = float(
+            m_eff
+        )
+
+    elif carrier == "electrons":
+
+        if em_electrons is None:
+            raise ValueError(
+                "Electron DOS effective mass could not "
+                "be calculated."
+            )
+
+        final_result = (
+            em_electrons.m_eff_rel
+        )
+
+    else:
+
+        if em_holes is None:
+            raise ValueError(
+                "Hole DOS effective mass could not "
+                "be calculated."
+            )
+
+        final_result = (
+            em_holes.m_eff_rel
+        )
+
+    return DOSResult(
+        fit_quality_e=fit_quality_e,
+        fit_quality_h=fit_quality_h,
+
+        cell_volume_m3=vol_m3,
+
+        carrier=carrier,
+
+        final_result=final_result,
+
+        em_electrons=em_electrons,
+        em_holes=em_holes,
+
+        cbm=cbm_zeroed,
+        vbm=vbm_zeroed,
+    )
 
 
 
