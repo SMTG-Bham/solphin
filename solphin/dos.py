@@ -817,3 +817,95 @@ def compute_dos(
 
 
     return result
+
+'''
+Density of states file generation
+'''
+
+def _generate_local_kpoints(
+    k0_frac: NDArray,
+    mesh: tuple,
+    delta: float,
+) -> Kpoints:
+
+    k0_frac = np.asarray(k0_frac, dtype=float)
+
+    nx, ny, nz = mesh
+
+    xs = np.linspace(-delta, delta, nx)
+    ys = np.linspace(-delta, delta, ny)
+    zs = np.linspace(-delta, delta, nz)
+
+    pts = []
+
+    for dx in xs:
+        for dy in ys:
+            for dz in zs:
+                pts.append(
+                    k0_frac + np.array([dx, dy, dz])
+                )
+
+    pts = np.asarray(pts)
+
+    return Kpoints(
+        comment="Local k-mesh around band edge",
+        style=Kpoints.supported_modes.Reciprocal,
+        num_kpts=len(pts),
+        kpts=pts.tolist(),
+        kpts_weights=[1.0] * len(pts),
+    )
+
+def write_local_kpoints(
+        folder:str,
+        k0_frac:NDArray,
+        mesh:tuple,
+        delta:float
+        ):
+    
+    """
+    Generates the denser KPOINTS VASP file for the kpoints around the CBM/VBM.
+
+    Parameters:
+        folder(string): location of the calculation folder.
+        k0_frac(array): Fractional coordinates of the CBM/VBM and/or most direct bandgap.
+        mesh(tuple): Number of k-points in each direction.
+        delta(float): Maximum displacement from the k-point centre in fractional reciprocal coordinates
+    """
+
+    kpoints = _generate_local_kpoints(k0_frac, mesh, delta)
+    folder = Path(folder)
+    folder.mkdir(parents=True, exist_ok=True)
+
+    kp = Kpoints(
+        comment="Local k-mesh for effective mass",
+        style=Kpoints.supported_modes.Reciprocal,
+        num_kpts=len(kpoints),
+        kpts=kpoints.tolist(),
+        kpts_weights=[1]*len(kpoints),)
+    
+    kp.write_file(f"{folder}/KPOINTS")
+
+def write_eff_mass(
+    k0_frac: NDArray,
+    structure: Structure,
+    functional: str,
+    encut: int,
+    folder: str = "eff_mass",
+    mesh: tuple = (5, 5, 5),
+    delta: float = 0.01,
+):
+
+    kp = _generate_local_kpoints(
+        k0_frac=k0_frac,
+        mesh=mesh,
+        delta=delta,
+    )
+
+    write_vasp_calculation(
+        structure=structure,
+        recipe=functional,
+        out_dir=folder,
+        patches=["eff_mass"],
+        user_incar_settings={"ENCUT": encut, "ISYM":0, "ICHARG":0},
+        user_kpoints_settings=kp,
+    )
