@@ -388,8 +388,10 @@ def make_blank_plot(optics_directory, direct_gap, indirect_gap,
     eff_flat, eff_lam, eff_slme, thickness_range = _thickness_calc(thickness_range, alpha_m, use_slme, n, 
                                                                   energy_abs, alpha_cm, direct_gap, indirect_gap, n_real, bb_phot_wl, 
                                                                   sol_wl_m, sol_phot_flux, sol_wl, Qi, power_in)
+
+    linestyle="--" if np.isclose(direct_gap, indirect_gap) else "-"
             
-    plot_blank(use_slme, thickness_range, eff_slme, eff_lam, eff_flat)
+    plot_blank(use_slme, thickness_range, eff_slme, eff_lam, eff_flat, linestyle)
 
 
 def power_efficiency(A_E, energy_abs, n_real, alpha_m, d):
@@ -527,7 +529,7 @@ def _thickness_calc(thickness_range, alpha_m, use_slme, n, energy_abs, alpha_cm,
             
         return eff_flat, eff_lam, eff_slme, thickness_range
             
-def plot_blank(use_slme, thickness_range, eff_slme, eff_lam, eff_flat):
+def plot_blank(use_slme, thickness_range, eff_slme, eff_lam, eff_flat, linestyle):
     """
     Plots thickness-dependent maximum photovoltaic efficiency for different optical models.
 
@@ -552,7 +554,7 @@ def plot_blank(use_slme, thickness_range, eff_slme, eff_lam, eff_flat):
     if use_slme:
         ax.plot(thickness_range, eff_slme, color = 'blue', label="SLME")
     ax.plot(thickness_range, eff_lam, color = 'green', label="Blank Lambertian")
-    ax.plot(thickness_range, eff_flat, color = 'orange', label="Blank Flat")
+    ax.plot(thickness_range, eff_flat, color = 'orange', label="Blank Flat", linestyle=linestyle)
     ax.set_xscale("log")
     ax.set_xlabel("Film Thickness / m", labelpad=5)
     ax.set_ylabel(r"Max PV Efficiency $(\eta_\mathrm{Max})$ / %")
