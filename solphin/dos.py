@@ -14,12 +14,8 @@ from pymatgen.io.vasp import Vasprun
 from pymatgen.core.structure import Structure
 from solphin.vasp_inputs import write_vasp_calculation
 from pymatgen.io.vasp.inputs import Kpoints
-from pymatgen.electronic_structure.bandstructure import BandStructure, BandStructureSymmLine
-from pymatgen.electronic_structure.core import Spin
 import scipy.constants as sc
 from scipy.constants import physical_constants as pc
-
-from solphin.band_structure import get_band_structure
 
 HBAR = sc.hbar   # J·s
 M_E  = pc["atomic unit of mass"][0]   # kg
