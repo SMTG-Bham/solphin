@@ -604,7 +604,7 @@ def test_dos_mass_windows(
     print("=" * 78)
 
     print(
-        f"  Crovetto DOS effective-mass convergence "
+        f"  FOM DOS effective-mass convergence "
         f"({carrier})"
     )
 
@@ -702,7 +702,7 @@ def _format_em_table(
     )
 
     marker = (
-        "  ← Crovetto DOS mass"
+        "  ← FOM DOS mass"
         if is_dos_carrier
         else ""
     )
@@ -780,7 +780,7 @@ def _format_dos_summary(
         f"  Cell volume         : "
         f"{result.cell_volume_m3:.3e} m³",
         "",
-        "  ── Crovetto DOS Effective Masses "
+        "  ── FOM DOS Effective Masses "
         + "─" * 23,
     ]
 
@@ -1070,7 +1070,7 @@ def compute_dos(
 
         print(
             "  Computing electron "
-            "Crovetto DOS effective mass..."
+            "FOM DOS effective mass..."
         )
 
         try:
@@ -1099,7 +1099,7 @@ def compute_dos(
 
         print(
             "  Computing hole "
-            "Crovetto DOS effective mass..."
+            "FOM DOS effective mass..."
         )
 
         try:
