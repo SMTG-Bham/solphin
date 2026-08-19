@@ -79,6 +79,65 @@ def plot_FOM(
         tau_range:tuple[float,float], 
         mu_range:tuple[float,float]):
 
+    """
+    Plots the photovoltaic figure of merit as a function of key transport parameters.
+
+    This function evaluates and plots the photovoltaic figure of merit while
+    independently varying dopant density, carrier lifetime, and carrier
+    mobility. For each plot, the other two transport parameters are held fixed
+    at their supplied values.
+
+    Parameters:
+        fig(Figure): Matplotlib figure containing the axes used for the
+            figure-of-merit plots.
+
+        axes(list[Axes]): List of three Matplotlib axes used to plot the figure
+            of merit against dopant density, carrier lifetime, and mobility,
+            respectively.
+
+        E_gap(float): Electronic band gap used in the photovoltaic efficiency
+            calculation.
+
+        photon_spectrum: Incident photon spectrum used in the photovoltaic
+            efficiency calculation.
+
+        alpha: Absorption coefficient data used in the photovoltaic efficiency
+            calculation.
+
+        tau(float): Carrier lifetime held fixed when varying dopant density and
+            mobility.
+
+        sigma: Carrier capture cross section used in the photovoltaic efficiency
+            calculation.
+
+        dos_mass(float): Density-of-states effective mass used in the
+            photovoltaic efficiency calculation.
+
+        dop_density(float): Dopant density held fixed when varying carrier
+            lifetime and mobility.
+
+        epsilon(float): Dielectric constant used in the photovoltaic efficiency
+            calculation.
+
+        mu(float): Carrier mobility held fixed when varying dopant density and
+            carrier lifetime.
+
+        Tcell(float): Cell temperature used in the photovoltaic efficiency
+            calculation.
+
+        dop_range(tuple[float, float]): Minimum and maximum dopant densities
+            over which the figure of merit is evaluated.
+
+        tau_range(tuple[float, float]): Minimum and maximum carrier lifetimes
+            over which the figure of merit is evaluated.
+
+        mu_range(tuple[float, float]): Minimum and maximum carrier mobilities
+            over which the figure of merit is evaluated.
+
+    Returns:
+        None
+    """
+
     #For each of the three quantities, take the other two as fixed and iterate over a sensible range
 
     #Plot vs dopant density
@@ -105,6 +164,19 @@ def plot_FOM(
     axes[2].set_title("Figure of Merit vs Carrier Mobility \n" + "(Density=" + f"{dop_density:.2e}" + r", $\tau$="+ f"{tau:.2e}" + ")")
 
 def _get_step(quantity_range):
+    """
+    Calculates the step size for a specified quantity range.
+
+    This function divides the interval between the minimum and maximum values
+    of the supplied range into 100 equal steps.
+
+    Parameters:
+        quantity_range(tuple): Minimum and maximum values defining the range,
+            specified as (minimum, maximum).
+
+    Returns:
+        float: Step size corresponding to one hundredth of the supplied range.
+    """
     return (quantity_range[1] - quantity_range[0])/100
 
 def plot_final_result_interactive(
@@ -153,6 +225,28 @@ def plot_final_result_interactive(
 
     def plot_combined_wrapper(density, lifetime, mobility):
 
+        """
+        Updates the combined figure using the selected transport parameters.
+
+        This function clears the existing figure axes and redraws the
+        figure-of-merit plots using the specified doping density, carrier
+        lifetime, and mobility together with the fixed material and simulation
+        parameters defined in the enclosing scope.
+
+        Parameters:
+            density(float): Doping density used for the figure-of-merit
+                calculation.
+
+            lifetime(float): Carrier lifetime used for the figure-of-merit
+                calculation.
+
+            mobility(float): Carrier mobility used for the figure-of-merit
+                calculation.
+
+        Returns:
+            None
+        """
+
         for ax in fig.axes:
             ax.clear()
             ax.set_xlabel("")
@@ -188,6 +282,21 @@ def plot_final_result_interactive(
     interact(plot_combined_wrapper, density=dopant_slider, lifetime=lifetime_slider, mobility=mobility_slider)
 
 def _clearlines(n):
+
+    """
+    Clears a specified number of previously printed terminal lines.
+
+    This function uses ANSI escape sequences to move the terminal cursor upward
+    and clear each selected line. It is intended for updating or replacing
+    previously printed command-line output.
+
+    Parameters:
+        n(int): Number of terminal lines to move upward and clear.
+
+    Returns:
+        None
+    """
+        
     LINE_UP = '\033[1A'
     LINE_CLEAR = '\x1b[2K'
     for i in range(n):
