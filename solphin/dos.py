@@ -45,7 +45,7 @@ def plot_dos(filename, xmin=-3, xmax=3, gaussian=0.05, save=False):
             the DOS in eV. Default is 0.05.
 
         save(bool, optional): If True, saves the generated figure as
-            "dos.pdf". Default is False.
+            "dos.png". Default is False.
 
     Returns:
         None
@@ -54,7 +54,7 @@ def plot_dos(filename, xmin=-3, xmax=3, gaussian=0.05, save=False):
     dosplot(filename=filename, xmin=xmin, xmax=xmax, gaussian=gaussian, plt=plt)
 
     if save:
-        plt.savefig("dos.pdf")
+        plt.savefig("dos.png")
 
     plt.show()
     return
