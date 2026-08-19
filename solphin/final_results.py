@@ -357,3 +357,93 @@ def print_final_result_interactive(
     mobility_slider = widgets.FloatSlider(value=mu, min=mu_range[0], max=mu_range[1], step=_get_step(mu_range), description="Carrier Mobility (cm²V⁻¹s⁻¹)", layout=widget_layout, style=widget_style)
 
     interact(print_fom, density=dopant_slider, lifetime=lifetime_slider, mobility=mobility_slider)
+
+
+def mobility_plot(
+    E_gap,
+    photon_spectrum,
+    alpha,
+    sigma,
+    dos_mass,
+    epsilon,
+    dop_density=1e10,
+    mob_min=-2,
+    mob_max=9,
+    lifetime_min=-15,
+    lifetime_max=3,
+    step=1,
+    Tcell=300
+):
+
+    from matplotlib.colors import LogNorm
+    from matplotlib.cm import ScalarMappable
+
+    # Exponents
+    mobility_exp = np.arange(mob_min, mob_max, step)
+    lifetime_exp = np.arange(lifetime_min, lifetime_max, step)
+
+    # Actual values: 1e-2, 1e-1, 1e0, ...
+    mobility_values = 10.0 ** mobility_exp
+    lifetime_values = 10.0 ** lifetime_exp
+
+    # Larger figure
+    fig, ax = plt.subplots(figsize=(12, 8))
+
+    # Colour represents actual lifetime
+    cmap = plt.colormaps["viridis"]
+    norm = LogNorm(
+        vmin=lifetime_values.min(),
+        vmax=lifetime_values.max()
+    )
+
+    # One line per lifetime
+    for tau in lifetime_values:
+
+        efficiency_list = []
+
+        for mu in mobility_values:
+
+            efficiency = SQ_relative_FOM_PV_efficiency(
+                E_gap,
+                photon_spectrum,
+                alpha,
+                tau=tau,
+                sigma=sigma,
+                dos_mass=dos_mass,
+                dop_density=dop_density,
+                epsilon=epsilon,
+                mu=mu,
+                Tcell=Tcell
+            )
+
+            efficiency_list.append(efficiency)
+
+        ax.plot(
+            mobility_values,
+            efficiency_list,
+            color=cmap(norm(tau)),
+            linewidth=2
+        )
+
+    # Logarithmic x-axis
+    ax.set_xscale("log")
+
+    # Colour bar
+    sm = ScalarMappable(norm=norm, cmap=cmap)
+    sm.set_array([])
+
+    cbar = fig.colorbar(sm, ax=ax, pad=0.02)
+    cbar.set_label("Lifetime")
+
+    # Labels
+    ax.set_xlabel("Mobility")
+    ax.set_ylabel("PV efficiency")
+
+    # Larger text
+    ax.tick_params(axis="both", labelsize=12)
+    ax.xaxis.label.set_size(14)
+    ax.yaxis.label.set_size(14)
+    cbar.ax.tick_params(labelsize=12)
+
+    fig.tight_layout()
+    plt.show()
