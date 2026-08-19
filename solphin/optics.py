@@ -345,7 +345,7 @@ def _interpolate_a(energy_abs, alpha_m, direct_gap, sol_wl):
 
 
 def make_blank_plot(optics_directory, direct_gap, indirect_gap,
-                    spectrum_type="AM1.5", Qi=1.0, n=3.5, thickness_range=None):
+                    spectrum_type="AM1.5", Qi=1.0, n=3.5, thickness_range=None, save=False):
     
     """
     Generates a blank efficiency plot for optical absorption analysis as a function of thickness.
@@ -391,7 +391,7 @@ def make_blank_plot(optics_directory, direct_gap, indirect_gap,
 
     linestyle="--" if np.isclose(direct_gap, indirect_gap) else "-"
             
-    plot_blank(use_slme, thickness_range, eff_slme, eff_lam, eff_flat, linestyle)
+    plot_blank(use_slme, thickness_range, eff_slme, eff_lam, eff_flat, linestyle, save)
 
 
 def power_efficiency(A_E, energy_abs, n_real, alpha_m, d):
@@ -529,7 +529,7 @@ def _thickness_calc(thickness_range, alpha_m, use_slme, n, energy_abs, alpha_cm,
             
         return eff_flat, eff_lam, eff_slme, thickness_range
             
-def plot_blank(use_slme, thickness_range, eff_slme, eff_lam, eff_flat, linestyle):
+def plot_blank(use_slme, thickness_range, eff_slme, eff_lam, eff_flat, linestyle, save):
     """
     Plots thickness-dependent maximum photovoltaic efficiency for different optical models.
 
@@ -549,7 +549,7 @@ def plot_blank(use_slme, thickness_range, eff_slme, eff_lam, eff_flat, linestyle
         None
     """
 
-    fig, ax = plt.subplots(figsize=(6, 4))
+    fig, ax = plt.subplots(figsize=(8, 4))
 
     if use_slme:
         ax.plot(thickness_range, eff_slme, color = 'blue', label="SLME")
@@ -561,8 +561,12 @@ def plot_blank(use_slme, thickness_range, eff_slme, eff_lam, eff_flat, linestyle
     ax.set_ylim([0, 35])
     ax.margins(x=0)
     ax.legend()
-    plt.tight_layout()
+    plt.tight_layout()    
+    if save:
+        plt.savefig("slme.png", dpi=700)
     plt.show()
+
+
 
 def _spectrum_nm_to_photon_flux(spectrum):
     """
