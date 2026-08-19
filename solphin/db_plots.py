@@ -179,7 +179,7 @@ def sq_limit_plot(spectrum, Egap, Tcell, ax=None):
     # Not for whole array hack to remove divide by 0 errors
     for row in a[2:]:
         # print row
-        row[1] = db_fom.max_eff(row[0], spectrum, Tcell)
+        row[1] = db_fom.max_eff(row[0], spectrum, Tcell) * 100
 
     canvas = ax if ax else plt
 
@@ -187,19 +187,20 @@ def sq_limit_plot(spectrum, Egap, Tcell, ax=None):
     canvas.plot(a[2:, 0], a[2:, 1])
     e_gap = Egap
     p_above_1_1 = db_fom.max_eff(e_gap, spectrum, Tcell)
+    percentage_sq = p_above_1_1 * 100
     
-    canvas.plot([e_gap], [p_above_1_1], 'ro')
-    canvas.text(e_gap+0.05, p_above_1_1, '{:.4}eV, {:.4}'.format(e_gap, p_above_1_1))
+    canvas.plot([e_gap], [percentage_sq], 'ro')
+    canvas.text(e_gap+0.05, percentage_sq, '{:.4}eV, {:.4}'.format(e_gap, percentage_sq))
 
     if ax:
         ax.set_xlabel('$E_{gap}$ (eV)')
-        ax.set_ylabel('Max efficiency')
+        ax.set_ylabel('Max efficiency (%)')
         ax.set_title('SQ Limit')
         return
     
     else:
         plt.xlabel('$E_{gap}$ (eV)')
-        plt.ylabel('Max efficiency')
+        plt.ylabel('Max efficiency (%)')
         plt.title('SQ Limit')
 
         fig = plt.gcf()
