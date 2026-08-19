@@ -344,7 +344,7 @@ def _is_soc_vasprun(vr: BSVasprun) -> bool:
         return False
 
 
-def get_band_structure(band_directory:str|Path, splits:int) -> tuple[BandStructureSymmLine, bool]:
+def get_band_structure(band_directory:str|Path, splits:int) -> BandStructureSymmLine:
     """
     Loads and reconstructs a symmetry-line band structure from VASP calculation outputs.
 
@@ -361,9 +361,8 @@ def get_band_structure(band_directory:str|Path, splits:int) -> tuple[BandStructu
             in split directories; otherwise it reads a single file.
 
     Returns:
-        tuple[BandStructureSymmLine, bool]: reconstructed band structure object containing
-            eigenvalues along the full symmetry line path, and a boolean indicating
-            whether spin-orbit coupling was included.
+        BandStructureSymmLine: reconstructed band structure object containing
+            eigenvalues along the full symmetry line path.
     """
 
     if splits > 1:
@@ -383,7 +382,7 @@ def get_band_structure(band_directory:str|Path, splits:int) -> tuple[BandStructu
         
     bs:BandStructureSymmLine = get_reconstructed_band_structure(bandstructures)
 
-    return bs, _is_soc_vasprun(vr)
+    return bs
 
 #Simplified version of sumo.cli.bandplot
 def plot_band_structure(

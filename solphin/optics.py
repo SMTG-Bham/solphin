@@ -560,7 +560,6 @@ def plot_blank(use_slme, thickness_range, eff_slme, eff_lam, eff_flat, linestyle
     ax.set_ylabel(r"Max PV Efficiency $(\eta_\mathrm{Max})$ / %")
     ax.set_ylim([0, 35])
     ax.margins(x=0)
-    ax.set_aspect(0.06)
     ax.legend()
     plt.tight_layout()
     plt.show()
