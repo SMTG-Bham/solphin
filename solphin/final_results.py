@@ -84,7 +84,7 @@ def plot_FOM(
     #Plot vs dopant density
     densities = np.logspace(np.log10(dop_range[0]), np.log10(dop_range[1]))
     dop_foms = [SQ_relative_FOM_PV_efficiency(E_gap=E_gap, photon_spectrum=photon_spectrum, alpha=alpha, tau=tau, sigma=sigma, dos_mass=dos_mass, dop_density=d, epsilon=epsilon, mu=mu, Tcell=Tcell)[-1] for d in densities]
-    axes[0].plot(densities, dop_foms, "o-", markersize=6)
+    axes[0].plot(densities, dop_foms, "-", markersize=6)
     axes[0].set_xscale("log")
     axes[0].set_xlabel("Dopant Density (cm$^{-3}$)")
     axes[0].set_ylabel("Figure of Merit")
@@ -93,14 +93,14 @@ def plot_FOM(
     #Plot vs lifetime
     lifetimes = np.linspace(tau_range[0], tau_range[1])
     lifetime_foms = [SQ_relative_FOM_PV_efficiency(E_gap=E_gap, photon_spectrum=photon_spectrum, alpha=alpha, tau=l, sigma=sigma, dos_mass=dos_mass, dop_density=dop_density, epsilon=epsilon, mu=mu, Tcell=Tcell)[-1] for l in lifetimes]
-    axes[1].plot(lifetimes, lifetime_foms, "o-", markersize=6)
+    axes[1].plot(lifetimes, lifetime_foms, "-", markersize=6)
     axes[1].set_xlabel("Carrier Lifetime (s)")
     axes[1].set_title("Figure of Merit vs Carrier Lifetime \n"+r"($\mu$="+str(mu)+r", Density=" + f"{dop_density:.2e}" + ")")
 
     #Plot vs mobility
     mobilities = np.linspace(mu_range[0], mu_range[1])
     mob_foms = [SQ_relative_FOM_PV_efficiency(E_gap=E_gap, photon_spectrum=photon_spectrum, alpha=alpha, tau=tau, sigma=sigma, dos_mass=dos_mass, dop_density=dop_density, epsilon=epsilon, mu=m, Tcell=Tcell)[-1] for m in mobilities]
-    axes[2].plot(mobilities, mob_foms, "o-", markersize=6)
+    axes[2].plot(mobilities, mob_foms, "-", markersize=6)
     axes[2].set_xlabel("Carrier Mobility (cm$^2$V$^{-1}$s$^{-1}$)")
     axes[2].set_title("Figure of Merit vs Carrier Mobility \n" + "(Density=" + f"{dop_density:.2e}" + r", $\tau$="+ f"{tau:.2e}" + ")")
 
