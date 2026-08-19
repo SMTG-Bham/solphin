@@ -162,26 +162,24 @@ def plot_absorption(optics_directory, max=4, min=0, save=False):
     eps_inf, eps_inf_tensor, eps_full, eps_imag, energies = calc_dielectric(filename)
     data = calc_absorption(eps_full, energies)
 
-    plt.figure(figsize=(5, 7))
+    plt.figure(figsize=(3, 5))
     absorption = data["absorption"] / 1e7
 
     plt.plot(
         energies,
         absorption,
-        linewidth=1.8)
+        linewidth=1.8,
+        color='#1f77b4')
 
     plt.gca().xaxis.set_major_formatter(
     FormatStrFormatter('%.1f')
     )
-
 
     plt.xlabel("Photon energy (eV)", fontsize=16)
     plt.ylabel(
         r"Absorption coefficient (10$^{5}$ cm$^{-1}$)",
         fontsize=16,
     )
-
-    plt.legend(fontsize=12)
 
     plt.subplots_adjust(
     left=0.15,
