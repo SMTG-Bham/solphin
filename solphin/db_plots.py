@@ -270,7 +270,7 @@ def plot_db_combined_interactive(Tmin=1, Tmax=1000, Emin=0.1, Emax=3.1):
     fig.canvas.footer_visible = False      # hides the footer
     fig.canvas.toolbar_visible = False     # hides the toolbar
 
-    # wrapping that clear axes and redraws combined DB plots
+    # wrapping that clears axes and redraws combined DB plots
 
     def plot_combined_wrapper(Egap, Tcell, spectrum_type):
 
