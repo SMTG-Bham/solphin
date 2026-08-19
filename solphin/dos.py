@@ -139,6 +139,31 @@ class DOSResult:
 def _load_dos(
         dos_vasprun: str
 ):
+    """
+    Loads the electronic density of states (DOS) from a VASP calculation output file.
+
+    This function parses a VASP ``vasprun.xml`` file, extracts the complete
+    density of states, and calculates the total DOS by summing the density
+    contributions from all available spin channels.
+
+    Parameters:
+        dos_vasprun(str): Path to the VASP ``vasprun.xml`` file containing the
+            density of states data.
+
+    Returns:
+        tuple: A tuple containing the parsed VASP data and density of states
+            information:
+
+            vr(Vasprun): Parsed VASP calculation output.
+
+            cdos(CompleteDos): Complete density of states object containing the
+                total and projected DOS information.
+
+            energies(np.ndarray): Energy values corresponding to the DOS in eV.
+
+            densities(np.ndarray): Total electronic density of states obtained
+                by summing over all spin channels.
+    """
 
     vr = Vasprun(
         dos_vasprun,
@@ -167,6 +192,42 @@ def _load_dos(
     return vr, cdos, energies, densities
 
 def _get_band_edge(cdos, carrier, energies, energy_window, densities):
+
+    """
+    Extracts the electronic density of states near a selected band edge.
+
+    This function determines the conduction band minimum (CBM) or valence band
+    maximum (VBM) depending on the specified carrier type and extracts the DOS
+    within a given energy window from the corresponding band edge. Energies are
+    returned relative to the selected band edge.
+
+    Parameters:
+        cdos(CompleteDos): Complete density of states object containing the
+            conduction and valence band edge information.
+
+        carrier(str): Type of charge carrier. If "electrons", the conduction
+            band minimum is used. Otherwise, the valence band maximum is used.
+
+        energies(np.ndarray): Energy values corresponding to the DOS in eV.
+
+        energy_window(float): Energy range from the selected band edge over
+            which the DOS is extracted in eV.
+
+        densities(np.ndarray): Electronic density of states corresponding to
+            the supplied energy values.
+
+    Returns:
+        tuple: A tuple containing the band-edge energy and DOS data within the
+            selected energy window:
+
+            E_edge(float): Energy of the selected band edge in eV.
+
+            delta_E_ev(np.ndarray): Energy values relative to the selected band
+                edge in eV.
+
+            dos(np.ndarray): Electronic density of states within the selected
+                energy window.
+    """
 
     cbm, vbm = cdos.get_cbm_vbm()
 
@@ -202,6 +263,39 @@ def _get_band_edge(cdos, carrier, energies, energy_window, densities):
 
 def _clean_dos_values(delta_E_ev, dos, min_dos, energy_window):
 
+    """
+    Cleans and validates density of states (DOS) data near a band edge.
+
+    This function removes invalid DOS data points, including non-finite values,
+    non-positive relative energies, and DOS values below a specified threshold.
+    It also ensures that enough valid data points remain for subsequent
+    analysis.
+
+    Parameters:
+        delta_E_ev(np.ndarray): Energy values relative to the selected band edge
+            in eV.
+
+        dos(np.ndarray): Electronic density of states corresponding to the
+            relative energy values.
+
+        min_dos(float): Minimum DOS value required for a data point to be
+            retained.
+
+        energy_window(float): Energy range from the band edge used to select the
+            DOS data in eV. Used when reporting insufficient valid data points.
+
+    Returns:
+        tuple: A tuple containing the cleaned energy and DOS arrays:
+
+            delta_E_ev(np.ndarray): Valid relative energy values in eV.
+
+            dos(np.ndarray): Valid electronic density of states values.
+
+    Raises:
+        ValueError: If fewer than three usable DOS data points remain after
+            filtering.
+    """
+
     good = (
         np.isfinite(delta_E_ev)
         & np.isfinite(dos)
@@ -222,6 +316,32 @@ def _clean_dos_values(delta_E_ev, dos, min_dos, energy_window):
 
 def _convert_dos(vr, delta_E_ev, dos):
 
+    """
+    Converts density of states (DOS) data from VASP units to SI units.
+
+    This function converts relative energy values from electronvolts to joules
+    and normalizes the DOS by the final unit-cell volume. The resulting DOS is
+    expressed per joule per cubic metre.
+
+    Parameters:
+        vr(Vasprun): Parsed VASP calculation output containing the final
+            structure and unit-cell volume.
+
+        delta_E_ev(np.ndarray): Energy values relative to the selected band edge
+            in eV.
+
+        dos(np.ndarray): Electronic density of states in states per eV.
+
+    Returns:
+        tuple: A tuple containing the converted energy and DOS arrays:
+
+            delta_E_J(np.ndarray): Energy values relative to the selected band
+                edge in J.
+
+            dos_si(np.ndarray): Electronic density of states in states per J
+                per m^3.
+    """
+
     volume_m3 = (
         vr.final_structure.volume
         * 1.0e-30
@@ -240,6 +360,27 @@ def _convert_dos(vr, delta_E_ev, dos):
     return delta_E_J, dos_si
 
 def _check_fit(A, x, y):
+
+    """
+    Evaluates the quality of a linear fit constrained to pass through the origin.
+
+    This function calculates the predicted values from a linear model of the
+    form y = A*x and evaluates the goodness of fit using the coefficient of
+    determination (R^2).
+
+    Parameters:
+        A(float): Fitted proportionality constant defining the slope of the
+            linear model.
+
+        x(np.ndarray): Independent variable values used in the fit.
+
+        y(np.ndarray): Observed dependent variable values to be compared with
+            the fitted model.
+
+    Returns:
+        float: Coefficient of determination (R^2) describing the quality of the
+            linear fit. A value of 1 indicates a perfect fit.
+    """
 
     y_pred = (
         A * x
@@ -261,6 +402,44 @@ def _check_fit(A, x, y):
     return r2
 
 def _calculate_DOS(delta_E_J, dos_si):
+
+    """
+    Calculates the density-of-states effective mass from DOS data near a band edge.
+
+    This function fits the density of states to the square-root energy
+    dependence expected for a three-dimensional parabolic band and uses the
+    fitted coefficient to calculate the DOS effective mass. The quality of the
+    fit is evaluated using the coefficient of determination (R^2).
+
+    Parameters:
+        delta_E_J(np.ndarray): Energy values relative to the selected band edge
+            in J.
+
+        dos_si(np.ndarray): Electronic density of states in states per J per
+            m^3.
+
+    Returns:
+        tuple: A tuple containing the calculated effective mass and fitting
+            information:
+
+            m_eff_rel(float): DOS effective mass expressed relative to the free
+                electron mass.
+
+            m_eff_si(float): DOS effective mass in kg.
+
+            r2(float): Coefficient of determination (R^2) describing the
+                quality of the DOS fit.
+
+            y(np.ndarray): DOS values used as the dependent variable in the
+                fit.
+
+            A(float): Fitted coefficient relating the DOS to the square root of
+                energy.
+
+    Raises:
+        ValueError: If the energy data have zero spread or if the fitted DOS
+            coefficient is non-positive.
+    """
 
     x = np.sqrt(
         delta_E_J
@@ -314,6 +493,43 @@ def get_dos_effective_mass(
         min_dos: float = 0.0,
 ) -> _DOSEffectiveMassResult:
 
+    """
+    Calculates the density-of-states effective mass for electrons or holes.
+
+    This function extracts the electronic density of states near the selected
+    band edge from a VASP ``vasprun.xml`` file, filters and converts the DOS
+    data to SI units, and fits the expected square-root energy dependence for a
+    three-dimensional parabolic band. The resulting fit is used to calculate
+    the DOS effective mass and assess the quality of the fit.
+
+    Parameters:
+        dos_vasprun(str): Path to the VASP ``vasprun.xml`` file containing the
+            density of states data.
+
+        carrier(str, optional): Type of charge carrier for which the effective
+            mass is calculated. Must be either "electrons" or "holes". Default
+            is "electrons".
+
+        energy_window(float, optional): Energy range from the selected band edge
+            over which the DOS is used for fitting in eV. Default is 0.15.
+
+        min_dos(float, optional): Minimum DOS value required for a data point to
+            be included in the fit. Default is 0.0.
+
+    Returns:
+        _DOSEffectiveMassResult: Object containing the calculated DOS effective
+            mass and fitting information, including the effective mass relative
+            to the free electron mass, the effective mass in kg, fit quality,
+            number of fitted points, selected band-edge energy, fitting energy
+            window, and fitted DOS coefficient.
+
+    Raises:
+        ValueError: If ``carrier`` is not "electrons" or "holes", if fewer than
+            three usable DOS points remain after filtering, if the selected
+            energy data have zero spread, or if the fitted DOS coefficient is
+            non-positive.
+    """
+
     if carrier not in ("electrons", "holes"):
         raise ValueError(
             f"Carrier must be 'electrons' or 'holes' recieved: {carrier!r}"
@@ -351,10 +567,39 @@ def test_dos_mass_windows(
     min_dos: float = 0.0,
 ):
     """
-    Test how sensitive the fitted DOS effective mass is to
-    the chosen fitting window.
-    """
+    Tests the sensitivity of the DOS effective mass to the fitting energy window.
 
+    This function calculates the density-of-states effective mass over a range
+    of fitting windows and prints a convergence table containing the fitted
+    effective mass, fit quality, and number of DOS points used for each window.
+    Failed fits are reported without interrupting the remaining calculations.
+
+    Parameters:
+        dos_vasprun(str): Path to the VASP ``vasprun.xml`` file containing the
+            density of states data.
+
+        carrier(str, optional): Type of charge carrier for which the effective
+            mass is calculated. Must be either "electrons" or "holes". Default
+            is "electrons".
+
+        windows(tuple, optional): Sequence of energy windows in eV used to test
+            the sensitivity of the DOS effective-mass fit. Default is
+            (0.05, 0.10, 0.15, 0.20, 0.30).
+
+        min_dos(float, optional): Minimum DOS value required for a data point to
+            be included in each fit. Default is 0.0.
+
+    Returns:
+        list: A list of ``_DOSEffectiveMassResult`` objects corresponding to
+            each successful fitting window. Windows for which the fit fails are
+            not included.
+
+    Notes:
+        A convergence table is printed to standard output showing the fitting
+        window, DOS effective mass relative to the free electron mass, R^2
+        value, and number of fitted DOS points for each successful calculation.
+    """
+        
     print("")
     print("=" * 78)
 
@@ -417,6 +662,33 @@ def _format_em_table(
     fit: Optional[float],
 ) -> list:
 
+    """
+    Formats DOS effective-mass results for display in a summary table.
+
+    This function converts a DOS effective-mass result into a list of formatted
+    text lines containing the carrier type, fitted band edge, effective mass,
+    fit quality, number of fitted points, and fitting energy window. The
+    selected DOS carrier can optionally be marked as the Crovetto DOS mass.
+
+    Parameters:
+        em(_DOSEffectiveMassResult): DOS effective-mass result containing the
+            calculated mass and fitting information.
+
+        edge(float): Energy of the band edge at which the effective mass was
+            fitted in eV.
+
+        is_dos_carrier(bool): If True, marks the effective mass as the Crovetto
+            DOS mass in the formatted output.
+
+        fit(float, optional): Fit quality expressed as the coefficient of
+            determination (R²). If None, the fit quality is displayed as
+            "N/A".
+
+    Returns:
+        list: A list of formatted strings containing the DOS effective-mass
+            results for display.
+    """
+
     edge_label = (
         "CBM"
         if em.carrier == "electrons"
@@ -465,6 +737,24 @@ def _format_em_table(
 def _format_dos_summary(
     result: "DOSResult",
 ) -> str:
+
+    """
+    Formats a complete density-of-states (DOS) result summary for display.
+
+    This function generates a formatted text summary containing the primary
+    carrier type, corresponding band-edge energy, cell volume, and Crovetto DOS
+    effective-mass results for electrons and holes. If an effective mass was
+    not calculated for a carrier type, this is indicated in the output.
+
+    Parameters:
+        result(DOSResult): DOS result containing the carrier type, band-edge
+            energies, cell volume, electron and hole effective masses, and
+            associated fit-quality information.
+
+    Returns:
+        str: Formatted multi-line string summarizing the DOS calculation and
+            available effective-mass results.
+    """
 
     edge_label = (
         "CBM"
@@ -543,6 +833,22 @@ def print_dos_summary(
     result: "DOSResult",
 ) -> None:
 
+    """
+    Prints a formatted density-of-states (DOS) result summary.
+
+    This function generates the complete DOS summary using the associated
+    formatting function and prints it to standard output. The summary includes
+    the primary carrier, band-edge information, cell volume, and available
+    electron and hole DOS effective-mass results.
+
+    Parameters:
+        result(DOSResult): DOS result containing the calculated density-of-states
+            and effective-mass information to be displayed.
+
+    Returns:
+        None
+    """
+
     print(
         _format_dos_summary(
             result
@@ -555,6 +861,34 @@ def _check_dos_fit_quality(
     windows=(0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.40),
     min_dos: float = 0.0,
 ) -> bool:
+
+    """
+    Checks whether a DOS effective-mass fit is sufficiently well resolved.
+
+    This function evaluates the quality of a calculated DOS effective mass using
+    predefined thresholds for the coefficient of determination and number of
+    fitted DOS points. If the fit is poorly resolved, a warning is printed
+    together with recommendations and a fitting-window convergence test.
+
+    Parameters:
+        result(_DOSEffectiveMassResult): DOS effective-mass result containing the
+            fitted mass, fit quality, number of fitted points, and carrier type.
+
+        dos_vasprun(str): Path to the VASP ``vasprun.xml`` file containing the
+            density of states data. Used to test the fitting-window dependence
+            when the fit is poorly resolved.
+
+        windows(tuple, optional): Sequence of energy windows in eV used to test
+            the sensitivity of a poorly resolved DOS effective-mass fit. Default
+            is (0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.40).
+
+        min_dos(float, optional): Minimum DOS value required for a data point to
+            be included in the fitting-window tests. Default is 0.0.
+
+    Returns:
+        bool: True if the DOS effective-mass fit passes the quality check.
+            False if the fit is poorly resolved and a warning is issued.
+    """
 
     poor_fit = (
         result.fit_quality < MIN_DOS_FIT_R2
@@ -645,6 +979,50 @@ def compute_dos(
     energy_window: float = 0.15,
     min_dos: float = 0.0,
 ) -> DOSResult:
+
+    """
+    Computes density-of-states information and the corresponding effective mass.
+
+    This function parses a VASP ``vasprun.xml`` file, extracts the conduction
+    and valence band edges, and determines the DOS effective masses for
+    electrons and holes. If an effective mass is supplied explicitly, that
+    value is used as the final result instead of calculating a Crovetto DOS
+    effective mass. Calculated fits are also checked for sufficient quality.
+
+    Parameters:
+        dos_vasprun(str): Path to the VASP ``vasprun.xml`` file containing the
+            density of states data.
+
+        m_eff(float, optional): User-supplied effective mass expressed relative
+            to the free electron mass. If provided, this value is used as the
+            final effective mass and DOS effective-mass fitting is skipped.
+            Default is None.
+
+        carrier(str, optional): Primary charge carrier for which the final
+            effective mass is selected. Must be either "electrons" or "holes".
+            Default is "electrons".
+
+        energy_window(float, optional): Energy range from each band edge over
+            which the DOS effective-mass fits are performed in eV. Default is
+            0.15.
+
+        min_dos(float, optional): Minimum DOS value required for a data point to
+            be included in the effective-mass fits. Default is 0.0.
+
+    Returns:
+        DOSResult: Object containing the cell volume, zero-referenced band-edge
+            energies, selected effective mass, electron and hole DOS
+            effective-mass results, and associated fit-quality information.
+
+    Raises:
+        ValueError: If ``carrier`` is not "electrons" or "holes", or if the
+            requested carrier effective mass cannot be calculated when no
+            user-supplied effective mass is provided.
+
+    Warns:
+        UserWarning: If the electron or hole DOS effective-mass calculation
+            fails. The calculation for the other carrier is still attempted.
+    """
 
     if carrier not in (
         "electrons",
@@ -824,6 +1202,29 @@ def _generate_local_kpoints(
     delta: float,
 ) -> Kpoints:
 
+    """
+    Generates a local reciprocal-space k-point mesh around a band-edge k-point.
+
+    This function constructs a uniform three-dimensional grid of k-points
+    centred on a specified fractional reciprocal-space coordinate. The grid
+    extends by a specified displacement in each reciprocal direction and is
+    returned as a VASP KPOINTS object in reciprocal-coordinate mode.
+
+    Parameters:
+        k0_frac(NDArray): Fractional reciprocal-space coordinates of the
+            central k-point around which the local mesh is generated.
+
+        mesh(tuple): Number of k-points along each reciprocal-space direction,
+            specified as (nx, ny, nz).
+
+        delta(float): Maximum fractional reciprocal-space displacement from the
+            central k-point along each direction.
+
+    Returns:
+        Kpoints: VASP KPOINTS object containing the generated local reciprocal-
+            space mesh with equal weights assigned to all k-points.
+    """
+
     k0_frac = np.asarray(k0_frac, dtype=float)
 
     nx, ny, nz = mesh
@@ -859,13 +1260,28 @@ def write_local_kpoints(
         ):
     
     """
-    Generates the denser KPOINTS VASP file for the kpoints around the CBM/VBM.
+    Generates and writes a dense local VASP KPOINTS file around a band-edge k-point.
+
+    This function generates a three-dimensional reciprocal-space k-point mesh
+    centred on a specified band-edge k-point and writes the resulting mesh to a
+    ``KPOINTS`` file in the specified calculation folder.
 
     Parameters:
-        folder(string): location of the calculation folder.
-        k0_frac(array): Fractional coordinates of the CBM/VBM and/or most direct bandgap.
-        mesh(tuple): Number of k-points in each direction.
-        delta(float): Maximum displacement from the k-point centre in fractional reciprocal coordinates
+        folder(str): Path to the calculation folder in which the generated
+            ``KPOINTS`` file is written.
+
+        k0_frac(NDArray): Fractional reciprocal-space coordinates of the
+            central k-point, typically corresponding to the CBM, VBM, or a
+            relevant direct band-gap location.
+
+        mesh(tuple): Number of k-points along each reciprocal-space direction,
+            specified as (nx, ny, nz).
+
+        delta(float): Maximum fractional reciprocal-space displacement from the
+            central k-point along each direction.
+
+    Returns:
+        None
     """
 
     kpoints = _generate_local_kpoints(k0_frac, mesh, delta)
@@ -890,6 +1306,40 @@ def write_eff_mass(
     mesh: tuple = (5, 5, 5),
     delta: float = 0.01,
 ):
+
+    """
+    Writes a VASP calculation setup for an effective-mass calculation.
+
+    This function generates a dense local reciprocal-space k-point mesh around
+    a specified band-edge k-point and uses it to prepare a VASP effective-mass
+    calculation. The calculation is written using the requested functional,
+    plane-wave cutoff energy, and effective-mass INCAR settings.
+
+    Parameters:
+        k0_frac(NDArray): Fractional reciprocal-space coordinates of the
+            band-edge k-point around which the local k-point mesh is generated.
+
+        structure(Structure): Crystal structure used to generate the VASP
+            calculation input files.
+
+        functional(str): VASP calculation recipe or exchange-correlation
+            functional used to prepare the effective-mass calculation.
+
+        encut(int): Plane-wave cutoff energy used for the VASP calculation in
+            eV.
+
+        folder(str, optional): Path to the folder in which the VASP calculation
+            input files are written. Default is "eff_mass".
+
+        mesh(tuple, optional): Number of k-points along each reciprocal-space
+            direction, specified as (nx, ny, nz). Default is (5, 5, 5).
+
+        delta(float, optional): Maximum fractional reciprocal-space displacement
+            from the central k-point along each direction. Default is 0.01.
+
+    Returns:
+        None
+    """
 
     kp = _generate_local_kpoints(
         k0_frac=k0_frac,

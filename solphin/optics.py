@@ -139,7 +139,7 @@ def generate_n_real(optics_directory):
     print_n_real_file(data, energies, optics_directory)
 
 
-def plot_absorption(optics_directory, max=4, min=0, save=False):
+def plot_absorption(optics_directory, xmax=4, xmin=0, save=False):
 
     """
     Plots the optical absorption spectrum from a VASP optics calculation.
@@ -151,8 +151,8 @@ def plot_absorption(optics_directory, max=4, min=0, save=False):
             Default is 0.
         xmax(float): maximum energy value (eV) shown on the x-axis.
             Default is 6.
-        gaussian(float): Gaussian broadening applied to the spectrum in eV.
-            Default is 0.05.
+        save(boolean): allows the ability to save the figure as png in the current directory.
+            Default is False.
 
     Returns:
         None
@@ -192,7 +192,7 @@ def plot_absorption(optics_directory, max=4, min=0, save=False):
     plt.yticks(fontsize=14)
 
     plt.ylim(0, 1)
-    plt.xlim(min, max)
+    plt.xlim(xmin, xmax)
 
     if save:
         plt.savefig("absorption.png", dpi=700)
