@@ -4,7 +4,7 @@ import solphin.spectral as spectral
 from solphin.db_fom import load_spectrum
 import numpy as np
 from os.path import join
-from sumo.cli.optplot import optplot
+from matplotlib.ticker import FormatStrFormatter
 from matplotlib import pyplot as plt
 import pymatgen.analysis.solar.slme as slme_mod
 import logging
@@ -139,7 +139,7 @@ def generate_n_real(optics_directory):
     print_n_real_file(data, energies, optics_directory)
 
 
-def plot_absorption(optics_directory, xmin=0, xmax=6, gaussian=0.05, **kwargs):
+def plot_absorption(optics_directory, max=4, min=0, save=False):
 
     """
     Plots the optical absorption spectrum from a VASP optics calculation.
@@ -159,8 +159,50 @@ def plot_absorption(optics_directory, xmin=0, xmax=6, gaussian=0.05, **kwargs):
     """
 
     filename = f'{optics_directory}/vasprun.xml'
-    optplot(filenames=filename, xmin=xmin, xmax=xmax, gaussian=gaussian, directory=optics_directory, **kwargs)
+    eps_inf, eps_inf_tensor, eps_full, eps_imag, energies = calc_dielectric(filename)
+    data = calc_absorption(eps_full, energies)
+
+    plt.figure(figsize=(5, 7))
+    absorption = data["absorption"] / 1e7
+
+    plt.plot(
+        energies,
+        absorption,
+        linewidth=1.8)
+
+    plt.gca().xaxis.set_major_formatter(
+    FormatStrFormatter('%.1f')
+    )
+
+
+    plt.xlabel("Photon energy (eV)", fontsize=16)
+    plt.ylabel(
+        r"Absorption coefficient (10$^{5}$ cm$^{-1}$)",
+        fontsize=16,
+    )
+
+    plt.legend(fontsize=12)
+
+    plt.subplots_adjust(
+    left=0.15,
+    right=0.95,
+    bottom=0.12,
+    top=0.95,
+    )
+
+    plt.xticks(fontsize=14)
+    plt.yticks(fontsize=14)
+
+    plt.ylim(0, 1)
+    plt.xlim(min, max)
+
+    if save:
+        plt.savefig("absorption.png", dpi=700)
+
     plt.show()
+
+
+
 
 def _spectrum_select(spectrum_type):
     """
