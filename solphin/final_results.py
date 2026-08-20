@@ -145,9 +145,9 @@ def plot_FOM(
     dop_foms = [SQ_relative_FOM_PV_efficiency(E_gap=E_gap, photon_spectrum=photon_spectrum, alpha=alpha, tau=tau, sigma=sigma, dos_mass=dos_mass, dop_density=d, epsilon=epsilon, mu=mu, Tcell=Tcell)[-1] for d in densities]
     axes[0].plot(densities, dop_foms, "-", markersize=6)
     axes[0].set_xscale("log")
-    axes[0].set_xlabel("Dopant Density (cm$^{-3}$)")
+    axes[0].set_xlabel("Doping Density (cm$^{-3}$)")
     axes[0].set_ylabel("Figure of Merit")
-    axes[0].set_title("Figure of Merit vs Dopant Density \n"+r"($\mu$="+str(mu)+r", $\tau$=" + f"{tau:.2e}" + ")")
+    axes[0].set_title("Figure of Merit vs Doping Density \n"+r"($\mu$="+str(mu)+r", $\tau$=" + f"{tau:.2e}" + ")")
 
     #Plot vs lifetime
     lifetimes = np.linspace(tau_range[0], tau_range[1])
