@@ -190,9 +190,9 @@ def plot_final_result_interactive(
         epsilon, 
         mu, 
         Tcell,
-        dop_range:tuple[float,float]=(1e8, 1e24), 
-        tau_range:tuple[float,float]=(1e-8, 1e-6), 
-        mu_range:tuple[float,float]=(1, 300)):
+        dop_range:tuple[float,float]=(1e10, 1e18), 
+        tau_range:tuple[float,float]=(1e-15, 1e3), 
+        mu_range:tuple[float,float]=(1e-2, 1e9)):
     """
     Creates an interactive Figure of Merit visualization dashboard.
 
