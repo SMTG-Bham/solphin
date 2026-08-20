@@ -97,7 +97,6 @@ def calc_absorption(eps_full, energies):
         "absorption": alpha,
     }
 
-
 def print_n_real_file(data, energies, directory: Path):
     """
     Writes the real part of the refractive index to a data file.
@@ -117,6 +116,46 @@ def print_n_real_file(data, energies, directory: Path):
         filename = join(directory, filename)
     out = np.stack((energies, data["n_real"]), axis=1)
     np.savetxt(filename, out, header="energy(eV) n_real")
+    
+def print_absorption_file(data, energies, directory: Path):
+    """
+    Writes the absorption coefficient in cm^-1.
+    """
+    filename = "absorption.dat"
+
+    if directory:
+        filename = join(directory, filename)
+
+    # calc_absorption returns alpha in m^-1
+    alpha_cm = data["absorption"] / 100.0
+
+    out = np.column_stack((energies, alpha_cm))
+
+    np.savetxt(
+        filename,
+        out,
+        header="energy(eV) absorption(cm^-1)"
+    )
+
+
+def generate_absorption(optics_directory):
+
+    """
+    Generates and writes the real part of the refractive index from a VASP optics calculation.
+
+    Parameters:
+        optics_directory(string or Path): directory containing the
+            vasprun.xml file and where the output file will be written.
+
+    Returns:
+        None
+    """
+
+    filename = f'{optics_directory}/vasprun.xml'
+
+    _, _, eps_full, _, energies = calc_dielectric(filename)
+    data               = calc_absorption(eps_full, energies)
+    print_absorption_file(data, energies, optics_directory)
 
 
 def generate_n_real(optics_directory):
