@@ -6,6 +6,7 @@ build/
 *.egg-info/
 *.cpython-*WAVECAR
 PROCAR
+POTCAR
 CHG
 CHGCAR
 XDATCAR
