@@ -53,13 +53,13 @@ def SQ_relative_FOM_PV_efficiency(E_gap, photon_spectrum, alpha, tau, sigma, dos
     SQ_eff = max_eff(E_gap, photon_spectrum, Tcell)
     SQ = SQ_eff * 100
 
-    SQ_efficiency = SQ / ((1 + fraction) * denom_bracket)
+    efficiency = SQ_eff / ((1 + fraction) * denom_bracket)
 
-    efficiency = (SQ / 100) * SQ_efficiency
+    FOM_efficiency = efficiency * 100 
 
-    FOM = ((1 + fraction) * denom_bracket)
+    SQ_relative = (FOM_efficiency / SQ ) * 100
 
-    return SQ, SQ_efficiency, efficiency, FOM
+    return SQ, SQ_relative, FOM_efficiency
 
 
 def plot_FOM(
@@ -342,9 +342,8 @@ def print_final_result_interactive(
 
         _clearlines(5)
 
-        sq, fom_sq, eff, FOM = SQ_relative_FOM_PV_efficiency(E_gap, photon_spectrum, alpha, lifetime, sigma, dos_mass, density, epsilon, mobility, Tcell)
+        sq, fom_sq, eff= SQ_relative_FOM_PV_efficiency(E_gap, photon_spectrum, alpha, lifetime, sigma, dos_mass, density, epsilon, mobility, Tcell)
         print("")
-        print(f"Photovoltaic Figure of Merit: {FOM:.2f}")
         print(f"Photovoltaic Figure of Merit relative to the SQ limit: {fom_sq:.2f} %")
         print(f"Photovoltaic Figure of Merit total efficiency: {eff:.2f} %")
         print(f"SQ limit: {sq:.2f} %")
