@@ -275,7 +275,7 @@ def plot_final_result_interactive(
     widget_layout = layout=widgets.Layout(width='800px')
     widget_style = {'description_width': '200px'}
 
-    dopant_slider   = widgets.FloatLogSlider(value=dop_density, min=np.log10(dop_range[0]), max=np.log10(dop_range[1]), step=0.1, description="Dopant Density (cm⁻³)",    layout=widget_layout, style=widget_style)
+    dopant_slider   = widgets.FloatLogSlider(value=dop_density, min=np.log10(dop_range[0]), max=np.log10(dop_range[1]), step=0.1, description="Doping Density (cm⁻³)",    layout=widget_layout, style=widget_style)
     lifetime_slider = widgets.FloatLogSlider(value=tau, min=np.log10(tau_range[0]), max=np.log10(tau_range[1]), step=0.01, description="Carrier Lifetime (s)", layout=widget_layout, style=widget_style)
     mobility_slider = widgets.FloatSlider(value=mu, min=mu_range[0], max=mu_range[1], step=_get_step(mu_range), description="Carrier Mobility (cm²V⁻¹s⁻¹)", layout=widget_layout, style=widget_style)
 
@@ -313,9 +313,9 @@ def print_final_result_interactive(
         epsilon, 
         mu, 
         Tcell,
-        dop_range:tuple[float,float]=(1e8, 1e24), 
-        tau_range:tuple[float,float]=(1e-8, 1e-6), 
-        mu_range:tuple[float,float]=(1, 300)):
+        dop_range:tuple[float,float]=(1e10, 1e18), 
+        tau_range:tuple[float,float]=(1e-15, 1e3), 
+        mu_range:tuple[float,float]=(1e-2, 1e9)):
     """
     Interactively writes figure of merit information.
 
@@ -351,7 +351,7 @@ def print_final_result_interactive(
     widget_layout = layout=widgets.Layout(width='800px')
     widget_style = {'description_width': '200px'}
 
-    dopant_slider   = widgets.FloatLogSlider(value=dop_density, min=np.log10(dop_range[0]), max=np.log10(dop_range[1]), step=0.1, description="Dopant Density (cm⁻³)",    layout=widget_layout, style=widget_style)
+    dopant_slider   = widgets.FloatLogSlider(value=dop_density, min=np.log10(dop_range[0]), max=np.log10(dop_range[1]), step=0.1, description="Doping Density (cm⁻³)",    layout=widget_layout, style=widget_style)
     lifetime_slider = widgets.FloatLogSlider(value=tau, min=np.log10(tau_range[0]), max=np.log10(tau_range[1]), step=0.01, description="Carrier Lifetime (s)", layout=widget_layout, style=widget_style)
     mobility_slider = widgets.FloatSlider(value=mu, min=mu_range[0], max=mu_range[1], step=_get_step(mu_range), description="Carrier Mobility (cm²V⁻¹s⁻¹)", layout=widget_layout, style=widget_style)
 
