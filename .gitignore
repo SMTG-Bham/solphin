@@ -8,5 +8,6 @@ build/
 PROCAR
 CHG
 CHGCAR
+POTCAR
 XDATCAR
 tutorial.ipynb
