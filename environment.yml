@@ -1,0 +1,53 @@
+# Development environment for solphin.
+#
+#   conda env create -f environment.yml
+#   conda activate solphin
+#   pip install -e . --no-deps
+#
+# The editable install is a separate step on purpose: conda's `pip:` block is
+# passed to pip as a requirements file, which accepts neither --no-deps nor an
+# opt-out of the -U that conda adds -- so an inline `-e .` would pull PyPI
+# wheels over the conda builds of numpy/scipy/pymatgen. conda resolves every
+# dependency below, so pip only needs to link the source tree into
+# site-packages. Add new runtime deps to *both* this file and pyproject.toml.
+name: solphin
+
+channels:
+  - conda-forge
+  - nodefaults
+
+dependencies:
+  # Python 3.10+ is required: solphin/band_structure.py uses PEP 604 unions
+  # (`str|Path`) in annotations evaluated at runtime.
+  - python=3.11
+
+  # --- runtime (mirrors pyproject.toml [project.dependencies]) ---
+  - numpy
+  - scipy
+  - matplotlib-base>=3.9.4   # swap for `matplotlib` if you need a GUI backend
+  - pymatgen>=2024.8.9
+  - mpmath
+  - monty
+  - typing_extensions
+  - ipywidgets
+
+  # --- runtime, missing from pyproject.toml ---
+  - sumo                     # imported by solphin/dos.py and band_structure.py
+
+  # --- notebooks / tutorial ---
+  - jupyterlab
+  - ipykernel
+  - nbformat
+
+  # --- docs (docs/source/conf.py) ---
+  - sphinx
+  - sphinx-wagtail-theme
+  - myst-nb
+
+  # --- dev tooling ---
+  - pytest
+  - pytest-cov
+  - ruff
+  - pre-commit
+
+  - pip
