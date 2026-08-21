@@ -1,4 +1,5 @@
 import logging
+import warnings
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -8,8 +9,6 @@ import solphin.db_fom as db_fom
 
 logging.getLogger('matplotlib.font_manager').disabled = True
 logging.basicConfig(level=logging.INFO)
-
-import warnings
 
 warnings.filterwarnings(action="ignore",
                         message="This figure was using a layout engine that is incompatible with subplots_adjust{1}.+")

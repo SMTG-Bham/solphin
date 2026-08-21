@@ -2,9 +2,10 @@ import logging
 import math
 import os
 import shutil
+import warnings
 from glob import glob
 from pathlib import Path
-from typing import Optional, Any
+from typing import Any
 
 import numpy as np
 from numpy.typing import NDArray
@@ -22,8 +23,6 @@ from solphin.vasp_inputs import write_vasp_calculation
 
 logger = logging.getLogger()
 logger.setLevel(logging.WARNING)
-
-import warnings
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
@@ -109,8 +108,8 @@ def _write_kpoint_files(
         kpoints: NDArray,
         labels: list[str],
         make_folders: bool = True,
-        ibzkpt: Optional[Kpoints] = None,
-        kpts_per_split: Optional[int] = None,
+        ibzkpt: Kpoints | None = None,
+        kpts_per_split: int | None = None,
         cart_coords: bool = False,
 ) -> list[str]:
     """
@@ -226,10 +225,10 @@ def write_band_structure_calculation(
         functional: str,
         splits: int,
         patches: list[str] = [],
-        scf_charge: Optional[str] = None,
-        scf_kpoints: Optional[str] = None,
+        scf_charge: str | None = None,
+        scf_kpoints: str | None = None,
         cartesian: bool = False,
-        user_incar_settings: Optional[dict[str, Any]] = None):
+        user_incar_settings: dict[str, Any] | None = None):
     """
     Generates and writes a band structure calculation setup for VASP.
 

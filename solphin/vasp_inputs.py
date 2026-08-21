@@ -1,6 +1,5 @@
 import json
 from importlib.resources import files
-from typing import Dict, List, Optional, Union
 
 from pymatgen.core.structure import Structure
 from pymatgen.io.vasp import Kpoints
@@ -26,7 +25,7 @@ def read_structure_pmg(filename):
     return structure
 
 
-def _load_config(fname: str) -> Dict[str, Dict[str, Union[str, Dict[str, str]]]]:
+def _load_config(fname: str) -> dict[str, dict[str, str | dict[str, str]]]:
     """
     Loads a JSON configuration file from packaged package resources.
 
@@ -49,8 +48,8 @@ def _load_config(fname: str) -> Dict[str, Dict[str, Union[str, Dict[str, str]]]]
 
 def _determine_potcar_functional(
         recipe: str,
-        potcar_functional: Optional[str],
-        config: Dict[str, Dict[str, Union[str, Dict[str, str]]]],
+        potcar_functional: str | None,
+        config: dict[str, dict[str, str | dict[str, str]]],
 ) -> str:
     """
     Determines the appropriate POTCAR functional for a VASP calculation.
@@ -84,9 +83,9 @@ def _determine_potcar_functional(
 
 def _prepare_incar(
         recipe: str,
-        patches: List[str],
-        config: Dict[str, Dict[str, Union[str, Dict[str, str]]]],
-) -> Dict[str, Union[str, int, float]]:
+        patches: list[str],
+        config: dict[str, dict[str, str | dict[str, str]]],
+) -> dict[str, str | int | float]:
     """
     Prepares an INCAR dictionary for a VASP calculation based on a recipe and optional patches.
 
@@ -122,9 +121,9 @@ def _prepare_incar(
 
 def _create_vasp_set(
         structure: Structure,
-        incar: Dict[str, Union[str, int, float]],
+        incar: dict[str, str | int | float],
         potcar_functional: str,
-        config: Dict[str, Dict[str, Union[str, Dict[str, str]]]],
+        config: dict[str, dict[str, str | dict[str, str]]],
         **calc_kwargs,
 ) -> VaspInputSet:
     """
@@ -159,7 +158,7 @@ def _create_vasp_set(
     )
 
 
-def _prepare_vdw_tags(recipe: str, patches: List[str]) -> Dict[str, Union[int, float]]:
+def _prepare_vdw_tags(recipe: str, patches: list[str]) -> dict[str, int | float]:
     """
     Generates VASP INCAR tags for van der Waals (vdW) corrections.
 
@@ -208,9 +207,9 @@ def _prepare_vdw_tags(recipe: str, patches: List[str]) -> Dict[str, Union[int, f
 
 def _apply_patches(
         vasp_set: VaspInputSet,
-        patches: List[str],
+        patches: list[str],
         recipe: str,
-        incar: Dict[str, Union[str, int, float]],
+        incar: dict[str, str | int | float],
 ) -> None:
     """
     Applies optional calculation patches to a VASP input set.
@@ -255,10 +254,10 @@ def write_vasp_calculation(
         structure: Structure,
         recipe: str,
         out_dir: str,
-        patches: Optional[List[str]] = None,
-        potcar_functional: Optional[str] = None,
+        patches: list[str] | None = None,
+        potcar_functional: str | None = None,
         **calc_kwargs,
-) -> Optional[Dict[str, int]]:
+) -> dict[str, int] | None:
     """
     Generates and writes a complete VASP calculation input set to disk.
 

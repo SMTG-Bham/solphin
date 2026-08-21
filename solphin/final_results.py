@@ -1,9 +1,12 @@
 import logging
+import warnings
 
 import matplotlib.pyplot as plt
 import numpy as np
 from ipywidgets import interact, widgets
 from matplotlib.axes import Axes
+from matplotlib.cm import ScalarMappable
+from matplotlib.colors import LogNorm
 from matplotlib.figure import Figure
 
 from solphin.db_fom import max_eff
@@ -11,8 +14,6 @@ from solphin.pv_fom import Final_equation
 
 logging.getLogger('matplotlib.font_manager').disabled = True
 logging.basicConfig(level=logging.INFO)
-
-import warnings
 
 warnings.filterwarnings(action="ignore",
                         message="This figure was using a layout engine that is incompatible with subplots_adjust{1}.+")
@@ -399,9 +400,6 @@ def mobility_plot(
         step=1,
         Tcell=300
 ):
-    from matplotlib.colors import LogNorm
-    from matplotlib.cm import ScalarMappable
-
     # Exponents
     mobility_exp = np.arange(mob_min, mob_max, step)
     lifetime_exp = np.arange(lifetime_min, lifetime_max, step)

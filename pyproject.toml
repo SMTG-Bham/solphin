@@ -7,6 +7,9 @@ name = "solphin"
 version = "1.0.0"
 description = "Figure of Merit for Photovoltaics"
 license = { text = "MIT" }
+# PEP 604 unions (`str | None`) are used in annotations that pymatgen/dataclasses
+# evaluate at runtime, so 3.10 is a hard floor rather than a typing-only one.
+requires-python = ">=3.10"
 authors = [
     { name = "Philippa U Cox", email = "puc369@student.bham.ac.uk" },
     { name = "Peter P Russell", email = "ppr466@student.bham.ac.uk" }
@@ -16,22 +19,48 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: MIT License",
     "Operating System :: POSIX :: Linux",
-    "Programming Language :: Python :: 3.9"
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13"
 ]
+
+# Every entry below is imported at package-import time by solphin/__init__.py or
+# one of the modules it pulls in. Add new runtime deps to *both* this list and
+# environment.yml.
 dependencies = [
     "numpy",
     "scipy",
     "matplotlib>=3.9.4",
     "pymatgen>=2024.8.9",
-    "mpmath",
-    "pathlib",
-    "typing_extensions",
-    "monty",
+    "sumo",
     "ipywidgets"
 ]
 
-[project.urls]
-Homepage = "https://github.com/SMTG-Bham/PV-FoM"
+[project.optional-dependencies]
+docs = ["sphinx", "sphinx-wagtail-theme", "myst-nb"]
+tutorial = ["jupyterlab", "ipykernel", "nbformat"]
+dev = ["pytest", "pytest-cov", "ruff", "pre-commit"]
 
-[tool.setuptools]
-packages = ["solphin"]
+[project.urls]
+Homepage = "https://github.com/SMTG-Bham/solphin"
+
+[tool.setuptools.packages.find]
+include = ["solphin*"]
+
+# db_fom.load_spectrum and vasp_inputs.load_recipe resolve these through
+# importlib.resources at runtime, so they must ship inside the wheel.
+[tool.setuptools.package-data]
+"solphin.resources" = ["*.csv", "*.json"]
+
+[tool.ruff]
+target-version = "py310"
+
+[tool.ruff.lint]
+# Import hygiene only for now; widen once the outstanding F841/UP032 findings
+# in db_plots.py and final_results.py are dealt with.
+select = ["E402", "F401", "F811", "I"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["solphin"]

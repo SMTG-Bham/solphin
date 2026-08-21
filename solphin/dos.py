@@ -1,23 +1,21 @@
 import logging
-
-from matplotlib import pyplot as plt
-from sumo.cli.dosplot import dosplot
-
-logging.getLogger('matplotlib.font_manager').disabled = True
-import numpy as np
-from numpy.typing import NDArray
-
 import warnings
 from dataclasses import dataclass
-from typing import Optional
 from pathlib import Path
 
-from pymatgen.io.vasp import Vasprun
-from pymatgen.core.structure import Structure
-from solphin.vasp_inputs import write_vasp_calculation
-from pymatgen.io.vasp.inputs import Kpoints
+import numpy as np
 import scipy.constants as sc
+from matplotlib import pyplot as plt
+from numpy.typing import NDArray
+from pymatgen.core.structure import Structure
+from pymatgen.io.vasp import Vasprun
+from pymatgen.io.vasp.inputs import Kpoints
 from scipy.constants import physical_constants as pc
+from sumo.cli.dosplot import dosplot
+
+from solphin.vasp_inputs import write_vasp_calculation
+
+logging.getLogger('matplotlib.font_manager').disabled = True
 
 HBAR = sc.hbar  # J·s
 M_E = pc["atomic unit of mass"][0]  # kg
@@ -116,18 +114,18 @@ class _DOSEffectiveMassResult:
 
 @dataclass
 class DOSResult:
-    fit_quality_e: Optional[float]
-    fit_quality_h: Optional[float]
+    fit_quality_e: float | None
+    fit_quality_h: float | None
     cell_volume_m3: float
     carrier: str
     final_result: float
-    em_electrons: Optional[_DOSEffectiveMassResult] = None
-    em_holes: Optional[_DOSEffectiveMassResult] = None
-    cbm: Optional[float] = None
-    vbm: Optional[float] = None
+    em_electrons: _DOSEffectiveMassResult | None = None
+    em_holes: _DOSEffectiveMassResult | None = None
+    cbm: float | None = None
+    vbm: float | None = None
 
     @property
-    def em_result(self) -> Optional[_DOSEffectiveMassResult]:
+    def em_result(self) -> _DOSEffectiveMassResult | None:
         if self.carrier == "electrons":
             return self.em_electrons
 
@@ -661,7 +659,7 @@ def _format_em_table(
         em: _DOSEffectiveMassResult,
         edge: float,
         is_dos_carrier: bool,
-        fit: Optional[float],
+        fit: float | None,
 ) -> list:
     """
     Formats DOS effective-mass results for display in a summary table.
@@ -976,7 +974,7 @@ def _check_dos_fit_quality(
 
 def compute_dos(
         dos_vasprun: str,
-        m_eff: Optional[float] = None,
+        m_eff: float | None = None,
         carrier: str = "electrons",
         energy_window: float = 0.15,
         min_dos: float = 0.0,
