@@ -1,9 +1,7 @@
 import logging
 import math
-import os
 import shutil
 import warnings
-from glob import glob
 from pathlib import Path
 from typing import Any
 
@@ -193,16 +191,10 @@ def _write_kpoint_files(
             folder = f"split-{str(i + 1).zfill(pad)}"
             folders.append(folder)
 
-            if directory:
-                folder = os.path.join(directory, folder)
+            folder_path = Path(directory) / folder if directory else Path(folder)
+            folder_path.mkdir(parents=True, exist_ok=True)
 
-            try:
-                os.makedirs(folder)
-            except OSError:
-                # print(f"Directory {folder} already exists.")
-                pass
-
-            kpt_file.write_file(os.path.join(folder, "KPOINTS"))
+            kpt_file.write_file(folder_path / "KPOINTS")
 
     else:
         folders.append("")
@@ -211,9 +203,8 @@ def _write_kpoint_files(
                 kpt_filename = f"KPOINTS_band_split_{i + 1:0d}"
             else:
                 kpt_filename = "KPOINTS"
-            if directory:
-                kpt_filename = os.path.join(directory, kpt_filename)
-            kpt_file.write_file(kpt_filename)
+            kpt_path = Path(directory) / kpt_filename if directory else Path(kpt_filename)
+            kpt_file.write_file(kpt_path)
 
     return folders
 
@@ -286,10 +277,7 @@ def write_band_structure_calculation(
         make_folders = False
         kpts_per_split = None
 
-        try:
-            os.mkdir(f"{band_directory}")
-        except OSError:
-            pass
+        Path(band_directory).mkdir(parents=True, exist_ok=True)
 
     folders = _write_kpoint_files(
         directory=band_directory,
@@ -310,7 +298,7 @@ def write_band_structure_calculation(
         incar_settings["ICHARG"] = 11
 
     for folder in folders:
-        directory = f"{band_directory}/{folder}"
+        directory = Path(band_directory) / folder
 
         write_vasp_calculation(
             structure=structure,
@@ -320,7 +308,7 @@ def write_band_structure_calculation(
             user_incar_settings=incar_settings)
 
         if not hybrid:
-            shutil.copy(src=scf_charge, dst=os.path.join(directory, "CHGCAR"))  # type: ignore
+            shutil.copy(src=scf_charge, dst=directory / "CHGCAR")  # type: ignore
 
 
 def _is_soc_vasprun(vr: BSVasprun) -> bool:
@@ -369,12 +357,12 @@ def get_band_structure(band_directory: str | Path, splits: int) -> BandStructure
 
     if splits > 1:
         vaspruns = sorted(
-            glob(f"{band_directory}/split-*/vasprun.xml"),
-            key=lambda x: int(Path(x).parent.name.split("-")[-1])
+            Path(band_directory).glob("split-*/vasprun.xml"),
+            key=lambda p: int(p.parent.name.split("-")[-1])
         )
 
     else:
-        vaspruns = [f"{band_directory}/vasprun.xml"]
+        vaspruns = [Path(band_directory) / "vasprun.xml"]
 
     bandstructures = []
     for vr_file in vaspruns:
