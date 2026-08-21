@@ -1,12 +1,11 @@
-from typing import Dict, List, Optional, Union
+import json
 from importlib.resources import files
-import json 
-import solphin.resources
+from typing import Dict, List, Optional, Union
 
-from monty.serialization import loadfn
 from pymatgen.core.structure import Structure
-from pymatgen.io.vasp.sets import VaspInputSet
 from pymatgen.io.vasp import Kpoints
+from pymatgen.io.vasp.sets import VaspInputSet
+
 
 def read_structure_pmg(filename):
     """
@@ -25,6 +24,7 @@ def read_structure_pmg(filename):
 
     structure = Structure.from_file(filename)
     return structure
+
 
 def _load_config(fname: str) -> Dict[str, Dict[str, Union[str, Dict[str, str]]]]:
     """
@@ -46,10 +46,11 @@ def _load_config(fname: str) -> Dict[str, Dict[str, Union[str, Dict[str, str]]]]
         config = json.load(f)
     return config
 
+
 def _determine_potcar_functional(
-    recipe: str,
-    potcar_functional: Optional[str],
-    config: Dict[str, Dict[str, Union[str, Dict[str, str]]]],
+        recipe: str,
+        potcar_functional: Optional[str],
+        config: Dict[str, Dict[str, Union[str, Dict[str, str]]]],
 ) -> str:
     """
     Determines the appropriate POTCAR functional for a VASP calculation.
@@ -82,9 +83,9 @@ def _determine_potcar_functional(
 
 
 def _prepare_incar(
-    recipe: str,
-    patches: List[str],
-    config: Dict[str, Dict[str, Union[str, Dict[str, str]]]],
+        recipe: str,
+        patches: List[str],
+        config: Dict[str, Dict[str, Union[str, Dict[str, str]]]],
 ) -> Dict[str, Union[str, int, float]]:
     """
     Prepares an INCAR dictionary for a VASP calculation based on a recipe and optional patches.
@@ -118,12 +119,13 @@ def _prepare_incar(
                 incar.update(config["PATCHES"][patch])
     return incar
 
+
 def _create_vasp_set(
-    structure: Structure,
-    incar: Dict[str, Union[str, int, float]],
-    potcar_functional: str,
-    config: Dict[str, Dict[str, Union[str, Dict[str, str]]]],
-    **calc_kwargs,
+        structure: Structure,
+        incar: Dict[str, Union[str, int, float]],
+        potcar_functional: str,
+        config: Dict[str, Dict[str, Union[str, Dict[str, str]]]],
+        **calc_kwargs,
 ) -> VaspInputSet:
     """
     Creates a VASP input set from a structure and prepared calculation parameters.
@@ -155,6 +157,7 @@ def _create_vasp_set(
         },
         **calc_kwargs,
     )
+
 
 def _prepare_vdw_tags(recipe: str, patches: List[str]) -> Dict[str, Union[int, float]]:
     """
@@ -190,23 +193,24 @@ def _prepare_vdw_tags(recipe: str, patches: List[str]) -> Dict[str, Union[int, f
         return {"IVDW": 11}
     if "vdw_d4" in patches:
         if recipe == "HSE06":
-            return {"IVDW": 13, 
-                    "VDW_S8" : 1.19528249, 
-                    "VDW_A1" : 0.38663183, 
-                    "VDW_A2" : 5.19133469}
+            return {"IVDW": 13,
+                    "VDW_S8": 1.19528249,
+                    "VDW_A1": 0.38663183,
+                    "VDW_A2": 5.19133469}
         return {"IVDW": 13}
     if "rvv10" in patches:
         if recipe == "R2SCAN":
-            return {"LUSE_VDW" : True,
+            return {"LUSE_VDW": True,
                     "BPARAM": 11.95,
                     "CPARAM": 0.0093}
     return {}
 
+
 def _apply_patches(
-    vasp_set: VaspInputSet,
-    patches: List[str],
-    recipe: str,
-    incar: Dict[str, Union[str, int, float]],
+        vasp_set: VaspInputSet,
+        patches: List[str],
+        recipe: str,
+        incar: Dict[str, Union[str, int, float]],
 ) -> None:
     """
     Applies optional calculation patches to a VASP input set.
@@ -248,12 +252,12 @@ def _apply_patches(
 
 
 def write_vasp_calculation(
-    structure: Structure,
-    recipe: str,
-    out_dir: str,
-    patches: Optional[List[str]] = None,
-    potcar_functional: Optional[str] = None,
-    **calc_kwargs,
+        structure: Structure,
+        recipe: str,
+        out_dir: str,
+        patches: Optional[List[str]] = None,
+        potcar_functional: Optional[str] = None,
+        **calc_kwargs,
 ) -> Optional[Dict[str, int]]:
     """
     Generates and writes a complete VASP calculation input set to disk.

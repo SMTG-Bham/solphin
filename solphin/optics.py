@@ -1,30 +1,33 @@
+import logging
+from os.path import join
 from pathlib import Path
+
+import numpy as np
+import pymatgen.analysis.solar.slme as slme_mod
+from matplotlib import pyplot as plt
+from matplotlib.ticker import FormatStrFormatter
 from pymatgen.io.vasp import Vasprun
+
 import solphin.spectral as spectral
 from solphin.db_fom import load_spectrum
-import numpy as np
-from os.path import join
-from matplotlib.ticker import FormatStrFormatter
-from matplotlib import pyplot as plt
-import pymatgen.analysis.solar.slme as slme_mod
-import logging
+
 logging.getLogger('matplotlib.font_manager').disabled = True
 import os
 from scipy.integrate import simpson
 from scipy.interpolate import interp1d
 from scipy import constants as sc
 
-hc_eV_nm = 1239.84193    # eV nm
+hc_eV_nm = 1239.84193  # eV nm
 
-_c   = sc.c
-_h   = sc.h
+_c = sc.c
+_h = sc.h
 _h_e = sc.h / sc.e
-_k   = sc.k
-_e   = sc.e
-_T   = 293.15
+_k = sc.k
+_e = sc.e
+_T = 293.15
+
 
 def calc_dielectric(filename):
-
     """
     Calculates the dielectric constants from a vasprun.xml
     
@@ -44,7 +47,6 @@ def calc_dielectric(filename):
     eps_imag = np.array(dielectric[2])[:, [[0, 3, 5], [3, 1, 4], [5, 4, 2]]]
     eps_full = eps_real + 1j * eps_imag
 
-
     eps_inf = np.mean(eps_real[0].diagonal())
     eps_inf_tensor = eps_real[0]
 
@@ -52,7 +54,6 @@ def calc_dielectric(filename):
 
 
 def calc_absorption(eps_full, energies):
-
     """
     Calculates optical properties from the complex dielectric tensor.
 
@@ -79,23 +80,24 @@ def calc_absorption(eps_full, energies):
     eps = np.mean(eps_eig, axis=1)
 
     # Per-eigenvalue refractive index, then average (sumo-consistent)
-    n_eig     = np.sqrt(eps_eig + 0j)
+    n_eig = np.sqrt(eps_eig + 0j)
     n_complex = np.mean(n_eig, axis=1)
 
     n_real = np.real(n_complex)
-    k      = np.imag(n_complex)
+    k = np.imag(n_complex)
 
-    alpha = (4 * np.pi * energies * k) / (_h_e * _c)   # m-1
-    loss  = (-1 / eps).imag
+    alpha = (4 * np.pi * energies * k) / (_h_e * _c)  # m-1
+    loss = (-1 / eps).imag
 
     return {
-        "eps_real":   np.real(eps),
-        "eps_imag":   np.imag(eps),
-        "n_real":     n_real,
-        "n_imag":     k,
-        "loss":       loss,
+        "eps_real": np.real(eps),
+        "eps_imag": np.imag(eps),
+        "n_real": n_real,
+        "n_imag": k,
+        "loss": loss,
         "absorption": alpha,
     }
+
 
 def print_n_real_file(data, energies, directory: Path):
     """
@@ -116,7 +118,8 @@ def print_n_real_file(data, energies, directory: Path):
         filename = join(directory, filename)
     out = np.stack((energies, data["n_real"]), axis=1)
     np.savetxt(filename, out, header="energy(eV) n_real")
-    
+
+
 def print_absorption_file(data, energies, directory: Path):
     """
     Writes the absorption coefficient in cm^-1.
@@ -139,7 +142,6 @@ def print_absorption_file(data, energies, directory: Path):
 
 
 def generate_absorption(optics_directory):
-
     """
     Generates and writes the real part of the refractive index from a VASP optics calculation.
 
@@ -154,12 +156,11 @@ def generate_absorption(optics_directory):
     filename = f'{optics_directory}/vasprun.xml'
 
     _, _, eps_full, _, energies = calc_dielectric(filename)
-    data               = calc_absorption(eps_full, energies)
+    data = calc_absorption(eps_full, energies)
     print_absorption_file(data, energies, optics_directory)
 
 
 def generate_n_real(optics_directory):
-
     """
     Generates and writes the real part of the refractive index from a VASP optics calculation.
 
@@ -174,12 +175,11 @@ def generate_n_real(optics_directory):
     filename = f'{optics_directory}/vasprun.xml'
 
     _, _, eps_full, _, energies = calc_dielectric(filename)
-    data               = calc_absorption(eps_full, energies)
+    data = calc_absorption(eps_full, energies)
     print_n_real_file(data, energies, optics_directory)
 
 
 def plot_absorption(optics_directory, xmax=4, xmin=0, save=False):
-
     """
     Plots the optical absorption spectrum from a VASP optics calculation.
 
@@ -211,7 +211,7 @@ def plot_absorption(optics_directory, xmax=4, xmin=0, save=False):
         color='#1f77b4')
 
     plt.gca().xaxis.set_major_formatter(
-    FormatStrFormatter('%.1f')
+        FormatStrFormatter('%.1f')
     )
 
     plt.xlabel("Photon energy (eV)", fontsize=16)
@@ -221,10 +221,10 @@ def plot_absorption(optics_directory, xmax=4, xmin=0, save=False):
     )
 
     plt.subplots_adjust(
-    left=0.15,
-    right=0.95,
-    bottom=0.12,
-    top=0.95,
+        left=0.15,
+        right=0.95,
+        bottom=0.12,
+        top=0.95,
     )
 
     plt.xticks(fontsize=14)
@@ -237,8 +237,6 @@ def plot_absorption(optics_directory, xmax=4, xmin=0, save=False):
         plt.savefig("absorption.png", dpi=700)
 
     plt.show()
-
-
 
 
 def _spectrum_select(spectrum_type):
@@ -265,13 +263,14 @@ def _spectrum_select(spectrum_type):
     if use_slme:
         am15_path = os.path.join(os.path.dirname(slme_mod.__file__), "am1.5G.dat")
         sol_wl, sol_irr = np.loadtxt(am15_path, usecols=[0, 1],
-                                      unpack=True, skiprows=2)  # nm, W m-2 nm-1
+                                     unpack=True, skiprows=2)  # nm, W m-2 nm-1
     else:
         spectrum = load_spectrum(spectrum_type)
-        sol_wl   = spectrum[:, 0]   # nm
-        sol_irr  = spectrum[:, 1]   # W m-2 nm-1
+        sol_wl = spectrum[:, 0]  # nm
+        sol_irr = spectrum[:, 1]  # W m-2 nm-1
 
     return sol_wl, sol_irr, use_slme
+
 
 def _convert_spec(sol_wl, sol_irr):
     """
@@ -288,10 +287,11 @@ def _convert_spec(sol_wl, sol_irr):
             photons m^-2 s^-1 nm^-1.
     """
 
-    sol_wl_m = sol_wl * 1e-9 # Convert wavelength to meters
+    sol_wl_m = sol_wl * 1e-9  # Convert wavelength to meters
     sol_phot_flux = sol_irr * (sol_wl_m / (_h * _c))  # photons m-2 s-1 nm-1
 
     return sol_wl_m, sol_phot_flux
+
 
 def _calc_incident_power(sol_irr, sol_wl):
     """
@@ -308,9 +308,10 @@ def _calc_incident_power(sol_irr, sol_wl):
             obtained by integrating the spectrum over wavelength.
     """
 
-    power_in = simpson(sol_irr, x=sol_wl)          # W m-2
+    power_in = simpson(sol_irr, x=sol_wl)  # W m-2
 
     return power_in
+
 
 def _bb_per_eV(E_eV):
     """
@@ -331,7 +332,8 @@ def _bb_per_eV(E_eV):
 
     E_J = E_eV * _e
     exp = np.clip(E_eV / ((_k / _e) * _T), 0, 700)
-    return (2*E_J**2) / (_h**3*_c**2) / (np.exp(exp) - 1.0 + 1e-300) * _e
+    return (2 * E_J ** 2) / (_h ** 3 * _c ** 2) / (np.exp(exp) - 1.0 + 1e-300) * _e
+
 
 def _bb_per_wl(sol_wl_m):
     """
@@ -349,13 +351,13 @@ def _bb_per_wl(sol_wl_m):
     """
 
     # blackbody photon flux in wavelength space [photons m-2 s-1 m-1]
-    bb_irr     = (2*_h*_c**2 / sol_wl_m**5) / (np.exp(_h*_c/(sol_wl_m*_k*_T)) - 1.0)
+    bb_irr = (2 * _h * _c ** 2 / sol_wl_m ** 5) / (np.exp(_h * _c / (sol_wl_m * _k * _T)) - 1.0)
     bb_phot_wl = bb_irr * (sol_wl_m / (_h * _c))
 
     return bb_phot_wl
 
-def _n_real_abs_fit(abs_file, n_real_file):
 
+def _n_real_abs_fit(abs_file, n_real_file):
     """
     Loads absorption data and interpolates the real refractive index onto the same energy grid.
 
@@ -379,12 +381,13 @@ def _n_real_abs_fit(abs_file, n_real_file):
 
     # --- absorption and n_real data (on the same energy grid) ---
     energy_abs, alpha_cm = spectral._load_absorption(abs_file)
-    alpha_m = alpha_cm * 1e2   # cm-1 → m-1
+    alpha_m = alpha_cm * 1e2  # cm-1 → m-1
 
-    nr_dat  = np.loadtxt(n_real_file, comments='#')
-    n_real  = np.interp(energy_abs, nr_dat[:, 0], nr_dat[:, 1])
+    nr_dat = np.loadtxt(n_real_file, comments='#')
+    n_real = np.interp(energy_abs, nr_dat[:, 0], nr_dat[:, 1])
 
     return energy_abs, alpha_cm, alpha_m, n_real
+
 
 def _interpolate_a(energy_abs, alpha_m, direct_gap, sol_wl):
     """
@@ -409,12 +412,12 @@ def _interpolate_a(energy_abs, alpha_m, direct_gap, sol_wl):
     """
 
     # --- interpolate alpha onto solar wavelength grid (pymatgen style) ---
-    wl_alpha   = ((_c * _h_e) / (energy_abs + 1e-8)) * 1e9   # nm
+    wl_alpha = ((_c * _h_e) / (energy_abs + 1e-8)) * 1e9  # nm
     alpha_func = interp1d(wl_alpha, alpha_m, kind='cubic',
                           fill_value=(alpha_m[0], alpha_m[-1]),
                           bounds_error=False)
 
-    wl_gap_nm    = (_c * _h_e / direct_gap) * 1e9
+    wl_gap_nm = (_c * _h_e / direct_gap) * 1e9
     alpha_on_sol = np.zeros(len(sol_wl))
     for i, wl in enumerate(sol_wl):
         if wl < wl_gap_nm:
@@ -425,7 +428,6 @@ def _interpolate_a(energy_abs, alpha_m, direct_gap, sol_wl):
 
 def make_blank_plot(optics_directory, direct_gap, indirect_gap,
                     spectrum_type="AM1.5", Qi=1.0, n=3.5, thickness_range=None, save=False):
-    
     """
     Generates a blank efficiency plot for optical absorption analysis as a function of thickness.
 
@@ -448,10 +450,10 @@ def make_blank_plot(optics_directory, direct_gap, indirect_gap,
     Returns:
         None
     """
-    
+
     abs_file = f'{optics_directory}/absorption.dat'
     n_real_file = f'{optics_directory}/n_real.dat'
-    
+
     # Setup the spectrum and convert to units
     sol_wl, sol_irr, use_slme = _spectrum_select(spectrum_type)
     sol_wl_m, sol_phot_flux = _convert_spec(sol_wl, sol_irr)
@@ -459,17 +461,18 @@ def make_blank_plot(optics_directory, direct_gap, indirect_gap,
     # Calculate indicent power
 
     power_in = _calc_incident_power(sol_irr, sol_wl)
-        
+
     bb_phot_wl = _bb_per_wl(sol_wl_m)
 
     energy_abs, alpha_cm, alpha_m, n_real = _n_real_abs_fit(abs_file, n_real_file)
-    
-    eff_flat, eff_lam, eff_slme, thickness_range = _thickness_calc(thickness_range, alpha_m, use_slme, n, 
-                                                                  energy_abs, alpha_cm, direct_gap, indirect_gap, n_real, bb_phot_wl, 
-                                                                  sol_wl_m, sol_phot_flux, sol_wl, Qi, power_in)
 
-    linestyle="--" if np.isclose(direct_gap, indirect_gap) else "-"
-            
+    eff_flat, eff_lam, eff_slme, thickness_range = _thickness_calc(thickness_range, alpha_m, use_slme, n,
+                                                                   energy_abs, alpha_cm, direct_gap, indirect_gap,
+                                                                   n_real, bb_phot_wl,
+                                                                   sol_wl_m, sol_phot_flux, sol_wl, Qi, power_in)
+
+    linestyle = "--" if np.isclose(direct_gap, indirect_gap) else "-"
+
     plot_blank(use_slme, thickness_range, eff_slme, eff_lam, eff_flat, linestyle, save)
 
 
@@ -493,14 +496,14 @@ def power_efficiency(A_E, energy_abs, n_real, alpha_m, d):
         pe(float): calculated power efficiency (dimensionless, capped at 1.0).
     """
 
-    phi_bb_E  = _bb_per_eV(energy_abs)
+    phi_bb_E = _bb_per_eV(energy_abs)
 
     # pe denominator: ∫n²(E)·α(E)·φ_BB(E) dE  — independent of thickness
-    denom_int = simpson(n_real**2 * alpha_m * phi_bb_E, x=energy_abs)
+    denom_int = simpson(n_real ** 2 * alpha_m * phi_bb_E, x=energy_abs)
 
     # --- efficiency with full pe/Qi correction (Blank et al. eqs. 4-6) ---
     numer_int = simpson(A_E * phi_bb_E, x=energy_abs)
-    pe  = min(numer_int / (4 * d * denom_int), 1.0)
+    pe = min(numer_int / (4 * d * denom_int), 1.0)
 
     return pe
 
@@ -534,80 +537,94 @@ def _eta_d(d, A_sol, A_E, energy_abs, n_real, alpha_m, bb_phot_wl, sol_wl_m, sol
     pe = power_efficiency(A_E, energy_abs, n_real, alpha_m, d)
 
     # External luminescence efficiency (Blank eq. after eq. 6)
-    Qe  = (pe * Qi) / (1.0 + (pe - 1.0) * Qi)
+    Qe = (pe * Qi) / (1.0 + (pe - 1.0) * Qi)
 
     # J0_rad (standard detailed balance, wavelength space)
     J0_rad = _e * np.pi * simpson(bb_phot_wl * A_sol, x=sol_wl_m)
-    J0     = J0_rad / Qe   # total saturation current
+    J0 = J0_rad / Qe  # total saturation current
 
     Jsc = _e * simpson(sol_phot_flux * A_sol, x=sol_wl)
     if J0 <= 0 or Jsc <= 0:
         return 0.0
 
-    def Jfn(V): return Jsc - J0 * (np.exp(_e*V / (_k*_T)) - 1.0)
-    def Pfn(V): return Jfn(V) * V
-    tv = 0.0; vs = 0.001
+    def Jfn(V):
+        return Jsc - J0 * (np.exp(_e * V / (_k * _T)) - 1.0)
+
+    def Pfn(V):
+        return Jfn(V) * V
+
+    tv = 0.0;
+    vs = 0.001
     while Pfn(tv + vs) > Pfn(tv):
         tv += vs
-    return Pfn(tv) / power_in * 100.0 
+    return Pfn(tv) / power_in * 100.0
 
-def _thickness_calc(thickness_range, alpha_m, use_slme, n, energy_abs, alpha_cm, direct_gap, indirect_gap, n_real, bb_phot_wl, sol_wl_m, sol_phot_flux, sol_wl, Qi, power_in):
-        """
-    Computes thickness-dependent power conversion efficiencies using different optical models.
 
-    This function evaluates efficiency as a function of material thickness using two
-    absorption models (Beer-Lambert and optical interference approximation), and optionally
-    compares against the SLME model if available.
-
-    Parameters:
-        thickness_range(np.array or None): array of thickness values in meters.
-            If None, a default logarithmic range from 1e-8 to 1e-3 m is used.
-        alpha_m(np.array): absorption coefficient in m^-1 on the energy grid.
-        use_slme(bool): whether to also compute SLME efficiency.
-        n(float): refractive index used in optical model.
-        energy_abs(np.array): energy grid in eV.
-        alpha_cm(np.array): absorption coefficient in cm^-1 (used for SLME).
-        direct_gap(float): direct band gap energy in eV.
-        indirect_gap(float): indirect band gap energy in eV.
-        n_real(np.array): real refractive index on the energy grid.
-        bb_phot_wl(np.array): blackbody photon flux in wavelength space.
-        sol_wl_m(np.array): solar wavelength grid in meters.
-        sol_phot_flux(np.array): solar photon flux in wavelength space.
-        sol_wl(np.array): solar wavelength grid in nm.
-        Qi(float): internal quantum efficiency factor.
-        power_in(float): incident solar power density in W m^-2.
-
-    Returns:
-        eff_flat(list): efficiency values using exponential Beer–Lambert absorption model.
-        eff_lam(list): efficiency values using optical interference-enhanced model.
-        eff_slme(list): SLME efficiency values (empty if use_slme is False).
-        thickness_range(np.array): thickness values used for evaluation.
+def _thickness_calc(thickness_range, alpha_m, use_slme, n, energy_abs, alpha_cm, direct_gap, indirect_gap, n_real,
+                    bb_phot_wl, sol_wl_m, sol_phot_flux, sol_wl, Qi, power_in):
     """
-        alpha_on_sol = _interpolate_a(energy_abs, alpha_m, direct_gap, sol_wl)
+Computes thickness-dependent power conversion efficiencies using different optical models.
 
-        if thickness_range is None:
-            thickness_range = np.logspace(-8, -3, 80)   # m
+This function evaluates efficiency as a function of material thickness using two
+absorption models (Beer-Lambert and optical interference approximation), and optionally
+compares against the SLME model if available.
 
-        eff_flat = []; eff_lam = []; eff_slme = []
+Parameters:
+    thickness_range(np.array or None): array of thickness values in meters.
+        If None, a default logarithmic range from 1e-8 to 1e-3 m is used.
+    alpha_m(np.array): absorption coefficient in m^-1 on the energy grid.
+    use_slme(bool): whether to also compute SLME efficiency.
+    n(float): refractive index used in optical model.
+    energy_abs(np.array): energy grid in eV.
+    alpha_cm(np.array): absorption coefficient in cm^-1 (used for SLME).
+    direct_gap(float): direct band gap energy in eV.
+    indirect_gap(float): indirect band gap energy in eV.
+    n_real(np.array): real refractive index on the energy grid.
+    bb_phot_wl(np.array): blackbody photon flux in wavelength space.
+    sol_wl_m(np.array): solar wavelength grid in meters.
+    sol_phot_flux(np.array): solar photon flux in wavelength space.
+    sol_wl(np.array): solar wavelength grid in nm.
+    Qi(float): internal quantum efficiency factor.
+    power_in(float): incident solar power density in W m^-2.
 
-        for d in thickness_range:
-            # absorptance on solar wavelength grid (for Jsc, J0_rad)
-            A_flat_sol = np.clip(1.0 - np.exp(-2.0 * alpha_on_sol * d), 0.0, 1.0)
-            A_lamb_sol = np.clip(1.0 - 1.0/(1.0 + 4.0*n**2 * alpha_on_sol * d), 0.0, 1.0)
-            # absorptance on energy grid (for pe numerator integral)
-            A_flat_E   = np.clip(1.0 - np.exp(-2.0 * alpha_m * d), 0.0, 1.0)
-            A_lamb_E   = np.clip(1.0 - 1.0/(1.0 + 4.0*n**2 * alpha_m * d), 0.0, 1.0)
+Returns:
+    eff_flat(list): efficiency values using exponential Beer–Lambert absorption model.
+    eff_lam(list): efficiency values using optical interference-enhanced model.
+    eff_slme(list): SLME efficiency values (empty if use_slme is False).
+    thickness_range(np.array): thickness values used for evaluation.
+"""
+    alpha_on_sol = _interpolate_a(energy_abs, alpha_m, direct_gap, sol_wl)
 
-            eff_flat.append(_eta_d(d, A_flat_sol, A_flat_E, energy_abs, n_real, alpha_m, bb_phot_wl, sol_wl_m, sol_phot_flux, sol_wl, Qi, power_in))
-            eff_lam.append(_eta_d(d,  A_lamb_sol, A_lamb_E, energy_abs, n_real, alpha_m, bb_phot_wl, sol_wl_m, sol_phot_flux, sol_wl, Qi, power_in))
+    if thickness_range is None:
+        thickness_range = np.logspace(-8, -3, 80)  # m
 
-            if use_slme:
-                eff_slme.append(slme_mod.slme(
-                    energy_abs, alpha_cm, direct_gap, indirect_gap,
-                    thickness=d, absorbance_in_inverse_centimeters=True))
-            
-        return eff_flat, eff_lam, eff_slme, thickness_range
-            
+    eff_flat = [];
+    eff_lam = [];
+    eff_slme = []
+
+    for d in thickness_range:
+        # absorptance on solar wavelength grid (for Jsc, J0_rad)
+        A_flat_sol = np.clip(1.0 - np.exp(-2.0 * alpha_on_sol * d), 0.0, 1.0)
+        A_lamb_sol = np.clip(1.0 - 1.0 / (1.0 + 4.0 * n ** 2 * alpha_on_sol * d), 0.0, 1.0)
+        # absorptance on energy grid (for pe numerator integral)
+        A_flat_E = np.clip(1.0 - np.exp(-2.0 * alpha_m * d), 0.0, 1.0)
+        A_lamb_E = np.clip(1.0 - 1.0 / (1.0 + 4.0 * n ** 2 * alpha_m * d), 0.0, 1.0)
+
+        eff_flat.append(
+            _eta_d(d, A_flat_sol, A_flat_E, energy_abs, n_real, alpha_m, bb_phot_wl, sol_wl_m, sol_phot_flux, sol_wl,
+                   Qi, power_in))
+        eff_lam.append(
+            _eta_d(d, A_lamb_sol, A_lamb_E, energy_abs, n_real, alpha_m, bb_phot_wl, sol_wl_m, sol_phot_flux, sol_wl,
+                   Qi, power_in))
+
+        if use_slme:
+            eff_slme.append(slme_mod.slme(
+                energy_abs, alpha_cm, direct_gap, indirect_gap,
+                thickness=d, absorbance_in_inverse_centimeters=True))
+
+    return eff_flat, eff_lam, eff_slme, thickness_range
+
+
 def plot_blank(use_slme, thickness_range, eff_slme, eff_lam, eff_flat, linestyle, save):
     """
     Plots thickness-dependent maximum photovoltaic efficiency for different optical models.
@@ -631,16 +648,16 @@ def plot_blank(use_slme, thickness_range, eff_slme, eff_lam, eff_flat, linestyle
     fig, ax = plt.subplots(figsize=(8, 4))
 
     if use_slme:
-        ax.plot(thickness_range, eff_slme, color = 'blue', label="SLME")
-    ax.plot(thickness_range, eff_lam, color = 'green', label="Blank Lambertian")
-    ax.plot(thickness_range, eff_flat, color = 'orange', label="Blank Flat", linestyle=linestyle)
+        ax.plot(thickness_range, eff_slme, color='blue', label="SLME")
+    ax.plot(thickness_range, eff_lam, color='green', label="Blank Lambertian")
+    ax.plot(thickness_range, eff_flat, color='orange', label="Blank Flat", linestyle=linestyle)
     ax.set_xscale("log")
     ax.set_xlabel("Film Thickness / m", labelpad=5)
     ax.set_ylabel(r"Max PV Efficiency $(\eta_\mathrm{Max})$ / %")
     ax.set_ylim([0, 35])
     ax.margins(x=0)
     ax.legend()
-    plt.tight_layout()    
+    plt.tight_layout()
     if save:
         plt.savefig("slme.png", dpi=700)
     plt.show()
