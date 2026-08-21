@@ -1,6 +1,8 @@
+import logging
+
 from matplotlib import pyplot as plt
 from sumo.cli.dosplot import dosplot
-import logging
+
 logging.getLogger('matplotlib.font_manager').disabled = True
 import numpy as np
 from numpy.typing import NDArray
@@ -17,9 +19,9 @@ from pymatgen.io.vasp.inputs import Kpoints
 import scipy.constants as sc
 from scipy.constants import physical_constants as pc
 
-HBAR = sc.hbar   # J·s
-M_E  = pc["atomic unit of mass"][0]   # kg
-EV   = sc.e    # J per eV
+HBAR = sc.hbar  # J·s
+M_E = pc["atomic unit of mass"][0]  # kg
+EV = sc.e  # J per eV
 MIN_DOS_FIT_R2 = 0.80
 MIN_DOS_FIT_POINTS = 10
 
@@ -50,7 +52,7 @@ def plot_dos(filename, xmin=-3, xmax=3, gaussian=0.05, save=False):
     Returns:
         None
     """
-    fig, ax = plt.subplots(figsize=(5,3), dpi=150)
+    fig, ax = plt.subplots(figsize=(5, 3), dpi=150)
     dosplot(filename=filename, xmin=xmin, xmax=xmax, gaussian=gaussian, plt=plt)
 
     if save:
@@ -59,28 +61,28 @@ def plot_dos(filename, xmin=-3, xmax=3, gaussian=0.05, save=False):
     plt.show()
     return
 
+
 '''
 Density of states effect mass classes.
 '''
 
+
 @dataclass
 class _DOSEffectiveMassResult:
-
     carrier: str
     m_eff_rel: float
     m_eff_si: float
-    fit_quality: float 
+    fit_quality: float
     n_points: int
     E_edge: float
     energy_window: float
-    fit_coefficient: float 
+    fit_coefficient: float
 
-    @property 
+    @property
     def E_c(self):
         return self.E_edge
 
     def __str__(self):
-
         edge_label = (
             "CBM"
             if self.carrier == "electrons"
@@ -99,7 +101,7 @@ class _DOSEffectiveMassResult:
             f" DOS Effective Mass ({self.carrier.capitalize()})",
             "=" * 60,
             f" Band edge ({edge_label}) : {self.E_edge:.6f} eV",
-                        f"  Energy window     : {self.energy_window:.4f} eV",
+            f"  Energy window     : {self.energy_window:.4f} eV",
             f"  Points used       : {self.n_points}",
             f"  Fit quality       : {self.fit_quality:.6f} R²",
             "",
@@ -111,10 +113,9 @@ class _DOSEffectiveMassResult:
 
         return "\n".join(lines)
 
+
 @dataclass
-
 class DOSResult:
-
     fit_quality_e: Optional[float]
     fit_quality_h: Optional[float]
     cell_volume_m3: float
@@ -125,9 +126,8 @@ class DOSResult:
     cbm: Optional[float] = None
     vbm: Optional[float] = None
 
-    @property 
+    @property
     def em_result(self) -> Optional[_DOSEffectiveMassResult]:
-
         if self.carrier == "electrons":
             return self.em_electrons
 
@@ -135,6 +135,7 @@ class DOSResult:
 
     def __str__(self):
         return _format_dos_summary(self)
+
 
 def _load_dos(
         dos_vasprun: str
@@ -191,8 +192,8 @@ def _load_dos(
 
     return vr, cdos, energies, densities
 
-def _get_band_edge(cdos, carrier, energies, energy_window, densities):
 
+def _get_band_edge(cdos, carrier, energies, energy_window, densities):
     """
     Extracts the electronic density of states near a selected band edge.
 
@@ -236,12 +237,12 @@ def _get_band_edge(cdos, carrier, energies, energy_window, densities):
         E_edge = cbm
 
         mask = (
-            (energies > E_edge)
-            & (energies <= E_edge + energy_window)
+                (energies > E_edge)
+                & (energies <= E_edge + energy_window)
         )
 
         delta_E_ev = (
-            energies[mask] - E_edge
+                energies[mask] - E_edge
         )
 
     else:
@@ -249,20 +250,20 @@ def _get_band_edge(cdos, carrier, energies, energy_window, densities):
         E_edge = vbm
 
         mask = (
-            (energies < E_edge)
-            & (energies >= E_edge - energy_window)
+                (energies < E_edge)
+                & (energies >= E_edge - energy_window)
         )
 
         delta_E_ev = (
-            E_edge - energies[mask]
+                E_edge - energies[mask]
         )
 
     dos = densities[mask]
 
     return E_edge, delta_E_ev, dos
 
-def _clean_dos_values(delta_E_ev, dos, min_dos, energy_window):
 
+def _clean_dos_values(delta_E_ev, dos, min_dos, energy_window):
     """
     Cleans and validates density of states (DOS) data near a band edge.
 
@@ -297,10 +298,10 @@ def _clean_dos_values(delta_E_ev, dos, min_dos, energy_window):
     """
 
     good = (
-        np.isfinite(delta_E_ev)
-        & np.isfinite(dos)
-        & (delta_E_ev > 0)
-        & (dos > min_dos)
+            np.isfinite(delta_E_ev)
+            & np.isfinite(dos)
+            & (delta_E_ev > 0)
+            & (dos > min_dos)
     )
 
     delta_E_ev = delta_E_ev[good]
@@ -314,8 +315,8 @@ def _clean_dos_values(delta_E_ev, dos, min_dos, energy_window):
 
     return delta_E_ev, dos
 
-def _convert_dos(vr, delta_E_ev, dos):
 
+def _convert_dos(vr, delta_E_ev, dos):
     """
     Converts density of states (DOS) data from VASP units to SI units.
 
@@ -343,24 +344,24 @@ def _convert_dos(vr, delta_E_ev, dos):
     """
 
     volume_m3 = (
-        vr.final_structure.volume
-        * 1.0e-30
-        )
+            vr.final_structure.volume
+            * 1.0e-30
+    )
 
     delta_E_J = (
-        delta_E_ev * EV
+            delta_E_ev * EV
     )
 
     dos_si = (
-        dos
-        / EV
-        / volume_m3
+            dos
+            / EV
+            / volume_m3
     )
 
     return delta_E_J, dos_si
 
-def _check_fit(A, x, y):
 
+def _check_fit(A, x, y):
     """
     Evaluates the quality of a linear fit constrained to pass through the origin.
 
@@ -383,15 +384,15 @@ def _check_fit(A, x, y):
     """
 
     y_pred = (
-        A * x
+            A * x
     )
 
     ss_res = np.sum(
-        (y - y_pred)**2
+        (y - y_pred) ** 2
     )
 
     ss_tot = np.sum(
-        (y - np.mean(y))**2
+        (y - np.mean(y)) ** 2
     )
 
     if ss_tot > 0:
@@ -401,8 +402,8 @@ def _check_fit(A, x, y):
 
     return r2
 
-def _calculate_DOS(delta_E_J, dos_si):
 
+def _calculate_DOS(delta_E_J, dos_si):
     """
     Calculates the density-of-states effective mass from DOS data near a band edge.
 
@@ -458,8 +459,8 @@ def _calculate_DOS(delta_E_J, dos_si):
         )
 
     A = (
-        np.dot(x, y)
-        / denominator
+            np.dot(x, y)
+            / denominator
     )
 
     if A <= 0:
@@ -468,17 +469,17 @@ def _calculate_DOS(delta_E_J, dos_si):
         )
 
     m_eff_si = (
-        HBAR**2
-        / 2.0
-        * (
-            2.0
-            * np.pi**2
-            * A
-        )**(2.0 / 3.0)
+            HBAR ** 2
+            / 2.0
+            * (
+                    2.0
+                    * np.pi ** 2
+                    * A
+            ) ** (2.0 / 3.0)
     )
 
     m_eff_rel = (
-        m_eff_si / M_E
+            m_eff_si / M_E
     )
 
     r2 = _check_fit(A, x, y)
@@ -492,7 +493,6 @@ def get_dos_effective_mass(
         energy_window: float = 0.15,
         min_dos: float = 0.0,
 ) -> _DOSEffectiveMassResult:
-
     """
     Calculates the density-of-states effective mass for electrons or holes.
 
@@ -546,25 +546,26 @@ def get_dos_effective_mass(
     m_eff_rel, m_eff_si, r2, y, A = _calculate_DOS(delta_E_J, dos_si)
 
     return _DOSEffectiveMassResult(
-    carrier=carrier,
+        carrier=carrier,
 
-    m_eff_rel=float(m_eff_rel),
-    m_eff_si=float(m_eff_si),
+        m_eff_rel=float(m_eff_rel),
+        m_eff_si=float(m_eff_si),
 
-    fit_quality=float(r2),
-    n_points=len(y),
+        fit_quality=float(r2),
+        n_points=len(y),
 
-    E_edge=float(E_edge),
-    energy_window=float(energy_window),
+        E_edge=float(E_edge),
+        energy_window=float(energy_window),
 
-    fit_coefficient=float(A),
+        fit_coefficient=float(A),
     )
 
+
 def test_dos_mass_windows(
-    dos_vasprun: str,
-    carrier: str = "electrons",
-    windows=(0.05, 0.10, 0.15, 0.20, 0.30),
-    min_dos: float = 0.0,
+        dos_vasprun: str,
+        carrier: str = "electrons",
+        windows=(0.05, 0.10, 0.15, 0.20, 0.30),
+        min_dos: float = 0.0,
 ):
     """
     Tests the sensitivity of the DOS effective mass to the fitting energy window.
@@ -599,7 +600,7 @@ def test_dos_mass_windows(
         window, DOS effective mass relative to the free electron mass, R^2
         value, and number of fitted DOS points for each successful calculation.
     """
-        
+
     print("")
     print("=" * 78)
 
@@ -655,13 +656,13 @@ def test_dos_mass_windows(
 
     return results
 
-def _format_em_table(
-    em: _DOSEffectiveMassResult,
-    edge: float,
-    is_dos_carrier: bool,
-    fit: Optional[float],
-) -> list:
 
+def _format_em_table(
+        em: _DOSEffectiveMassResult,
+        edge: float,
+        is_dos_carrier: bool,
+        fit: Optional[float],
+) -> list:
     """
     Formats DOS effective-mass results for display in a summary table.
 
@@ -734,10 +735,10 @@ def _format_em_table(
         "",
     ]
 
-def _format_dos_summary(
-    result: "DOSResult",
-) -> str:
 
+def _format_dos_summary(
+        result: "DOSResult",
+) -> str:
     """
     Formats a complete density-of-states (DOS) result summary for display.
 
@@ -790,7 +791,7 @@ def _format_dos_summary(
             result.em_electrons,
             result.cbm,
             is_dos_carrier=(
-                result.carrier == "electrons"
+                    result.carrier == "electrons"
             ),
             fit=result.fit_quality_e,
         )
@@ -809,7 +810,7 @@ def _format_dos_summary(
             result.em_holes,
             result.vbm,
             is_dos_carrier=(
-                result.carrier == "holes"
+                    result.carrier == "holes"
             ),
             fit=result.fit_quality_h,
         )
@@ -829,10 +830,10 @@ def _format_dos_summary(
         lines
     )
 
-def print_dos_summary(
-    result: "DOSResult",
-) -> None:
 
+def print_dos_summary(
+        result: "DOSResult",
+) -> None:
     """
     Prints a formatted density-of-states (DOS) result summary.
 
@@ -855,13 +856,13 @@ def print_dos_summary(
         )
     )
 
-def _check_dos_fit_quality(
-    result: _DOSEffectiveMassResult,
-    dos_vasprun: str,
-    windows=(0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.40),
-    min_dos: float = 0.0,
-) -> bool:
 
+def _check_dos_fit_quality(
+        result: _DOSEffectiveMassResult,
+        dos_vasprun: str,
+        windows=(0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.40),
+        min_dos: float = 0.0,
+) -> bool:
     """
     Checks whether a DOS effective-mass fit is sufficiently well resolved.
 
@@ -891,8 +892,8 @@ def _check_dos_fit_quality(
     """
 
     poor_fit = (
-        result.fit_quality < MIN_DOS_FIT_R2
-        and result.n_points < MIN_DOS_FIT_POINTS
+            result.fit_quality < MIN_DOS_FIT_R2
+            and result.n_points < MIN_DOS_FIT_POINTS
     )
 
     if not poor_fit:
@@ -972,14 +973,14 @@ def _check_dos_fit_quality(
 
     return False
 
-def compute_dos(
-    dos_vasprun: str,
-    m_eff: Optional[float] = None,
-    carrier: str = "electrons",
-    energy_window: float = 0.15,
-    min_dos: float = 0.0,
-) -> DOSResult:
 
+def compute_dos(
+        dos_vasprun: str,
+        m_eff: Optional[float] = None,
+        carrier: str = "electrons",
+        energy_window: float = 0.15,
+        min_dos: float = 0.0,
+) -> DOSResult:
     """
     Computes density-of-states information and the corresponding effective mass.
 
@@ -1025,10 +1026,9 @@ def compute_dos(
     """
 
     if carrier not in (
-        "electrons",
-        "holes",
+            "electrons",
+            "holes",
     ):
-
         raise ValueError(
             "carrier must be "
             "'electrons' or 'holes'."
@@ -1045,8 +1045,8 @@ def compute_dos(
     )
 
     vol_m3 = (
-        vr.final_structure.volume
-        * 1.0e-30
+            vr.final_structure.volume
+            * 1.0e-30
     )
 
     cbm, vbm = (
@@ -1055,7 +1055,7 @@ def compute_dos(
 
     # Reference energies to VBM = 0
     cbm_zeroed = (
-        cbm - vbm
+            cbm - vbm
     )
 
     vbm_zeroed = 0.0
@@ -1126,7 +1126,6 @@ def compute_dos(
                 stacklevel=2,
             )
 
-
     if m_eff is not None:
 
         final_result = float(
@@ -1182,26 +1181,25 @@ def compute_dos(
             selected_em = em_holes
 
         if selected_em is not None:
-
             _check_dos_fit_quality(
                 result=selected_em,
                 dos_vasprun=dos_vasprun,
                 min_dos=min_dos,
             )
 
-
     return result
+
 
 '''
 Density of states file generation
 '''
 
-def _generate_local_kpoints(
-    k0_frac: NDArray,
-    mesh: tuple,
-    delta: float,
-) -> Kpoints:
 
+def _generate_local_kpoints(
+        k0_frac: NDArray,
+        mesh: tuple,
+        delta: float,
+) -> Kpoints:
     """
     Generates a local reciprocal-space k-point mesh around a band-edge k-point.
 
@@ -1252,13 +1250,13 @@ def _generate_local_kpoints(
         kpts_weights=[1.0] * len(pts),
     )
 
+
 def write_local_kpoints(
-        folder:str,
-        k0_frac:NDArray,
-        mesh:tuple,
-        delta:float
-        ):
-    
+        folder: str,
+        k0_frac: NDArray,
+        mesh: tuple,
+        delta: float
+):
     """
     Generates and writes a dense local VASP KPOINTS file around a band-edge k-point.
 
@@ -1293,20 +1291,20 @@ def write_local_kpoints(
         style=Kpoints.supported_modes.Reciprocal,
         num_kpts=len(kpoints),
         kpts=kpoints.tolist(),
-        kpts_weights=[1]*len(kpoints),)
-    
+        kpts_weights=[1] * len(kpoints), )
+
     kp.write_file(f"{folder}/KPOINTS")
 
-def write_eff_mass(
-    k0_frac: NDArray,
-    structure: Structure,
-    functional: str,
-    encut: int,
-    folder: str = "eff_mass",
-    mesh: tuple = (5, 5, 5),
-    delta: float = 0.01,
-):
 
+def write_eff_mass(
+        k0_frac: NDArray,
+        structure: Structure,
+        functional: str,
+        encut: int,
+        folder: str = "eff_mass",
+        mesh: tuple = (5, 5, 5),
+        delta: float = 0.01,
+):
     """
     Writes a VASP calculation setup for an effective-mass calculation.
 
@@ -1352,6 +1350,6 @@ def write_eff_mass(
         recipe=functional,
         out_dir=folder,
         patches=["eff_mass"],
-        user_incar_settings={"ENCUT": encut, "ISYM":0, "ICHARG":0},
+        user_incar_settings={"ENCUT": encut, "ISYM": 0, "ICHARG": 0},
         user_kpoints_settings=kp,
     )

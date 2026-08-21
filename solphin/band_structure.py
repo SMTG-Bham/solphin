@@ -1,40 +1,40 @@
-from typing import Optional, Any
-from pathlib import Path
-from glob import glob
+import logging
 import math
-import numpy as np
-from numpy.typing import NDArray
 import os
 import shutil
+from glob import glob
+from pathlib import Path
+from typing import Optional, Any
 
+import numpy as np
+from numpy.typing import NDArray
 from pymatgen.core.structure import Structure
-from pymatgen.io.vasp.outputs import BSVasprun
 from pymatgen.electronic_structure.bandstructure import BandStructureSymmLine
 from pymatgen.io.vasp.inputs import Kpoints
-
-from sumo.symmetry.kpoints import get_path_data
+from pymatgen.io.vasp.outputs import BSVasprun
+from sumo.electronic_structure.bandstructure import get_reconstructed_band_structure
+from sumo.electronic_structure.dos import load_dos
 from sumo.plotting.bs_plotter import SBSPlotter
 from sumo.plotting.dos_plotter import SDOSPlotter
-from sumo.electronic_structure.dos import load_dos
-from sumo.electronic_structure.bandstructure import get_reconstructed_band_structure
+from sumo.symmetry.kpoints import get_path_data
 
 from solphin.vasp_inputs import write_vasp_calculation
 
-import logging
 logger = logging.getLogger()
 logger.setLevel(logging.WARNING)
 
 import warnings
-warnings.filterwarnings("ignore", category=DeprecationWarning) 
+
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+
 
 def generate_band_structure_path(
-        structure:Structure,
-        definition:str="bradcrack",
-        symprec:float=0.01,
-        density:int=60,
-        cartesian:bool=False
-                            ) -> tuple[Structure, tuple[NDArray, list[str]]]:
-    
+        structure: Structure,
+        definition: str = "bradcrack",
+        symprec: float = 0.01,
+        density: int = 60,
+        cartesian: bool = False
+) -> tuple[Structure, tuple[NDArray, list[str]]]:
     """
     Generates a high-symmetry k-point path for band structure calculations.
 
@@ -77,7 +77,7 @@ def generate_band_structure_path(
     )
 
     if not np.allclose(structure.lattice.matrix, kpath.prim.lattice.matrix):
-        
+
         canonical_structure = kpath.prim
 
         _, canonical_kpoints, canonical_labels = get_path_data(
@@ -92,27 +92,27 @@ def generate_band_structure_path(
         )
 
         print("INFO: The canonical structure differs from the supplied structure.")
-    
+
     else:
         canonical_structure = structure
         canonical_kpoints = kpoints
         canonical_labels = labels
-            
+
     print(f"Generated high-symmetry path of {len(canonical_kpoints)} k-points")
 
-    return canonical_structure, (canonical_kpoints, canonical_labels) # type: ignore
+    return canonical_structure, (canonical_kpoints, canonical_labels)  # type: ignore
 
-#Simplified version of sumo.io.vasp.write_kpoint_files
+
+# Simplified version of sumo.io.vasp.write_kpoint_files
 def _write_kpoint_files(
-    directory:str|Path,
-    kpoints:NDArray,
-    labels:list[str],
-    make_folders:bool=True,
-    ibzkpt:Optional[Kpoints]=None,
-    kpts_per_split:Optional[int]=None,
-    cart_coords:bool=False,
+        directory: str | Path,
+        kpoints: NDArray,
+        labels: list[str],
+        make_folders: bool = True,
+        ibzkpt: Optional[Kpoints] = None,
+        kpts_per_split: Optional[int] = None,
+        cart_coords: bool = False,
 ) -> list[str]:
-    
     """
     Generates and writes KPOINTS files for band structure calculations, optionally split into multiple segments.
 
@@ -143,11 +143,11 @@ def _write_kpoint_files(
 
     if kpts_per_split:
         kpt_splits = [
-            kpoints[i : i + kpts_per_split]
+            kpoints[i: i + kpts_per_split]
             for i in range(0, len(kpoints), kpts_per_split)
         ]
         label_splits = [
-            labels[i : i + kpts_per_split]
+            labels[i: i + kpts_per_split]
             for i in range(0, len(labels), kpts_per_split)
         ]
     else:
@@ -218,17 +218,18 @@ def _write_kpoint_files(
 
     return folders
 
+
 def write_band_structure_calculation(
-        structure:Structure,
-        kpath:tuple[NDArray, list[str]],
-        band_directory:str|Path,
-        functional:str,
-        splits:int,
-        patches:list[str]=[],
-        scf_charge:Optional[str]=None,
-        scf_kpoints:Optional[str]=None,
-        cartesian:bool=False,
-        user_incar_settings:Optional[dict[str,Any]]=None):
+        structure: Structure,
+        kpath: tuple[NDArray, list[str]],
+        band_directory: str | Path,
+        functional: str,
+        splits: int,
+        patches: list[str] = [],
+        scf_charge: Optional[str] = None,
+        scf_kpoints: Optional[str] = None,
+        cartesian: bool = False,
+        user_incar_settings: Optional[dict[str, Any]] = None):
     """
     Generates and writes a band structure calculation setup for VASP.
 
@@ -257,16 +258,17 @@ def write_band_structure_calculation(
     """
 
     hybrid = functional in ["PBE0", "HSE06", "DD_hybrid", "R2SCAN"]
-    
+
     if hybrid:
         if scf_kpoints is None:
-            print("ERROR: SCF irreducible k-points are required for band structure calculations with a hybrid functional")
+            print(
+                "ERROR: SCF irreducible k-points are required for band structure calculations with a hybrid functional")
             return
-        
+
         else:
             # ibz = _parse_ibzkpt(scf_kpoints)
             ibz = Kpoints.from_file(scf_kpoints)
-    
+
     else:
         if scf_charge is None:
             print("ERROR: Converged charge density is required for band structure calculations with a GGA functional")
@@ -279,8 +281,8 @@ def write_band_structure_calculation(
 
     if splits > 1:
         make_folders = True
-        kpts_per_split = math.ceil(len(kpoints)/splits)
-    
+        kpts_per_split = math.ceil(len(kpoints) / splits)
+
     else:
         make_folders = False
         kpts_per_split = None
@@ -300,7 +302,7 @@ def write_band_structure_calculation(
         cart_coords=cartesian,
     )
 
-    incar_settings = {"KSPACING":0} #KSPACING is a dummy value to prevent overwriting of band path KPOINTS file(s)
+    incar_settings = {"KSPACING": 0}  # KSPACING is a dummy value to prevent overwriting of band path KPOINTS file(s)
 
     if user_incar_settings is not None:
         incar_settings = incar_settings | user_incar_settings
@@ -315,11 +317,12 @@ def write_band_structure_calculation(
             structure=structure,
             recipe=functional,
             out_dir=directory,
-            patches = patches,
+            patches=patches,
             user_incar_settings=incar_settings)
-        
+
         if not hybrid:
-            shutil.copy(src=scf_charge, dst=os.path.join(directory, "CHGCAR")) # type: ignore
+            shutil.copy(src=scf_charge, dst=os.path.join(directory, "CHGCAR"))  # type: ignore
+
 
 def _is_soc_vasprun(vr: BSVasprun) -> bool:
     """
@@ -344,7 +347,7 @@ def _is_soc_vasprun(vr: BSVasprun) -> bool:
         return False
 
 
-def get_band_structure(band_directory:str|Path, splits:int) -> BandStructureSymmLine:
+def get_band_structure(band_directory: str | Path, splits: int) -> BandStructureSymmLine:
     """
     Loads and reconstructs a symmetry-line band structure from VASP calculation outputs.
 
@@ -367,9 +370,9 @@ def get_band_structure(band_directory:str|Path, splits:int) -> BandStructureSymm
 
     if splits > 1:
         vaspruns = sorted(
-        glob(f"{band_directory}/split-*/vasprun.xml"),
-        key=lambda x: int(Path(x).parent.name.split("-")[-1])
-    )
+            glob(f"{band_directory}/split-*/vasprun.xml"),
+            key=lambda x: int(Path(x).parent.name.split("-")[-1])
+        )
 
     else:
         vaspruns = [f"{band_directory}/vasprun.xml"]
@@ -377,53 +380,54 @@ def get_band_structure(band_directory:str|Path, splits:int) -> BandStructureSymm
     bandstructures = []
     for vr_file in vaspruns:
         vr = BSVasprun(vr_file, parse_projected_eigen=False)
-        bs = vr.get_band_structure(line_mode=True, efermi="smart") 
+        bs = vr.get_band_structure(line_mode=True, efermi="smart")
         bandstructures.append(bs)
-        
-    bs:BandStructureSymmLine = get_reconstructed_band_structure(bandstructures)
+
+    bs: BandStructureSymmLine = get_reconstructed_band_structure(bandstructures)
 
     return bs
 
-#Simplified version of sumo.cli.bandplot
+
+# Simplified version of sumo.cli.bandplot
 def plot_band_structure(
-    bs:BandStructureSymmLine, 
-    plt,
-    ymin=-6.0,
-    ymax=6.0,
-    ylabel="Energy (eV)",
+        bs: BandStructureSymmLine,
+        plt,
+        ymin=-6.0,
+        ymax=6.0,
+        ylabel="Energy (eV)",
 
-    dos_file=None,
-    dos_label=None,
-    total_only=False,
-    plot_total=True,
-    gaussian=None,
-    yscale=1,
-    legend_cutoff=3,
+        dos_file=None,
+        dos_label=None,
+        total_only=False,
+        plot_total=True,
+        gaussian=None,
+        yscale=1,
+        legend_cutoff=3,
 
-    vbm_cbm_marker=False,
-    projection_selection=None,
-    mode="rgb",
-    normalise="all",
-    interpolate_factor=4,
-    color1="#FF0000",
-    color2="#0000FF",
-    color3="#00FF00",
-    colorspace="lab",
-    circle_size=150,
+        vbm_cbm_marker=False,
+        projection_selection=None,
+        mode="rgb",
+        normalise="all",
+        interpolate_factor=4,
+        color1="#FF0000",
+        color2="#0000FF",
+        color3="#00FF00",
+        colorspace="lab",
+        circle_size=150,
 
-    scissor=None,
-    zero_line=False,
-    zero_energy=None,
+        scissor=None,
+        zero_line=False,
+        zero_energy=None,
 
-    elements=None,
-    lm_orbitals=None,
-    atoms=None,
-    spin=None,
+        elements=None,
+        lm_orbitals=None,
+        atoms=None,
+        spin=None,
 
-    colours=None,
+        colours=None,
 
-    style=None,
-    no_base_style=False,
+        style=None,
+        no_base_style=False,
 
 ):
     """

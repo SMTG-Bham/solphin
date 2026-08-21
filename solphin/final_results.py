@@ -1,24 +1,27 @@
-from solphin.pv_fom import Final_equation
-from solphin.db_fom import max_eff
+import logging
 
+import matplotlib.pyplot as plt
 import numpy as np
+from ipywidgets import interact, widgets
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
-import matplotlib.pyplot as plt
-from ipywidgets import interact, widgets
 
-import logging
+from solphin.db_fom import max_eff
+from solphin.pv_fom import Final_equation
+
 logging.getLogger('matplotlib.font_manager').disabled = True
 logging.basicConfig(level=logging.INFO)
 
 import warnings
-warnings.filterwarnings(action="ignore",message="This figure was using a layout engine that is incompatible with subplots_adjust{1}.+")
-warnings.filterwarnings(action="ignore",message="invalid value encountered in multiply{1}.+")
+
+warnings.filterwarnings(action="ignore",
+                        message="This figure was using a layout engine that is incompatible with subplots_adjust{1}.+")
+warnings.filterwarnings(action="ignore", message="invalid value encountered in multiply{1}.+")
+
 
 # Calculating equation 33 from the FOM paper
 
 def SQ_relative_FOM_PV_efficiency(E_gap, photon_spectrum, alpha, tau, sigma, dos_mass, dop_density, epsilon, mu, Tcell):
-
     ''' Calculates the final value for the photovoltaic figure of merit from Crovetto 2024 as a percentage of the Shockley Queisser efficiency limit.
     
     Parameters:
@@ -55,30 +58,29 @@ def SQ_relative_FOM_PV_efficiency(E_gap, photon_spectrum, alpha, tau, sigma, dos
 
     efficiency = SQ_eff / ((1 + fraction) * denom_bracket)
 
-    FOM_efficiency = efficiency * 100 
+    FOM_efficiency = efficiency * 100
 
-    SQ_relative = (FOM_efficiency / SQ ) * 100
+    SQ_relative = (FOM_efficiency / SQ) * 100
 
     return SQ, SQ_relative, FOM_efficiency
 
 
 def plot_FOM(
-        fig:Figure, 
-        axes:list[Axes], 
+        fig: Figure,
+        axes: list[Axes],
         E_gap,
-        photon_spectrum, 
-        alpha, 
-        tau, 
-        sigma, 
-        dos_mass, 
-        dop_density, 
-        epsilon, 
-        mu, 
+        photon_spectrum,
+        alpha,
+        tau,
+        sigma,
+        dos_mass,
+        dop_density,
+        epsilon,
+        mu,
         Tcell,
-        dop_range:tuple[float,float], 
-        tau_range:tuple[float,float], 
-        mu_range:tuple[float,float]):
-
+        dop_range: tuple[float, float],
+        tau_range: tuple[float, float],
+        mu_range: tuple[float, float]):
     """
     Plots the photovoltaic figure of merit as a function of key transport parameters.
 
@@ -138,30 +140,42 @@ def plot_FOM(
         None
     """
 
-    #For each of the three quantities, take the other two as fixed and iterate over a sensible range
+    # For each of the three quantities, take the other two as fixed and iterate over a sensible range
 
-    #Plot vs dopant density
+    # Plot vs dopant density
     densities = np.logspace(np.log10(dop_range[0]), np.log10(dop_range[1]))
-    dop_foms = [SQ_relative_FOM_PV_efficiency(E_gap=E_gap, photon_spectrum=photon_spectrum, alpha=alpha, tau=tau, sigma=sigma, dos_mass=dos_mass, dop_density=d, epsilon=epsilon, mu=mu, Tcell=Tcell)[-1] for d in densities]
+    dop_foms = [
+        SQ_relative_FOM_PV_efficiency(E_gap=E_gap, photon_spectrum=photon_spectrum, alpha=alpha, tau=tau, sigma=sigma,
+                                      dos_mass=dos_mass, dop_density=d, epsilon=epsilon, mu=mu, Tcell=Tcell)[-1] for d
+        in densities]
     axes[0].plot(densities, dop_foms, "-", markersize=6)
     axes[0].set_xscale("log")
     axes[0].set_xlabel("Doping Density (cm$^{-3}$)")
     axes[0].set_ylabel("Figure of Merit")
-    axes[0].set_title("Figure of Merit vs Doping Density \n"+r"($\mu$="+str(mu)+r", $\tau$=" + f"{tau:.2e}" + ")")
+    axes[0].set_title("Figure of Merit vs Doping Density \n" + r"($\mu$=" + str(mu) + r", $\tau$=" + f"{tau:.2e}" + ")")
 
-    #Plot vs lifetime
+    # Plot vs lifetime
     lifetimes = np.linspace(tau_range[0], tau_range[1])
-    lifetime_foms = [SQ_relative_FOM_PV_efficiency(E_gap=E_gap, photon_spectrum=photon_spectrum, alpha=alpha, tau=l, sigma=sigma, dos_mass=dos_mass, dop_density=dop_density, epsilon=epsilon, mu=mu, Tcell=Tcell)[-1] for l in lifetimes]
+    lifetime_foms = [
+        SQ_relative_FOM_PV_efficiency(E_gap=E_gap, photon_spectrum=photon_spectrum, alpha=alpha, tau=l, sigma=sigma,
+                                      dos_mass=dos_mass, dop_density=dop_density, epsilon=epsilon, mu=mu, Tcell=Tcell)[
+            -1] for l in lifetimes]
     axes[1].plot(lifetimes, lifetime_foms, "-", markersize=6)
     axes[1].set_xlabel("Carrier Lifetime (s)")
-    axes[1].set_title("Figure of Merit vs Carrier Lifetime \n"+r"($\mu$="+str(mu)+r", Density=" + f"{dop_density:.2e}" + ")")
+    axes[1].set_title(
+        "Figure of Merit vs Carrier Lifetime \n" + r"($\mu$=" + str(mu) + r", Density=" + f"{dop_density:.2e}" + ")")
 
-    #Plot vs mobility
+    # Plot vs mobility
     mobilities = np.linspace(mu_range[0], mu_range[1])
-    mob_foms = [SQ_relative_FOM_PV_efficiency(E_gap=E_gap, photon_spectrum=photon_spectrum, alpha=alpha, tau=tau, sigma=sigma, dos_mass=dos_mass, dop_density=dop_density, epsilon=epsilon, mu=m, Tcell=Tcell)[-1] for m in mobilities]
+    mob_foms = [
+        SQ_relative_FOM_PV_efficiency(E_gap=E_gap, photon_spectrum=photon_spectrum, alpha=alpha, tau=tau, sigma=sigma,
+                                      dos_mass=dos_mass, dop_density=dop_density, epsilon=epsilon, mu=m, Tcell=Tcell)[
+            -1] for m in mobilities]
     axes[2].plot(mobilities, mob_foms, "-", markersize=6)
     axes[2].set_xlabel("Carrier Mobility (cm$^2$V$^{-1}$s$^{-1}$)")
-    axes[2].set_title("Figure of Merit vs Carrier Mobility \n" + "(Density=" + f"{dop_density:.2e}" + r", $\tau$="+ f"{tau:.2e}" + ")")
+    axes[2].set_title(
+        "Figure of Merit vs Carrier Mobility \n" + "(Density=" + f"{dop_density:.2e}" + r", $\tau$=" + f"{tau:.2e}" + ")")
+
 
 def _get_step(quantity_range):
     """
@@ -177,22 +191,23 @@ def _get_step(quantity_range):
     Returns:
         float: Step size corresponding to one hundredth of the supplied range.
     """
-    return (quantity_range[1] - quantity_range[0])/100
+    return (quantity_range[1] - quantity_range[0]) / 100
+
 
 def plot_final_result_interactive(
         E_gap,
-        photon_spectrum, 
-        alpha, 
-        tau, 
-        sigma, 
-        dos_mass, 
-        dop_density, 
-        epsilon, 
-        mu, 
+        photon_spectrum,
+        alpha,
+        tau,
+        sigma,
+        dos_mass,
+        dop_density,
+        epsilon,
+        mu,
         Tcell,
-        dop_range:tuple[float,float]=(1e10, 1e18), 
-        tau_range:tuple[float,float]=(1e-15, 1e3), 
-        mu_range:tuple[float,float]=(1e-2, 1e9)):
+        dop_range: tuple[float, float] = (1e10, 1e18),
+        tau_range: tuple[float, float] = (1e-15, 1e3),
+        mu_range: tuple[float, float] = (1e-2, 1e9)):
     """
     Creates an interactive Figure of Merit visualization dashboard.
 
@@ -215,16 +230,15 @@ def plot_final_result_interactive(
         None
     """
     plt.close("all")
-    fig, axes = plt.subplots(1,3, figsize=(12,3), dpi=120, constrained_layout=True)
+    fig, axes = plt.subplots(1, 3, figsize=(12, 3), dpi=120, constrained_layout=True)
 
-    fig.canvas.header_visible = False      # hides the figure “header” in JupyterLab
-    fig.canvas.footer_visible = False      # hides the footer
-    fig.canvas.toolbar_visible = False     # hides the toolbar
+    fig.canvas.header_visible = False  # hides the figure “header” in JupyterLab
+    fig.canvas.footer_visible = False  # hides the footer
+    fig.canvas.toolbar_visible = False  # hides the toolbar
 
     # wrapping that clears axes and redraws combined DB plots
 
     def plot_combined_wrapper(density, lifetime, mobility):
-
         """
         Updates the combined figure using the selected transport parameters.
 
@@ -253,7 +267,6 @@ def plot_final_result_interactive(
             ax.set_ylabel("")
             ax.set_title("")
 
-        
         plot_FOM(
             fig=fig,
             axes=axes,
@@ -270,19 +283,25 @@ def plot_final_result_interactive(
             dop_range=dop_range,
             tau_range=tau_range,
             mu_range=mu_range,
-            )
+        )
 
-    widget_layout = layout=widgets.Layout(width='800px')
+    widget_layout = layout = widgets.Layout(width='800px')
     widget_style = {'description_width': '200px'}
 
-    dopant_slider   = widgets.FloatLogSlider(value=dop_density, min=np.log10(dop_range[0]), max=np.log10(dop_range[1]), step=0.1, description="Doping Density (cm⁻³)",    layout=widget_layout, style=widget_style)
-    lifetime_slider = widgets.FloatLogSlider(value=tau, min=np.log10(tau_range[0]), max=np.log10(tau_range[1]), step=0.01, description="Carrier Lifetime (s)", layout=widget_layout, style=widget_style)
-    mobility_slider = widgets.FloatSlider(value=mu, min=mu_range[0], max=mu_range[1], step=_get_step(mu_range), description="Carrier Mobility (cm²V⁻¹s⁻¹)", layout=widget_layout, style=widget_style)
+    dopant_slider = widgets.FloatLogSlider(value=dop_density, min=np.log10(dop_range[0]), max=np.log10(dop_range[1]),
+                                           step=0.1, description="Doping Density (cm⁻³)", layout=widget_layout,
+                                           style=widget_style)
+    lifetime_slider = widgets.FloatLogSlider(value=tau, min=np.log10(tau_range[0]), max=np.log10(tau_range[1]),
+                                             step=0.01, description="Carrier Lifetime (s)", layout=widget_layout,
+                                             style=widget_style)
+    mobility_slider = widgets.FloatSlider(value=mu, min=mu_range[0], max=mu_range[1], step=_get_step(mu_range),
+                                          description="Carrier Mobility (cm²V⁻¹s⁻¹)", layout=widget_layout,
+                                          style=widget_style)
 
     interact(plot_combined_wrapper, density=dopant_slider, lifetime=lifetime_slider, mobility=mobility_slider)
 
-def _clearlines(n):
 
+def _clearlines(n):
     """
     Clears a specified number of previously printed terminal lines.
 
@@ -296,26 +315,27 @@ def _clearlines(n):
     Returns:
         None
     """
-        
+
     LINE_UP = '\033[1A'
     LINE_CLEAR = '\x1b[2K'
     for i in range(n):
         print(LINE_UP, end=LINE_CLEAR)
 
+
 def print_final_result_interactive(
         E_gap,
-        photon_spectrum, 
-        alpha, 
-        tau, 
-        sigma, 
-        dos_mass, 
-        dop_density, 
-        epsilon, 
-        mu, 
+        photon_spectrum,
+        alpha,
+        tau,
+        sigma,
+        dos_mass,
+        dop_density,
+        epsilon,
+        mu,
         Tcell,
-        dop_range:tuple[float,float]=(1e10, 1e18), 
-        tau_range:tuple[float,float]=(1e-15, 1e3), 
-        mu_range:tuple[float,float]=(1e-2, 1e9)):
+        dop_range: tuple[float, float] = (1e10, 1e18),
+        tau_range: tuple[float, float] = (1e-15, 1e3),
+        mu_range: tuple[float, float] = (1e-2, 1e9)):
     """
     Interactively writes figure of merit information.
 
@@ -339,41 +359,46 @@ def print_final_result_interactive(
     """
 
     def print_fom(density, lifetime, mobility):
-
         _clearlines(5)
 
-        sq, fom_sq, eff= SQ_relative_FOM_PV_efficiency(E_gap, photon_spectrum, alpha, lifetime, sigma, dos_mass, density, epsilon, mobility, Tcell)
+        sq, fom_sq, eff = SQ_relative_FOM_PV_efficiency(E_gap, photon_spectrum, alpha, lifetime, sigma, dos_mass,
+                                                        density, epsilon, mobility, Tcell)
         print("")
         print(f"Photovoltaic Figure of Merit relative to the SQ limit: {fom_sq:.2f} %")
         print(f"Photovoltaic Figure of Merit total efficiency: {eff:.2f} %")
         print(f"SQ limit: {sq:.2f} %")
 
-    widget_layout = layout=widgets.Layout(width='800px')
+    widget_layout = layout = widgets.Layout(width='800px')
     widget_style = {'description_width': '200px'}
 
-    dopant_slider   = widgets.FloatLogSlider(value=dop_density, min=np.log10(dop_range[0]), max=np.log10(dop_range[1]), step=0.1, description="Doping Density (cm⁻³)",    layout=widget_layout, style=widget_style)
-    lifetime_slider = widgets.FloatLogSlider(value=tau, min=np.log10(tau_range[0]), max=np.log10(tau_range[1]), step=0.01, description="Carrier Lifetime (s)", layout=widget_layout, style=widget_style)
-    mobility_slider = widgets.FloatSlider(value=mu, min=mu_range[0], max=mu_range[1], step=_get_step(mu_range), description="Carrier Mobility (cm²V⁻¹s⁻¹)", layout=widget_layout, style=widget_style)
+    dopant_slider = widgets.FloatLogSlider(value=dop_density, min=np.log10(dop_range[0]), max=np.log10(dop_range[1]),
+                                           step=0.1, description="Doping Density (cm⁻³)", layout=widget_layout,
+                                           style=widget_style)
+    lifetime_slider = widgets.FloatLogSlider(value=tau, min=np.log10(tau_range[0]), max=np.log10(tau_range[1]),
+                                             step=0.01, description="Carrier Lifetime (s)", layout=widget_layout,
+                                             style=widget_style)
+    mobility_slider = widgets.FloatSlider(value=mu, min=mu_range[0], max=mu_range[1], step=_get_step(mu_range),
+                                          description="Carrier Mobility (cm²V⁻¹s⁻¹)", layout=widget_layout,
+                                          style=widget_style)
 
     interact(print_fom, density=dopant_slider, lifetime=lifetime_slider, mobility=mobility_slider)
 
 
 def mobility_plot(
-    E_gap,
-    photon_spectrum,
-    alpha,
-    sigma,
-    dos_mass,
-    epsilon,
-    dop_density=1e10,
-    mob_min=-2,
-    mob_max=9,
-    lifetime_min=-15,
-    lifetime_max=3,
-    step=1,
-    Tcell=300
+        E_gap,
+        photon_spectrum,
+        alpha,
+        sigma,
+        dos_mass,
+        epsilon,
+        dop_density=1e10,
+        mob_min=-2,
+        mob_max=9,
+        lifetime_min=-15,
+        lifetime_max=3,
+        step=1,
+        Tcell=300
 ):
-
     from matplotlib.colors import LogNorm
     from matplotlib.cm import ScalarMappable
 
@@ -401,7 +426,6 @@ def mobility_plot(
         efficiency_list = []
 
         for mu in mobility_values:
-
             efficiency = SQ_relative_FOM_PV_efficiency(
                 E_gap,
                 photon_spectrum,

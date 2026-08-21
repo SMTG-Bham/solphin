@@ -1,11 +1,12 @@
 import numpy as np
-from scipy.integrate import simpson
 import scipy.constants as sc
+from scipy.integrate import simpson
 
-h = sc.h        # Planck's constant (J·s)
-c = sc.c        # Speed of light (m/s)
-k = sc.k        # Boltzmann constant (J/K)
-q = sc.e        # Elementary charge (Coulombs)
+h = sc.h  # Planck's constant (J·s)
+c = sc.c  # Speed of light (m/s)
+k = sc.k  # Boltzmann constant (J/K)
+q = sc.e  # Elementary charge (Coulombs)
+
 
 def _load_absorption(abs_file):
     """
@@ -33,6 +34,7 @@ def _load_absorption(abs_file):
 
     return abs_energy_eV, abs_coeff
 
+
 def _wavelength_conv(abs_energy_eV):
     """
     Converts photon energy values to wavelength in nanometers.
@@ -52,6 +54,7 @@ def _wavelength_conv(abs_energy_eV):
 
     return abs_wavelength_nm
 
+
 def _extract_int_limits(E_gap):
     """
     Determines wavelength integration limits based on a material band gap.
@@ -70,74 +73,79 @@ def _extract_int_limits(E_gap):
 
     wavelength_min = 300
 
-    Eg_wavelength = (( h * c ) / (E_gap * q)) * 1e9
-    
+    Eg_wavelength = ((h * c) / (E_gap * q)) * 1e9
+
     return wavelength_min, Eg_wavelength
+
 
 # Make the truncated spectras
 
 def _truncate_abs_spectra(E_gap, abs_energy_eV, abs_coeff):
-     """
-    Filters absorption spectra to include only wavelengths within a band-gap-defined range.
-
-    This function converts absorption energies into wavelengths, then truncates the dataset
-    to retain only values between a fixed lower wavelength limit and the wavelength
-    corresponding to the material band gap. This is commonly used to isolate the
-    relevant portion of the spectrum for photovoltaic absorption analysis.
-
-    Parameters:
-        E_gap(float): band gap energy in eV, used to determine the upper wavelength cutoff.
-        abs_energy_eV(np.array): photon energies in eV corresponding to the absorption data.
-        abs_coeff(np.array): absorption coefficient values corresponding to each energy point.
-
-    Returns:
-        filtered_wavelengths_abs(tuple or list): wavelengths (nm) within the valid range.
-        filtered_abs_coff(tuple or list): absorption coefficients corresponding to the
-            filtered wavelength range.
     """
+   Filters absorption spectra to include only wavelengths within a band-gap-defined range.
 
-     wavelength_min, Eg_wavelength = _extract_int_limits(E_gap)
+   This function converts absorption energies into wavelengths, then truncates the dataset
+   to retain only values between a fixed lower wavelength limit and the wavelength
+   corresponding to the material band gap. This is commonly used to isolate the
+   relevant portion of the spectrum for photovoltaic absorption analysis.
 
-     abs_wavelength_nm = _wavelength_conv(abs_energy_eV)
+   Parameters:
+       E_gap(float): band gap energy in eV, used to determine the upper wavelength cutoff.
+       abs_energy_eV(np.array): photon energies in eV corresponding to the absorption data.
+       abs_coeff(np.array): absorption coefficient values corresponding to each energy point.
 
-     filtered_pairs = [(wl, val) for wl, val in zip(abs_wavelength_nm, abs_coeff) if wavelength_min <= wl <= Eg_wavelength]
+   Returns:
+       filtered_wavelengths_abs(tuple or list): wavelengths (nm) within the valid range.
+       filtered_abs_coff(tuple or list): absorption coefficients corresponding to the
+           filtered wavelength range.
+   """
 
-     filtered_wavelengths_abs, filtered_abs_coff = zip(*filtered_pairs) if filtered_pairs else ([], [])
+    wavelength_min, Eg_wavelength = _extract_int_limits(E_gap)
 
-     return filtered_wavelengths_abs, filtered_abs_coff
+    abs_wavelength_nm = _wavelength_conv(abs_energy_eV)
+
+    filtered_pairs = [(wl, val) for wl, val in zip(abs_wavelength_nm, abs_coeff) if
+                      wavelength_min <= wl <= Eg_wavelength]
+
+    filtered_wavelengths_abs, filtered_abs_coff = zip(*filtered_pairs) if filtered_pairs else ([], [])
+
+    return filtered_wavelengths_abs, filtered_abs_coff
+
 
 def _truncate_light_spectra(spectrum, E_gap):
-     """
-    Truncates a light spectrum to a wavelength range defined by a material band gap.
-
-    This function filters a spectral irradiance dataset so that only wavelengths
-    between a fixed lower cutoff and the band-gap-dependent upper cutoff are retained.
-    This is typically used to restrict solar or illumination spectra to the
-    energetically relevant range for absorption or efficiency calculations.
-
-    Parameters:
-        spectrum(np.array): 2D array where:
-            - column 0 is wavelength in nm
-            - column 1 is spectral irradiance (W m^-2 nm^-1)
-        E_gap(float): band gap energy in eV, used to determine the upper wavelength cutoff.
-
-    Returns:
-        filtered_wavelengths_spec(tuple or list): wavelength values (nm) within the valid range.
-        filtered_irradiance_spec(tuple or list): corresponding spectral irradiance values.
     """
+   Truncates a light spectrum to a wavelength range defined by a material band gap.
 
-     wavelength_min, Eg_wavelength = _extract_int_limits(E_gap)
+   This function filters a spectral irradiance dataset so that only wavelengths
+   between a fixed lower cutoff and the band-gap-dependent upper cutoff are retained.
+   This is typically used to restrict solar or illumination spectra to the
+   energetically relevant range for absorption or efficiency calculations.
 
-     spectrum = np.copy(spectrum)
+   Parameters:
+       spectrum(np.array): 2D array where:
+           - column 0 is wavelength in nm
+           - column 1 is spectral irradiance (W m^-2 nm^-1)
+       E_gap(float): band gap energy in eV, used to determine the upper wavelength cutoff.
 
-     wavelength = spectrum[:, 0]
-     irradiance = spectrum[:, 1]  # irradiance (W/m2/nm)
+   Returns:
+       filtered_wavelengths_spec(tuple or list): wavelength values (nm) within the valid range.
+       filtered_irradiance_spec(tuple or list): corresponding spectral irradiance values.
+   """
 
-     filtered_pairs_spec = [(wl, val) for wl, val in zip(wavelength, irradiance) if wavelength_min <= wl <= Eg_wavelength]
+    wavelength_min, Eg_wavelength = _extract_int_limits(E_gap)
 
-     filtered_wavelengths_spec, filtered_irradiance_spec = zip(*filtered_pairs_spec) if filtered_pairs_spec else ([], [])
+    spectrum = np.copy(spectrum)
 
-     return filtered_wavelengths_spec, filtered_irradiance_spec  
+    wavelength = spectrum[:, 0]
+    irradiance = spectrum[:, 1]  # irradiance (W/m2/nm)
+
+    filtered_pairs_spec = [(wl, val) for wl, val in zip(wavelength, irradiance) if
+                           wavelength_min <= wl <= Eg_wavelength]
+
+    filtered_wavelengths_spec, filtered_irradiance_spec = zip(*filtered_pairs_spec) if filtered_pairs_spec else ([], [])
+
+    return filtered_wavelengths_spec, filtered_irradiance_spec
+
 
 def _match_wavelengths(filtered_wavelengths_abs, filtered_wavelengths_spec, filtered_irradiance_spec):
     """
@@ -165,7 +173,7 @@ def _match_wavelengths(filtered_wavelengths_abs, filtered_wavelengths_spec, filt
         # Calculate absolute differences from target wavelength
         diffs = [abs(spec_wl - target_wl) for spec_wl in filtered_wavelengths_spec]
         min_diff = min(diffs)  # Find the smallest difference
-        
+
         # Find indices where the difference is equal to min_diff
         close_indices = [i for i, d in enumerate(diffs) if d == min_diff]
 
@@ -176,6 +184,7 @@ def _match_wavelengths(filtered_wavelengths_abs, filtered_wavelengths_spec, filt
     # matched_values = np.array(matched_values, dtype = float)
 
     return matched_values
+
 
 def calculate_spectral_dispersion(filtered_abs_coff, matched_irradiance, filtered_wavelengths_abs):
     """
@@ -197,9 +206,9 @@ def calculate_spectral_dispersion(filtered_abs_coff, matched_irradiance, filtere
     """
 
     valid_data = [
-    (a, irr)
-    for a, irr in zip(filtered_abs_coff, matched_irradiance)
-    if a > 0 and np.isfinite(a)
+        (a, irr)
+        for a, irr in zip(filtered_abs_coff, matched_irradiance)
+        if a > 0 and np.isfinite(a)
     ]
 
     filtered_abs_coff, matched_irradiance = zip(*valid_data)
@@ -207,7 +216,7 @@ def calculate_spectral_dispersion(filtered_abs_coff, matched_irradiance, filtere
     log_alpha = [np.log(a) for a in filtered_abs_coff]
 
     # Compute weighted mean log(α)
-    numerator_mean = sum(irr * log_a for irr, log_a in zip(matched_irradiance, log_alpha)) #not mean?
+    numerator_mean = sum(irr * log_a for irr, log_a in zip(matched_irradiance, log_alpha))  # not mean?
     denominator_mean = sum(matched_irradiance)
     log_alpha_bar = numerator_mean / denominator_mean  # Weighted mean log(alpha)
 
@@ -221,7 +230,7 @@ def calculate_spectral_dispersion(filtered_abs_coff, matched_irradiance, filtere
 
     # Spectral density
     spectral_dispersion = np.sqrt(numerator_variance / denominator_variance)
-    
+
     return spectral_dispersion
 
 
@@ -251,7 +260,7 @@ def calculate_spectral_average(filtered_abs_coff, matched_irradiance, filtered_w
 
     # Spectral average
     spectral_average = numerator / denominator if denominator != 0 else 0
-    
+
     return spectral_average
 
 
@@ -284,11 +293,11 @@ def generate_spectral_parameters(optics_directory, spectrum, E_gap):
 
     abs_energy_eV, abs_coeff = _load_absorption(abs_file)
     filtered_wavelengths_abs, filtered_abs_coff = _truncate_abs_spectra(E_gap, abs_energy_eV, abs_coeff)
-    filtered_wavelengths_spec, filtered_irradiance_spec  = _truncate_light_spectra(spectrum, E_gap)
-    matched_irradiance = _match_wavelengths(filtered_wavelengths_abs, filtered_wavelengths_spec, filtered_irradiance_spec)
+    filtered_wavelengths_spec, filtered_irradiance_spec = _truncate_light_spectra(spectrum, E_gap)
+    matched_irradiance = _match_wavelengths(filtered_wavelengths_abs, filtered_wavelengths_spec,
+                                            filtered_irradiance_spec)
 
     spectral_average = calculate_spectral_average(filtered_abs_coff, matched_irradiance, filtered_wavelengths_abs)
     spectral_dispersion = calculate_spectral_dispersion(filtered_abs_coff, matched_irradiance, filtered_wavelengths_abs)
 
     return spectral_average, spectral_dispersion
-

@@ -1,16 +1,18 @@
-import scipy.constants as sc
-import numpy as np
 import logging
 from importlib.resources import files
+
+import numpy as np
+import scipy.constants as sc
 
 logging.basicConfig(level=logging.INFO)
 
 """ This section details the calculation of the detailed balance limit efficiency and associated values."""
 
-h = sc.h        # Planck's constant (J·s)
-c = sc.c        # Speed of light (m/s)
-k = sc.k        # Boltzmann constant (J/K)
-q = sc.e        # Elementary charge (Coulombs)
+h = sc.h  # Planck's constant (J·s)
+c = sc.c  # Speed of light (m/s)
+k = sc.k  # Boltzmann constant (J/K)
+q = sc.e  # Elementary charge (Coulombs)
+
 
 # Convert the spectrum to the useful units - taken from https://github.com/kaklin/sq-limit?tab=readme-ov-file
 
@@ -80,8 +82,8 @@ def load_spectrum(spectrum_type):
 
     return spectrum
 
-def convert_spectrum(spectrum):
 
+def convert_spectrum(spectrum):
     """
     Converts the input spectrum from standard format to the required units for this code. 
 
@@ -102,13 +104,12 @@ def convert_spectrum(spectrum):
     converted[:, 0] = converted[:, 0] * 1e-9  # wavelength to m
     converted[:, 1] = converted[:, 1] / 1e-9  # irradiance to W/m2/m (from W/m2/nm)
 
-    E = h * c / converted[:, 0] # Bandgap in J
-    d_lambda_d_E = h * c / E**2 
+    E = h * c / converted[:, 0]  # Bandgap in J
+    d_lambda_d_E = h * c / E ** 2
     converted[:, 1] = converted[:, 1] * d_lambda_d_E * q / E
     converted[:, 0] = E / q
 
     return converted
-
 
 
 def _photons_above_bandgap(E_gap, photon_spectrum):
@@ -126,6 +127,7 @@ def _photons_above_bandgap(E_gap, photon_spectrum):
     x = photon_spectrum[indexes, 0][0]
     return np.trapezoid(y[::-1], x[::-1])
 
+
 def _rr0(E_gap, photon_spectrum, Tcell):
     """
     Calculates the radiative recombination rate at 0 Quasi-Fermi Level splitting. 
@@ -141,11 +143,11 @@ def _rr0(E_gap, photon_spectrum, Tcell):
     """
     k_eV = k / q
     h_eV = h / q
-    const = (2 * np.pi) / (c**2 * h_eV**3)
+    const = (2 * np.pi) / (c ** 2 * h_eV ** 3)
 
-    E = photon_spectrum[::-1, ]  # in increasing order of bandgap energy
+    E = photon_spectrum[::-1,]  # in increasing order of bandgap energy
     egap_index = np.where(E[:, 0] >= E_gap)
-    numerator = E[:, 0]**2
+    numerator = E[:, 0] ** 2
     exponential_in = E[:, 0] / (k_eV * Tcell)
     denominator = np.exp(exponential_in) - 1
     integrand = numerator / denominator
@@ -154,6 +156,7 @@ def _rr0(E_gap, photon_spectrum, Tcell):
 
     result = const * integral
     return result[0]
+
 
 def recomb_rate(E_gap, photon_spectrum, voltage, Tcell):
     """
@@ -170,8 +173,9 @@ def recomb_rate(E_gap, photon_spectrum, voltage, Tcell):
 
     """
 
-    print ('recomb rate')
+    print('recomb rate')
     return q * _rr0(E_gap, photon_spectrum) * np.exp(q * voltage / (k * Tcell))
+
 
 def current_density(E_gap, photon_spectrum, voltage, Tcell):
     """
@@ -188,10 +192,11 @@ def current_density(E_gap, photon_spectrum, voltage, Tcell):
 
     """
 
-    return q * (_photons_above_bandgap(E_gap, photon_spectrum) - _rr0(E_gap, photon_spectrum, Tcell) * np.exp(q * voltage / (k * Tcell))-1)
+    return q * (_photons_above_bandgap(E_gap, photon_spectrum) - _rr0(E_gap, photon_spectrum, Tcell) * np.exp(
+        q * voltage / (k * Tcell)) - 1)
+
 
 def jsc(E_gap, photon_spectrum, Tcell):
-
     """
     Calculates the current density. 
 
@@ -203,8 +208,9 @@ def jsc(E_gap, photon_spectrum, Tcell):
         Short circuit current density (float):  Current that flows across a cross sectional area at 0 applied voltage in C cm⁻³s⁻¹.  
 
     """
-    
+
     return current_density(E_gap, photon_spectrum, 0, Tcell)
+
 
 def voc(E_gap, photon_spectrum, Tcell):
     """
@@ -223,11 +229,10 @@ def voc(E_gap, photon_spectrum, Tcell):
     Jph = _photons_above_bandgap(E_gap, photon_spectrum)
     J0 = _rr0(E_gap, photon_spectrum, Tcell)
 
+    return (k * Tcell / q) * np.log(Jph / J0 + 1)
 
-    return (k * Tcell / q) * np.log( Jph / J0 +1)
 
 def v_at_mpp(E_gap, photon_spectrum):
-
     """
     Calculates the voltage at maximum power point (mpp) of a solar cell.
 
@@ -243,11 +248,12 @@ def v_at_mpp(E_gap, photon_spectrum):
     v_open = voc(E_gap, photon_spectrum)
     # print v_open
     v = np.linspace(0, v_open)
-    index = np.where(v * current_density(E_gap, photon_spectrum, v)==max(v * current_density(E_gap, photon_spectrum, v)))
+    index = np.where(
+        v * current_density(E_gap, photon_spectrum, v) == max(v * current_density(E_gap, photon_spectrum, v)))
     return v[index][0]
 
-def j_at_mpp(E_gap, photon_spectrum):
 
+def j_at_mpp(E_gap, photon_spectrum):
     """
     Calculates the current at maximum power point (mpp) of a solar cell.
 
@@ -262,8 +268,8 @@ def j_at_mpp(E_gap, photon_spectrum):
 
     return max_power(E_gap, photon_spectrum) / v_at_mpp(E_gap, photon_spectrum)
 
-def max_power(E_gap, photon_spectrum, Tcell):
 
+def max_power(E_gap, photon_spectrum, Tcell):
     """
     Calculates the maximum power of a solar cell.
 
@@ -279,11 +285,12 @@ def max_power(E_gap, photon_spectrum, Tcell):
 
     v_open = voc(E_gap, photon_spectrum, Tcell)
     v = np.linspace(0, v_open)
-    index = np.where(v * current_density(E_gap, photon_spectrum, v, Tcell)==max(v * current_density(E_gap, photon_spectrum, v, Tcell)))
+    index = np.where(v * current_density(E_gap, photon_spectrum, v, Tcell) == max(
+        v * current_density(E_gap, photon_spectrum, v, Tcell)))
     return max(v * current_density(E_gap, photon_spectrum, v, Tcell))
 
-def max_eff(E_gap, photon_spectrum, Tcell):
 
+def max_eff(E_gap, photon_spectrum, Tcell):
     """
     Calculates the maximum efficiency of a solar cell.
 
@@ -296,14 +303,14 @@ def max_eff(E_gap, photon_spectrum, Tcell):
        Maximum efficiency (float):  Maximum effeciency of the solar cell relative to the total irradiance in %.
     """
 
-    photon_spectrum_1 = photon_spectrum[::-1, 1] 
+    photon_spectrum_1 = photon_spectrum[::-1, 1]
     photon_spectrum_0 = photon_spectrum[::-1, 0]
 
-    irradiance =  np.trapezoid(photon_spectrum_1 * q * photon_spectrum_0, photon_spectrum_0)
+    irradiance = np.trapezoid(photon_spectrum_1 * q * photon_spectrum_0, photon_spectrum_0)
     return max_power(E_gap, photon_spectrum, Tcell) / irradiance
 
-def fill_factor(E_gap, photon_spectrum, Tcell):
 
+def fill_factor(E_gap, photon_spectrum, Tcell):
     """
     Calculates the fill factor of a solar cell.
 
