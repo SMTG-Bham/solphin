@@ -333,6 +333,7 @@
         "elastic_tensor": {"IBRION": 6, "NSW": 1, "ISIF": 3},
         "dos": {"LORBIT": 14, "NEDOS": 3000, "ISMEAR": -5, "SIGMA": 0.1},
         "gaussian_dos": {"LORBIT": 14, "NEDOS": 3000, "ISMEAR": 0, "SIGMA": 0.1},
+        "eff_mass": {"ICHARG": 11, "NSW": 0, "LWAVE": false, "LCHARG": false},
         "spin_polarised": {"ISPIN": 2, "ISYM": 0},
         "optics": {"LOPTICS": true, "CSHIFT": 1e-6, "NEDOS": 3000, "ISMEAR": -5},
         "smeared_optics": {"LOPTICS": true, "NEDOS": 3000, "ISMEAR": 0},
