@@ -3,13 +3,22 @@
 # For the full list of built-in configuration values, see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
+import os
+import sys
+
+# make the package importable from a source checkout (autodoc + version lookup)
+sys.path.insert(0, os.path.abspath("../../"))
+
+import solphin
+
+release = solphin.__version__
+
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = 'Solphin'
 copyright = '2026, Philippa U. Cox, Peter P. Russell'
 author = 'Philippa U. Cox, Peter P. Russell'
-release = '0.0.1'
 
 html_static_path = ["_static"]
 
@@ -62,14 +71,6 @@ suppress_warnings = ["myst.header", "mystnb.image"]
 
 templates_path = ['_templates']
 exclude_patterns = []
-
-import os
-import sys
-
-sys.path.insert(
-    0,
-    os.path.abspath("../../"),
-)
 
 autosummary_generate = True
 
