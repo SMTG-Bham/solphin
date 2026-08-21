@@ -4,7 +4,7 @@ import solphin.spectral as spectral
 from solphin.db_fom import load_spectrum
 import numpy as np
 from os.path import join
-from sumo.cli.optplot import optplot
+from matplotlib.ticker import FormatStrFormatter
 from matplotlib import pyplot as plt
 import pymatgen.analysis.solar.slme as slme_mod
 import logging
@@ -97,7 +97,6 @@ def calc_absorption(eps_full, energies):
         "absorption": alpha,
     }
 
-
 def print_n_real_file(data, energies, directory: Path):
     """
     Writes the real part of the refractive index to a data file.
@@ -117,6 +116,46 @@ def print_n_real_file(data, energies, directory: Path):
         filename = join(directory, filename)
     out = np.stack((energies, data["n_real"]), axis=1)
     np.savetxt(filename, out, header="energy(eV) n_real")
+    
+def print_absorption_file(data, energies, directory: Path):
+    """
+    Writes the absorption coefficient in cm^-1.
+    """
+    filename = "absorption.dat"
+
+    if directory:
+        filename = join(directory, filename)
+
+    # calc_absorption returns alpha in m^-1
+    alpha_cm = data["absorption"] / 100.0
+
+    out = np.column_stack((energies, alpha_cm))
+
+    np.savetxt(
+        filename,
+        out,
+        header="energy(eV) absorption(cm^-1)"
+    )
+
+
+def generate_absorption(optics_directory):
+
+    """
+    Generates and writes the real part of the refractive index from a VASP optics calculation.
+
+    Parameters:
+        optics_directory(string or Path): directory containing the
+            vasprun.xml file and where the output file will be written.
+
+    Returns:
+        None
+    """
+
+    filename = f'{optics_directory}/vasprun.xml'
+
+    _, _, eps_full, _, energies = calc_dielectric(filename)
+    data               = calc_absorption(eps_full, energies)
+    print_absorption_file(data, energies, optics_directory)
 
 
 def generate_n_real(optics_directory):
@@ -139,7 +178,7 @@ def generate_n_real(optics_directory):
     print_n_real_file(data, energies, optics_directory)
 
 
-def plot_absorption(optics_directory, xmin=0, xmax=6, gaussian=0.05, **kwargs):
+def plot_absorption(optics_directory, xmax=4, xmin=0, save=False):
 
     """
     Plots the optical absorption spectrum from a VASP optics calculation.
@@ -151,16 +190,56 @@ def plot_absorption(optics_directory, xmin=0, xmax=6, gaussian=0.05, **kwargs):
             Default is 0.
         xmax(float): maximum energy value (eV) shown on the x-axis.
             Default is 6.
-        gaussian(float): Gaussian broadening applied to the spectrum in eV.
-            Default is 0.05.
+        save(boolean): allows the ability to save the figure as png in the current directory.
+            Default is False.
 
     Returns:
         None
     """
 
     filename = f'{optics_directory}/vasprun.xml'
-    optplot(filenames=filename, xmin=xmin, xmax=xmax, gaussian=gaussian, directory=optics_directory, **kwargs)
+    eps_inf, eps_inf_tensor, eps_full, eps_imag, energies = calc_dielectric(filename)
+    data = calc_absorption(eps_full, energies)
+
+    plt.figure(figsize=(3, 5))
+    absorption = data["absorption"] / 1e7
+
+    plt.plot(
+        energies,
+        absorption,
+        linewidth=1.8,
+        color='#1f77b4')
+
+    plt.gca().xaxis.set_major_formatter(
+    FormatStrFormatter('%.1f')
+    )
+
+    plt.xlabel("Photon energy (eV)", fontsize=16)
+    plt.ylabel(
+        r"Absorption coefficient (10$^{5}$ cm$^{-1}$)",
+        fontsize=16,
+    )
+
+    plt.subplots_adjust(
+    left=0.15,
+    right=0.95,
+    bottom=0.12,
+    top=0.95,
+    )
+
+    plt.xticks(fontsize=14)
+    plt.yticks(fontsize=14)
+
+    plt.ylim(0, 1)
+    plt.xlim(xmin, xmax)
+
+    if save:
+        plt.savefig("absorption.png", dpi=700)
+
     plt.show()
+
+
+
 
 def _spectrum_select(spectrum_type):
     """
@@ -345,7 +424,7 @@ def _interpolate_a(energy_abs, alpha_m, direct_gap, sol_wl):
 
 
 def make_blank_plot(optics_directory, direct_gap, indirect_gap,
-                    spectrum_type="AM1.5", Qi=1.0, n=3.5, thickness_range=None):
+                    spectrum_type="AM1.5", Qi=1.0, n=3.5, thickness_range=None, save=False):
     
     """
     Generates a blank efficiency plot for optical absorption analysis as a function of thickness.
@@ -388,8 +467,10 @@ def make_blank_plot(optics_directory, direct_gap, indirect_gap,
     eff_flat, eff_lam, eff_slme, thickness_range = _thickness_calc(thickness_range, alpha_m, use_slme, n, 
                                                                   energy_abs, alpha_cm, direct_gap, indirect_gap, n_real, bb_phot_wl, 
                                                                   sol_wl_m, sol_phot_flux, sol_wl, Qi, power_in)
+
+    linestyle="--" if np.isclose(direct_gap, indirect_gap) else "-"
             
-    plot_blank(use_slme, thickness_range, eff_slme, eff_lam, eff_flat)
+    plot_blank(use_slme, thickness_range, eff_slme, eff_lam, eff_flat, linestyle, save)
 
 
 def power_efficiency(A_E, energy_abs, n_real, alpha_m, d):
@@ -527,7 +608,7 @@ def _thickness_calc(thickness_range, alpha_m, use_slme, n, energy_abs, alpha_cm,
             
         return eff_flat, eff_lam, eff_slme, thickness_range
             
-def plot_blank(use_slme, thickness_range, eff_slme, eff_lam, eff_flat):
+def plot_blank(use_slme, thickness_range, eff_slme, eff_lam, eff_flat, linestyle, save):
     """
     Plots thickness-dependent maximum photovoltaic efficiency for different optical models.
 
@@ -547,70 +628,19 @@ def plot_blank(use_slme, thickness_range, eff_slme, eff_lam, eff_flat):
         None
     """
 
-    fig, ax = plt.subplots(figsize=(6, 4))
+    fig, ax = plt.subplots(figsize=(8, 4))
 
     if use_slme:
         ax.plot(thickness_range, eff_slme, color = 'blue', label="SLME")
     ax.plot(thickness_range, eff_lam, color = 'green', label="Blank Lambertian")
-    ax.plot(thickness_range, eff_flat, color = 'orange', label="Blank Flat")
+    ax.plot(thickness_range, eff_flat, color = 'orange', label="Blank Flat", linestyle=linestyle)
     ax.set_xscale("log")
     ax.set_xlabel("Film Thickness / m", labelpad=5)
     ax.set_ylabel(r"Max PV Efficiency $(\eta_\mathrm{Max})$ / %")
     ax.set_ylim([0, 35])
     ax.margins(x=0)
-    ax.set_aspect(0.06)
     ax.legend()
-    plt.tight_layout()
+    plt.tight_layout()    
+    if save:
+        plt.savefig("slme.png", dpi=700)
     plt.show()
-
-def _spectrum_nm_to_photon_flux(spectrum):
-    """
-    Converts a spectral irradiance dataset into photon flux in wavelength space.
-
-    This function transforms an input spectrum from energy irradiance units into
-    photon flux units using wavelength-dependent conversion.
-
-    Parameters:
-        spectrum(np.array): 2D array where:
-            - column 0 is wavelength in nm
-            - column 1 is spectral irradiance in W m^-2 nm^-1
-
-    Returns:
-        wavelength_nm(np.array): wavelength values in nm.
-        Phi(np.array): photon flux in photons m^-2 s^-1 nm^-1.
-    """
-    wavelength_nm = spectrum[:, 0]
-    I             = spectrum[:, 1]
-    Phi           = (I * wavelength_nm) / hc_eV_nm
-    return wavelength_nm, Phi
-
-def _spectrum_nm_to_photon_energy(spectrum):
-    """
-    Converts a spectral irradiance distribution from wavelength space into
-    photon flux in energy space.
-
-    This function performs a change of variables from wavelength (nm) to photon
-    energy (eV), correctly accounting for the Jacobian transformation between
-    spectral domains, and returns photon flux in energy representation.
-
-    Parameters:
-        spectrum(np.array): 2D array where:
-            - column 0 is wavelength in nm
-            - column 1 is spectral irradiance in W m^-2 nm^-1
-
-    Returns:
-        phi_E(np.array): photon flux in photons m^-2 s^-1 eV^-1,
-            sorted in ascending energy.
-        E_eV(np.array): photon energies in eV corresponding to phi_E,
-            sorted in ascending order.
-    """
-
-    lam_nm = spectrum[:, 0]
-    I_lam  = spectrum[:, 1]
-    lam_m  = lam_nm * 1e-9
-    E_J    = _h * _c / lam_m
-    E_eV   = E_J / _e
-    I_E    = I_lam * hc_eV_nm / E_eV**2   # W m-2 eV-1
-    phi_E  = I_E / E_J                     # photons m-2 s-1 eV-1
-    idx    = np.argsort(E_eV)
-    return phi_E[idx], E_eV[idx]
