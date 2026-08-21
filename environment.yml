@@ -26,25 +26,20 @@ dependencies:
   - scipy
   - matplotlib-base>=3.9.4   # swap for `matplotlib` if you need a GUI backend
   - pymatgen>=2024.8.9
-  - mpmath
-  - monty
-  - typing_extensions
+  - sumo
   - ipywidgets
 
-  # --- runtime, missing from pyproject.toml ---
-  - sumo                     # imported by solphin/dos.py and band_structure.py
-
-  # --- notebooks / tutorial ---
+  # --- notebooks / tutorial (pyproject.toml [tutorial] extra) ---
   - jupyterlab
   - ipykernel
   - nbformat
 
-  # --- docs (docs/source/conf.py) ---
+  # --- docs (pyproject.toml [docs] extra; see docs/source/conf.py) ---
   - sphinx
   - sphinx-wagtail-theme
   - myst-nb
 
-  # --- dev tooling ---
+  # --- dev tooling (pyproject.toml [dev] extra) ---
   - pytest
   - pytest-cov
   - ruff
