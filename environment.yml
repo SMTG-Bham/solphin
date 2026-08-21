@@ -22,7 +22,8 @@ dependencies:
   - python=3.11
 
   # --- runtime (mirrors pyproject.toml [project.dependencies]) ---
-  - numpy
+  # NumPy 2.0+ for np.trapezoid; see the note in pyproject.toml.
+  - numpy>=2.0
   - scipy
   - matplotlib-base>=3.9.4   # swap for `matplotlib` if you need a GUI backend
   - pymatgen>=2024.8.9

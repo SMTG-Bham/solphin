@@ -30,7 +30,9 @@ classifiers = [
 # one of the modules it pulls in. Add new runtime deps to *both* this list and
 # environment.yml.
 dependencies = [
-    "numpy",
+    # db_fom.py integrates with np.trapezoid, which replaced the np.trapz alias
+    # (deprecated in NumPy 2.0, removed in 2.4) and only exists from 2.0 on.
+    "numpy>=2.0",
     "scipy",
     "matplotlib>=3.9.4",
     "pymatgen>=2024.8.9",
