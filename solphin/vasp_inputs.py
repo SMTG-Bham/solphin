@@ -1,5 +1,6 @@
 import json
 from importlib.resources import files
+from pathlib import Path
 
 from pymatgen.core.structure import Structure
 from pymatgen.io.vasp import Kpoints
@@ -253,7 +254,7 @@ def _apply_patches(
 def write_vasp_calculation(
         structure: Structure,
         recipe: str,
-        out_dir: str,
+        out_dir: str | Path,
         patches: list[str] | None = None,
         potcar_functional: str | None = None,
         **calc_kwargs,
@@ -276,7 +277,7 @@ def write_vasp_calculation(
     Parameters:
         structure(Structure): atomic structure for the calculation.
         recipe(str): calculation recipe or functional (e.g. "PBE", "HSE06").
-        out_dir(str): directory where VASP input files will be written.
+        out_dir(str | Path): directory where VASP input files will be written.
         patches(list[str] or None): optional list of modifications to apply
             (e.g. vdW corrections, relaxation settings). Default is empty.
         potcar_functional(str or None): explicit POTCAR functional selection.
@@ -300,4 +301,4 @@ def write_vasp_calculation(
     )
 
     _apply_patches(vasp_set, patches, recipe, incar)
-    vasp_set.write_input(out_dir)
+    vasp_set.write_input(str(out_dir))

@@ -1,6 +1,4 @@
 import logging
-import os
-from os.path import join
 from pathlib import Path
 
 import numpy as np
@@ -113,21 +111,16 @@ def print_n_real_file(data, energies, directory: Path):
     Returns:
         None
     """
-    filename = "n_real.dat"
-    if directory:
-        filename = join(directory, filename)
+    out_path = Path(directory) / "n_real.dat" if directory else Path("n_real.dat")
     out = np.stack((energies, data["n_real"]), axis=1)
-    np.savetxt(filename, out, header="energy(eV) n_real")
+    np.savetxt(out_path, out, header="energy(eV) n_real")
 
 
 def print_absorption_file(data, energies, directory: Path):
     """
     Writes the absorption coefficient in cm^-1.
     """
-    filename = "absorption.dat"
-
-    if directory:
-        filename = join(directory, filename)
+    out_path = Path(directory) / "absorption.dat" if directory else Path("absorption.dat")
 
     # calc_absorption returns alpha in m^-1
     alpha_cm = data["absorption"] / 100.0
@@ -135,7 +128,7 @@ def print_absorption_file(data, energies, directory: Path):
     out = np.column_stack((energies, alpha_cm))
 
     np.savetxt(
-        filename,
+        out_path,
         out,
         header="energy(eV) absorption(cm^-1)"
     )
@@ -261,7 +254,7 @@ def _spectrum_select(spectrum_type):
 
     # --- solar / illuminant spectrum in wavelength space ---
     if use_slme:
-        am15_path = os.path.join(os.path.dirname(slme_mod.__file__), "am1.5G.dat")
+        am15_path = Path(slme_mod.__file__).parent / "am1.5G.dat"
         sol_wl, sol_irr = np.loadtxt(am15_path, usecols=[0, 1],
                                      unpack=True, skiprows=2)  # nm, W m-2 nm-1
     else:
