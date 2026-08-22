@@ -9,6 +9,7 @@ tutorial cell 40, rather than values invented for the tests.
 
 import inspect
 import math
+from collections.abc import Callable, Sequence
 
 import numpy as np
 import pytest
@@ -43,18 +44,18 @@ COMPONENT_NAMES = sorted(
 )
 
 
-def _call_with(func, **overrides):
+def _call_with(func: Callable[..., float], **overrides: float) -> float:
     """Invoke func with the MAPI values its signature happens to ask for."""
     params = {**MAPI, **overrides}
     wanted = inspect.signature(func).parameters
     return func(**{name: params[name] for name in wanted})
 
 
-def _sweep(parameter, values):
+def _sweep(parameter: str, values: Sequence[float]) -> list[float]:
     return [_call_with(Final_equation, **{parameter: v}) for v in values]
 
 
-def test_final_equation_composition():
+def test_final_equation_composition() -> None:
     """Gamma = E_gap^2.5 * (numerator / (D * T * S)) ^ (E_gap^-0.8)."""
     numerator = _call_with(_Final_numerator)
     denominator = (
@@ -69,21 +70,21 @@ def test_final_equation_composition():
     assert _call_with(Final_equation) == pytest.approx(expected, rel=1e-12)
 
 
-def test_denominator_components_exceed_one():
+def test_denominator_components_exceed_one() -> None:
     """The T and S groups are built as 1 + (...), so both exceed unity."""
     assert _call_with(_Final_T_denominator) > 1.0
     assert _call_with(_Final_S_denominator) > 1.0
 
 
 @pytest.mark.parametrize("name", COMPONENT_NAMES)
-def test_all_components_positive_and_finite(name):
+def test_all_components_positive_and_finite(name: str) -> None:
     value = _call_with(getattr(pv_fom, name))
 
     assert math.isfinite(value)
     assert value > 0
 
 
-def test_scalar_return_type():
+def test_scalar_return_type() -> None:
     """Callers unpack this straight into an f-string, so it must be a real scalar."""
     gamma = _call_with(Final_equation)
 
@@ -99,17 +100,17 @@ def test_scalar_return_type():
 # since an optimal doping level exists.
 
 
-def test_increases_with_lifetime():
+def test_increases_with_lifetime() -> None:
     assert np.all(np.diff(_sweep("tau", [1e-9, 1e-8, 1e-7, 1e-6])) > 0)
 
 
-def test_increases_with_mobility():
+def test_increases_with_mobility() -> None:
     assert np.all(np.diff(_sweep("mu", [1e0, 1e2, 1e4, 1e6])) > 0)
 
 
-def test_increases_with_absorption():
+def test_increases_with_absorption() -> None:
     assert np.all(np.diff(_sweep("alpha", [1e3, 1e4, 1e5])) > 0)
 
 
-def test_decreases_with_dispersion():
+def test_decreases_with_dispersion() -> None:
     assert np.all(np.diff(_sweep("sigma", [0.1, 0.5, 1.0, 2.0])) < 0)

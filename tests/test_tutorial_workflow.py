@@ -8,8 +8,12 @@ tutorial's printed output wrong.
 """
 
 import hashlib
+from pathlib import Path
+from typing import Any
 
 import pytest
+from numpy.typing import NDArray
+from pymatgen.electronic_structure.bandstructure import BandStructureSymmLine
 
 import solphin.band_structure as band_structure
 import solphin.db_fom as db_fom
@@ -17,6 +21,7 @@ import solphin.dos as dos
 import solphin.final_results as final_results
 import solphin.optics as optics
 import solphin.spectral as spectral
+from solphin.dos import DOSResult
 
 # tutorial cell 41: "Set default values from Crovetto et al."
 TAU = 1e-6  # s
@@ -25,7 +30,9 @@ MU = 1e6  # cm^2 V^-1 s^-1
 TCELL = 300  # K
 
 
-def test_full_workflow_reproduces_tutorial(opt_dir, dos_vasprun, band_dir, am15):
+def test_full_workflow_reproduces_tutorial(
+        opt_dir: Path, dos_vasprun: Path, band_dir: Path, am15: NDArray
+) -> None:
     """Cells 21, 25, 27, 29, 34, 39 and 42 in the order the notebook runs them."""
     # cell 21 - DOS effective mass
     dos_mass = dos.compute_dos(
@@ -60,21 +67,26 @@ def test_full_workflow_reproduces_tutorial(opt_dir, dos_vasprun, band_dir, am15)
     assert round(eff, 2) == 26.90
 
 
-def test_workflow_intermediate_values(dos_result, dielectric, band_structure_obj):
+def test_workflow_intermediate_values(
+        dos_result: DOSResult, dielectric: tuple[float, NDArray, NDArray, NDArray, NDArray],
+        band_structure_obj: BandStructureSymmLine
+) -> None:
     """The inputs cell 42 is fed, each pinned where the notebook reports it."""
     assert dos_result.final_result == pytest.approx(0.0727540, rel=1e-6)
     assert dielectric[0] == pytest.approx(6.109433, rel=1e-6)
     assert band_structure_obj.get_direct_band_gap() == pytest.approx(1.3901, rel=1e-4)
 
 
-def test_workflow_argument_order(photon_spectrum):
+def test_workflow_argument_order(photon_spectrum: NDArray) -> None:
     """Ten positional arguments, three of them interchangeable-looking floats.
 
     dos_mass, dop_density and epsilon sit 6th, 7th and 8th. Transposing any two
     must change the answer - if it did not, a caller could get the order wrong
     and never find out.
     """
-    baseline = dict(
+    # Heterogeneous on purpose: this test unpacks .values() positionally to
+    # prove the parameter order matters, so the annotation cannot be narrower.
+    baseline: dict[str, Any] = dict(
         E_gap=1.3901, photon_spectrum=photon_spectrum, alpha=128846.05, tau=TAU,
         sigma=1.5663, dos_mass=0.0727540, dop_density=DOPING_DENSITY,
         epsilon=6.109433, mu=MU, Tcell=TCELL,
@@ -88,7 +100,7 @@ def test_workflow_argument_order(photon_spectrum):
     assert correct[2] != pytest.approx(transposed[2], rel=1e-6)
 
 
-def test_spectral_chain_requires_generated_dat(tmp_opt_dir, am15):
+def test_spectral_chain_requires_generated_dat(tmp_opt_dir: Path, am15: NDArray) -> None:
     """generate_spectral_parameters reads absorption.dat off disk, so cell 30 must run first.
 
     The chain is mediated by the filesystem rather than by passing arrays, which
@@ -109,10 +121,12 @@ def test_spectral_chain_requires_generated_dat(tmp_opt_dir, am15):
     assert dispersion == pytest.approx(1.5663474, rel=1e-6)
 
 
-def test_workflow_does_not_touch_tracked_data(tutorial_data, opt_dir, dos_vasprun, am15):
+def test_workflow_does_not_touch_tracked_data(
+        tutorial_data: Path, opt_dir: Path, dos_vasprun: Path, am15: NDArray
+) -> None:
     """Nothing in the analysis half may write into the committed fixture tree."""
 
-    def digest():
+    def digest() -> str:
         h = hashlib.sha256()
         for path in sorted(tutorial_data.rglob("*")):
             if path.is_file():

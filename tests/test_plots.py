@@ -9,8 +9,11 @@ fig.canvas.header_visible, which only exists under ipympl, and ipympl is neither
 declared in pyproject.toml nor installed. They need a live notebook kernel.
 """
 
+from pathlib import Path
+
 import matplotlib.pyplot as plt
 import pytest
+from numpy.typing import NDArray
 
 import solphin.db_plots as db_plots
 import solphin.dos as dos
@@ -27,7 +30,7 @@ FOM_ARGS = dict(alpha=1.3e5, tau=1e-6, sigma=1.5, dos_mass=0.073, dop_density=1e
 # --- db_plots --------------------------------------------------------------
 
 
-def test_photons_above_bandgap_plot_on_axis(photon_spectrum):
+def test_photons_above_bandgap_plot_on_axis(photon_spectrum: NDArray) -> None:
     """Given an axis, it draws there and hands the axis back."""
     _, ax = plt.subplots()
 
@@ -37,7 +40,7 @@ def test_photons_above_bandgap_plot_on_axis(photon_spectrum):
     assert ax.lines
 
 
-def test_photons_above_bandgap_plot_standalone(photon_spectrum):
+def test_photons_above_bandgap_plot_standalone(photon_spectrum: NDArray) -> None:
     """Without an axis it draws on the current figure and returns None."""
     result = db_plots.photons_above_bandgap_plot(photon_spectrum, E_GAP)
 
@@ -45,19 +48,19 @@ def test_photons_above_bandgap_plot_standalone(photon_spectrum):
     assert plt.get_fignums()
 
 
-def test_iv_curve_plot(photon_spectrum):
+def test_iv_curve_plot(photon_spectrum: NDArray) -> None:
     db_plots.iv_curve_plot(photon_spectrum, E_GAP, TCELL)
 
     assert plt.gca().lines
 
 
-def test_iv_curve_plot_power_variant(photon_spectrum):
+def test_iv_curve_plot_power_variant(photon_spectrum: NDArray) -> None:
     db_plots.iv_curve_plot(photon_spectrum, E_GAP, TCELL, power=True)
 
     assert plt.gca().get_ylabel().startswith("Power")
 
 
-def test_iv_pv_curve_plot(photon_spectrum):
+def test_iv_pv_curve_plot(photon_spectrum: NDArray) -> None:
     _, ax1 = plt.subplots()
     _, ax2 = plt.subplots()
 
@@ -67,7 +70,7 @@ def test_iv_pv_curve_plot(photon_spectrum):
     assert ax2.lines
 
 
-def test_sq_limit_plot(photon_spectrum):
+def test_sq_limit_plot(photon_spectrum: NDArray) -> None:
     _, ax = plt.subplots()
 
     db_plots.sq_limit_plot(photon_spectrum, E_GAP, TCELL, ax=ax)
@@ -75,7 +78,7 @@ def test_sq_limit_plot(photon_spectrum):
     assert ax.lines
 
 
-def test_plot_db_combined(photon_spectrum):
+def test_plot_db_combined(photon_spectrum: NDArray) -> None:
     db_plots.plot_db_combined(photon_spectrum, E_GAP, TCELL, "AM1.5")
 
     assert plt.get_fignums()
@@ -84,7 +87,7 @@ def test_plot_db_combined(photon_spectrum):
 # --- dos / optics plotting -------------------------------------------------
 
 
-def test_plot_dos_smoke(opt_dir):
+def test_plot_dos_smoke(opt_dir: Path) -> None:
     dos.plot_dos(filename=str(opt_dir / "vasprun.xml"), xmin=-3, xmax=4, gaussian=0.05)
 
     assert plt.get_fignums()
@@ -93,7 +96,7 @@ def test_plot_dos_smoke(opt_dir):
 # --- final_results ---------------------------------------------------------
 
 
-def test_sq_relative_identity(photon_spectrum):
+def test_sq_relative_identity(photon_spectrum: NDArray) -> None:
     """SQ_relative is exactly 100 * FOM_efficiency / SQ.
 
     Both are formed from the same SQ_eff, which cancels - so this holds for any
@@ -109,7 +112,7 @@ def test_sq_relative_identity(photon_spectrum):
     assert 0 < fom_efficiency < sq
 
 
-def test_sq_relative_is_spectrum_independent(photon_spectrum):
+def test_sq_relative_is_spectrum_independent(photon_spectrum: NDArray) -> None:
     """The SQ-relative ratio depends only on the material, not the illumination."""
     import solphin.db_fom as db_fom
 
@@ -125,7 +128,7 @@ def test_sq_relative_is_spectrum_independent(photon_spectrum):
     assert from_am15 == pytest.approx(from_led, rel=1e-12)
 
 
-def test_plot_fom_three_panels(photon_spectrum):
+def test_plot_fom_three_panels(photon_spectrum: NDArray) -> None:
     fig, axes = plt.subplots(1, 3)
 
     final_results.plot_FOM(
@@ -147,7 +150,7 @@ def test_plot_fom_three_panels(photon_spectrum):
         "'PV efficiency' carries the SQ limit and the SQ-relative ratio too"
     ),
 )
-def test_mobility_plot_draws_one_line_per_lifetime(photon_spectrum):
+def test_mobility_plot_draws_one_line_per_lifetime(photon_spectrum: NDArray) -> None:
     """Two lifetimes should give two curves, not two curves' worth of columns."""
     final_results.mobility_plot(
         E_GAP, photon_spectrum, FOM_ARGS["alpha"], FOM_ARGS["sigma"],

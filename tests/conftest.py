@@ -24,14 +24,19 @@ import matplotlib
 # modules, several of which pull in pyplot.
 matplotlib.use("Agg")
 
+from collections.abc import Iterator
+
 import matplotlib.pyplot as plt  # noqa: E402
 import pytest  # noqa: E402
+from numpy.typing import NDArray
 from pymatgen.core import SETTINGS  # noqa: E402
+from pymatgen.electronic_structure.bandstructure import BandStructureSymmLine
 
 import solphin.band_structure as band_structure  # noqa: E402
 import solphin.db_fom as db_fom  # noqa: E402
 import solphin.dos as dos  # noqa: E402
 import solphin.optics as optics  # noqa: E402
+from solphin.dos import DOSResult
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -66,25 +71,25 @@ def tutorial_data() -> Path:
 
 
 @pytest.fixture(scope="session")
-def opt_dir(tutorial_data) -> Path:
+def opt_dir(tutorial_data: Path) -> Path:
     """Optics/dielectric calculation - the source of absorption.dat and n_real.dat."""
     return tutorial_data / "OPT_hybrid"
 
 
 @pytest.fixture(scope="session")
-def dos_vasprun(tutorial_data) -> Path:
+def dos_vasprun(tutorial_data: Path) -> Path:
     """Static HSE06 run used for the DOS effective mass."""
     return tutorial_data / "DOS_HDFT" / "vasprun.xml"
 
 
 @pytest.fixture(scope="session")
-def band_dir(tutorial_data) -> Path:
+def band_dir(tutorial_data: Path) -> Path:
     """Directory holding the seven split-NN band-structure calculations."""
     return tutorial_data / "BAND_SP_HDFT"
 
 
 @pytest.fixture(scope="session")
-def relax_dir(tutorial_data) -> Path:
+def relax_dir(tutorial_data: Path) -> Path:
     """Geometry optimisation - holds the POSCAR and the relaxed CONTCAR."""
     return tutorial_data / "Relax"
 
@@ -93,25 +98,25 @@ def relax_dir(tutorial_data) -> Path:
 
 
 @pytest.fixture(scope="session")
-def am15():
+def am15() -> NDArray:
     """AM1.5G as shipped: column 0 wavelength (nm), column 1 irradiance (W m^-2 nm^-1)."""
     return db_fom.load_spectrum("AM1.5")
 
 
 @pytest.fixture(scope="session")
-def photon_spectrum(am15):
+def photon_spectrum(am15: NDArray) -> NDArray:
     """AM1.5G converted: column 0 energy (eV), column 1 photon flux (m^-2 s^-1 eV^-1)."""
     return db_fom.convert_spectrum(am15)
 
 
 @pytest.fixture(scope="session")
-def dielectric(opt_dir):
+def dielectric(opt_dir: Path) -> tuple[float, NDArray, NDArray, NDArray, NDArray]:
     """The 5-tuple from calc_dielectric: (eps_inf, tensor, eps_full, eps_imag, energies)."""
     return optics.calc_dielectric(filename=str(opt_dir / "vasprun.xml"))
 
 
 @pytest.fixture(scope="session")
-def dos_result(dos_vasprun):
+def dos_result(dos_vasprun: Path) -> DOSResult:
     """DOSResult for electrons at the tutorial's 0.1 eV window."""
     return dos.compute_dos(
         dos_vasprun=str(dos_vasprun), carrier="electrons", energy_window=0.1
@@ -119,7 +124,7 @@ def dos_result(dos_vasprun):
 
 
 @pytest.fixture(scope="session")
-def band_structure_obj(band_dir):
+def band_structure_obj(band_dir: Path) -> BandStructureSymmLine:
     """Recombined BandStructureSymmLine across the committed splits."""
     return band_structure.get_band_structure(str(band_dir), 5)
 
@@ -128,7 +133,7 @@ def band_structure_obj(band_dir):
 
 
 @pytest.fixture
-def tmp_opt_dir(opt_dir, tmp_path) -> Path:
+def tmp_opt_dir(opt_dir: Path, tmp_path: Path) -> Path:
     """Copy of the optics calculation, without the generated .dat files.
 
     Write tests run here so that regenerating absorption.dat / n_real.dat can be
@@ -142,7 +147,7 @@ def tmp_opt_dir(opt_dir, tmp_path) -> Path:
 
 
 @pytest.fixture(autouse=True)
-def close_figures():
+def close_figures() -> Iterator[None]:
     """Keep the Agg canvas from accumulating across the plotting tests."""
     yield
     plt.close("all")

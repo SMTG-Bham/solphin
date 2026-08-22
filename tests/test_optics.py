@@ -6,9 +6,12 @@ provenance-verified reference data rather than a snapshot of whatever the code
 happens to emit today, which is the distinction CONTRIBUTING asks for.
 """
 
+from pathlib import Path
+
 import numpy as np
 import pytest
 import scipy.constants as sc
+from numpy.typing import NDArray
 from scipy.optimize import brentq
 
 import solphin.optics as optics
@@ -16,7 +19,9 @@ import solphin.optics as optics
 # --- the dielectric tensor -------------------------------------------------
 
 
-def test_calc_dielectric_returns_five_tuple(dielectric):
+def test_calc_dielectric_returns_five_tuple(
+        dielectric: tuple[float, NDArray, NDArray, NDArray, NDArray]
+) -> None:
     """The docstring documents two return values; there are five."""
     assert len(dielectric) == 5
 
@@ -27,7 +32,9 @@ def test_calc_dielectric_returns_five_tuple(dielectric):
     assert len(energies) == len(eps_full) == len(eps_imag)
 
 
-def test_calc_dielectric_tutorial_values(dielectric):
+def test_calc_dielectric_tutorial_values(
+        dielectric: tuple[float, NDArray, NDArray, NDArray, NDArray]
+) -> None:
     """High-frequency dielectric constant of Cu2GeS3 from the committed run."""
     eps_inf, tensor, *_ = dielectric
 
@@ -39,7 +46,9 @@ def test_calc_dielectric_tutorial_values(dielectric):
     )
 
 
-def test_eps_inf_is_tensor_trace_average(dielectric):
+def test_eps_inf_is_tensor_trace_average(
+        dielectric: tuple[float, NDArray, NDArray, NDArray, NDArray]
+) -> None:
     """The scalar eps_inf is the mean of the tensor's diagonal."""
     eps_inf, tensor, *_ = dielectric
 
@@ -51,7 +60,7 @@ def test_eps_inf_is_tensor_trace_average(dielectric):
 # --- absorption from the dielectric function -------------------------------
 
 
-def test_calc_absorption_keys(dielectric):
+def test_calc_absorption_keys(dielectric: tuple[float, NDArray, NDArray, NDArray, NDArray]) -> None:
     _, _, eps_full, _, energies = dielectric
 
     data = optics.calc_absorption(eps_full, energies)
@@ -61,7 +70,7 @@ def test_calc_absorption_keys(dielectric):
     assert all(len(data[key]) == len(energies) for key in expected)
 
 
-def test_calc_absorption_on_lossless_dielectric():
+def test_calc_absorption_on_lossless_dielectric() -> None:
     """For real, isotropic eps: n = sqrt(eps) and a transparent medium absorbs nothing."""
     energies = np.linspace(0.1, 5.0, 50)
     eps_full = np.zeros((50, 3, 3), dtype=complex)
@@ -75,7 +84,9 @@ def test_calc_absorption_on_lossless_dielectric():
     np.testing.assert_allclose(data["absorption"], 0.0, atol=1e-12)
 
 
-def test_absorption_non_negative(dielectric):
+def test_absorption_non_negative(
+        dielectric: tuple[float, NDArray, NDArray, NDArray, NDArray]
+) -> None:
     _, _, eps_full, _, energies = dielectric
 
     data = optics.calc_absorption(eps_full, energies)
@@ -87,7 +98,7 @@ def test_absorption_non_negative(dielectric):
 # --- blackbody helpers -----------------------------------------------------
 
 
-def test_bb_per_eV_peak_position():
+def test_bb_per_eV_peak_position() -> None:
     """The photon-flux blackbody E^2/(exp(E/kT)-1) peaks where 2(1-e^-x) = x."""
     x = brentq(lambda x: 2 * (1 - np.exp(-x)) - x, 1e-6, 10)
     kT_eV = sc.k * optics._T / sc.e
@@ -98,7 +109,7 @@ def test_bb_per_eV_peak_position():
     assert peak == pytest.approx(x * kT_eV, rel=1e-3)
 
 
-def test_bb_representations_agree():
+def test_bb_representations_agree() -> None:
     """Total photon flux is the same whether integrated over dE or d(lambda).
 
     Tolerance is loose because both integrals truncate an infinite tail on a
@@ -113,7 +124,7 @@ def test_bb_representations_agree():
     assert flux_from_energy == pytest.approx(flux_from_wavelength, rel=0.02)
 
 
-def test_calc_incident_power_am15():
+def test_calc_incident_power_am15() -> None:
     """The AM1.5 spectrum optics uses must still integrate to about 1000 W m^-2.
 
     Note this reads pymatgen's am1.5G.dat, not the bundled ASTMG173.csv that
@@ -127,7 +138,7 @@ def test_calc_incident_power_am15():
     assert power == pytest.approx(1000.0, rel=0.05)
 
 
-def test_spectrum_select_falls_back_to_bundled_resources():
+def test_spectrum_select_falls_back_to_bundled_resources() -> None:
     """Anything other than AM1.5 routes through db_fom.load_spectrum instead."""
     wavelengths, irradiance, use_slme = optics._spectrum_select("Red LED")
 
@@ -135,7 +146,7 @@ def test_spectrum_select_falls_back_to_bundled_resources():
     assert len(wavelengths) == len(irradiance) > 0
 
 
-def test_convert_spec_photon_flux():
+def test_convert_spec_photon_flux() -> None:
     """Photon flux = irradiance * lambda / hc, with lambda returned in metres."""
     wavelengths_nm = np.array([400.0, 800.0])
     irradiance = np.array([1.0, 1.0])
@@ -150,7 +161,7 @@ def test_convert_spec_photon_flux():
 # --- writing the .dat files ------------------------------------------------
 
 
-def test_generate_absorption_reproduces_committed_file(tmp_opt_dir, opt_dir):
+def test_generate_absorption_reproduces_committed_file(tmp_opt_dir: Path, opt_dir: Path) -> None:
     """Regenerating from vasprun.xml must reproduce the committed absorption.dat."""
     optics.generate_absorption(str(tmp_opt_dir))
 
@@ -160,7 +171,7 @@ def test_generate_absorption_reproduces_committed_file(tmp_opt_dir, opt_dir):
     np.testing.assert_allclose(regenerated, committed, rtol=1e-10)
 
 
-def test_generate_n_real_reproduces_committed_file(tmp_opt_dir, opt_dir):
+def test_generate_n_real_reproduces_committed_file(tmp_opt_dir: Path, opt_dir: Path) -> None:
     """Same for n_real.dat, which make_blank_plot reads back off disk."""
     optics.generate_n_real(str(tmp_opt_dir))
 
@@ -170,7 +181,7 @@ def test_generate_n_real_reproduces_committed_file(tmp_opt_dir, opt_dir):
     np.testing.assert_allclose(regenerated, committed, rtol=1e-10)
 
 
-def test_print_absorption_file_converts_to_per_cm(tmp_path):
+def test_print_absorption_file_converts_to_per_cm(tmp_path: Path) -> None:
     """calc_absorption works in m^-1; the file is documented as cm^-1."""
     energies = np.array([1.0, 2.0, 3.0])
     data = {"absorption": np.array([1.0e7, 2.0e7, 3.0e7])}  # m^-1
@@ -185,7 +196,7 @@ def test_print_absorption_file_converts_to_per_cm(tmp_path):
     np.testing.assert_allclose(written[:, 1], [1.0e5, 2.0e5, 3.0e5], rtol=1e-12)
 
 
-def test_generated_dat_files_have_one_header_line(tmp_opt_dir):
+def test_generated_dat_files_have_one_header_line(tmp_opt_dir: Path) -> None:
     """spectral._load_absorption assumes exactly one '#' line plus data."""
     optics.generate_absorption(str(tmp_opt_dir))
 
@@ -198,7 +209,7 @@ def test_generated_dat_files_have_one_header_line(tmp_opt_dir):
 # --- efficiency and plotting ----------------------------------------------
 
 
-def test_power_efficiency_bounded(tmp_opt_dir):
+def test_power_efficiency_bounded(tmp_opt_dir: Path) -> None:
     """Efficiency is a fraction, and a thicker absorber never collects less."""
     optics.generate_absorption(str(tmp_opt_dir))
     optics.generate_n_real(str(tmp_opt_dir))
@@ -218,7 +229,7 @@ def test_power_efficiency_bounded(tmp_opt_dir):
     assert np.all(np.diff(efficiencies) >= 0)
 
 
-def test_make_blank_plot_smoke(tmp_opt_dir, monkeypatch):
+def test_make_blank_plot_smoke(tmp_opt_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """A short explicit thickness_range - the default sweeps 80 points twice over.
 
     Runs inside tmp_path because save=True writes slme.png into the cwd.
@@ -243,7 +254,7 @@ def test_make_blank_plot_smoke(tmp_opt_dir, monkeypatch):
     assert plt.get_fignums()
 
 
-def test_plot_absorption_smoke(tmp_opt_dir):
+def test_plot_absorption_smoke(tmp_opt_dir: Path) -> None:
     import matplotlib.pyplot as plt
 
     optics.generate_absorption(str(tmp_opt_dir))
