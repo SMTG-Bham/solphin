@@ -80,6 +80,9 @@ include = ["solphin*"]
 # db_fom.load_spectrum and vasp_inputs.load_recipe resolve these through
 # importlib.resources at runtime, so they must ship inside the wheel.
 [tool.setuptools.package-data]
+# PEP 561: without this marker a type checker ignores solphin's annotations
+# entirely when it is installed as a dependency, however complete they are.
+"solphin" = ["py.typed"]
 "solphin.resources" = ["*.csv", "*.json"]
 
 [tool.pytest.ini_options]

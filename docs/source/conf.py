@@ -48,6 +48,12 @@ extensions = [
     "myst_nb",  # for jupyter notebooks
 ]
 
+# Every function in the package is annotated, and the docstrings name the type
+# and unit of each argument as CONTRIBUTING requires. autodoc's default of
+# "signature" would render both, so each parameter would carry its type twice.
+# "description" merges the annotation into the existing Parameters: entry.
+autodoc_typehints = "description"
+
 myst_enable_extensions = [
     "html_admonition",
     "html_image",  # to parse html syntax to insert images
