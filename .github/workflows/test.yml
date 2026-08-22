@@ -31,6 +31,29 @@ jobs:
       - run: pip install ruff==0.16.4
       - run: ruff check .
 
+  types:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Non-blocking on purpose. Six of the ten defects in the xfail register in
+    # tests/README.md are type errors -- the four db_fom arity bugs, the len()
+    # on a Kpoints in dos.py, and the tuple append in final_results.py -- so
+    # mypy reports them by design. Fixing them is a separate change per
+    # tests/README.md, and turning this job red until then would train people
+    # to ignore it. Drop continue-on-error once that register is empty.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      # Pinned for the same reason ruff is: a new mypy release must not change
+      # this job's output on its own.
+      - run: pip install -e ".[dev]" mypy==2.3.1
+      # Paths, and the rest of the configuration, come from [tool.mypy].
+      - run: mypy
+
   test:
     runs-on: ubuntu-latest
     # The suite parses ~130 MB of vasprun.xml and compute_dos re-reads its

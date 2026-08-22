@@ -63,7 +63,7 @@ tutorial = ["jupyterlab", "ipykernel", "nbformat", "ipympl"]
 # widget) provides. Everything else in the package works without it, so this is
 # an extra rather than a runtime dependency.
 interactive = ["ipympl"]
-dev = ["pytest", "pytest-cov", "ruff", "pre-commit"]
+dev = ["pytest", "pytest-cov", "ruff", "mypy", "pre-commit"]
 
 [project.urls]
 # Still no Documentation entry: .readthedocs.yaml now configures the build, but
@@ -118,3 +118,28 @@ select = ["E402", "F401", "F811", "I"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["solphin"]
+
+# Deliberately not `strict`. The point of this config is to catch annotations
+# that contradict the code -- three of the sixteen that predate it were wrong,
+# including one silenced by a bare `# type: ignore` -- not to demand annotations
+# everywhere. `disallow_untyped_defs` stays off for the same reason ruff's rules
+# are narrowed: a contributor adding an unannotated helper should get a nudge in
+# review, not a wall of errors.
+[tool.mypy]
+python_version = "3.11"
+files = ["solphin", "tests"]
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_unreachable = true
+# mypy only checks the bodies of annotated functions by default, so without this
+# a newly added unannotated helper drops out of coverage silently.
+check_untyped_defs = true
+disallow_untyped_defs = false
+
+# sumo and ipywidgets ship neither annotations nor stubs, and scipy has no
+# py.typed in the pinned build (scipy-stubs is on PyPI but is not a declared
+# dependency). Everything crossing these boundaries is Any either way, so the
+# missing-import error is noise rather than signal.
+[[tool.mypy.overrides]]
+module = ["sumo.*", "ipywidgets.*", "ipympl.*", "scipy.*"]
+ignore_missing_imports = true
