@@ -6,6 +6,9 @@
 
 ***
 
+[![test](https://github.com/SMTG-Bham/solphin/actions/workflows/test.yml/badge.svg)](https://github.com/SMTG-Bham/solphin/actions/workflows/test.yml)
+[![docs](https://github.com/SMTG-Bham/solphin/actions/workflows/docs.yml/badge.svg)](https://github.com/SMTG-Bham/solphin/actions/workflows/docs.yml)
+[![package](https://github.com/SMTG-Bham/solphin/actions/workflows/package.yml/badge.svg)](https://github.com/SMTG-Bham/solphin/actions/workflows/package.yml)
 [![codecov](https://codecov.io/gh/SMTG-Bham/solphin/branch/main/graph/badge.svg)](https://codecov.io/gh/SMTG-Bham/solphin)
 
 `solphin` is a code developed to assist with the characterisation of novel photovoltaic materials with `VASP`. It

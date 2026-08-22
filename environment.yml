@@ -65,6 +65,12 @@ dependencies:
   - pytest
   - pytest-cov
   - ruff
+  - mypy
   - pre-commit
+  # `build` is `python-build` on conda-forge; plain `build` is an unrelated
+  # package. Both back .github/workflows/package.yml, which builds the sdist
+  # and wheel and checks that the resource files reached them.
+  - python-build
+  - twine
 
   - pip

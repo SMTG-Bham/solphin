@@ -77,9 +77,11 @@ pseudopotentials configured through `$HOME/.pmgrc.yaml`, as described in the
 1. Fork the repository and create a branch off `main`, named after what it
    does (e.g. `fix-slme-units`, `add-thickness-sweep`).
 2. Make your change, keeping it focused — one logical change per pull request.
-3. Run the checks below locally. CI runs the same lint and test steps on every
-   pull request (see `.github/workflows/test.yml`), so running them first saves
-   a round trip.
+3. Run the checks below locally. CI runs the same checks on every pull request
+   — lint, types and the test matrix in `.github/workflows/test.yml`, the
+   documentation build in `.github/workflows/docs.yml`, and the packaging checks
+   in `.github/workflows/package.yml` — so running them first saves a round
+   trip.
 4. Open a pull request against `main`, explaining what the change does and why.
    Link any related issue. If the change affects results, include a before/after
    plot or numbers.
@@ -183,6 +185,15 @@ The result lands in `docs/build/html`. New public functions should be reachable
 from the API pages, and anything that changes the workflow should be reflected
 in the tutorial notebook.
 
+CI builds the same documentation with warnings promoted to errors, so a
+malformed docstring fails the build rather than reaching the published pages.
+The build is warning-free today; keep it that way by running it the way CI does
+before you push:
+
+```bash
+make -C docs html SPHINXOPTS="-W"
+```
+
 ### Adding a dependency
 
 Runtime dependencies must be added to **both**
@@ -193,6 +204,18 @@ list, because conda-forge's build pins `castepxbin 0.1.0.*` and so caps
 `numpy<2`. It is installed from PyPI instead, as a documented `--no-deps` step.
 Please keep new additions in both files, and say in the pull request why the
 dependency is needed.
+
+### Adding a resource file
+
+Anything new under `solphin/resources/` needs listing in **both**
+[MANIFEST.in](MANIFEST.in), which controls the sdist, and
+`[tool.setuptools.package-data]` in [pyproject.toml](pyproject.toml), which
+controls the wheel. Missing one is easy to do and hard to notice: the package
+reads these files through `importlib.resources` at run time, so a wheel without
+them still installs and imports perfectly and only fails when someone calls the
+function. `.github/workflows/package.yml` builds both artefacts and fails if a
+tracked resource is absent from either, but it is cheaper to get right first
+time.
 
 ## Licence
 
