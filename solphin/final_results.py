@@ -8,6 +8,7 @@ from matplotlib.axes import Axes
 from matplotlib.cm import ScalarMappable
 from matplotlib.colors import LogNorm
 from matplotlib.figure import Figure
+from numpy.typing import NDArray
 
 from solphin.db_fom import max_eff
 from solphin.pv_fom import Final_equation
@@ -22,7 +23,18 @@ warnings.filterwarnings(action="ignore", message="invalid value encountered in m
 
 # Calculating equation 33 from the FOM paper
 
-def SQ_relative_FOM_PV_efficiency(E_gap, photon_spectrum, alpha, tau, sigma, dos_mass, dop_density, epsilon, mu, Tcell):
+def SQ_relative_FOM_PV_efficiency(
+        E_gap: float,
+        photon_spectrum: NDArray,
+        alpha: float,
+        tau: float,
+        sigma: float,
+        dos_mass: float,
+        dop_density: float,
+        epsilon: float,
+        mu: float,
+        Tcell: float,
+) -> tuple[float, float, float]:
     ''' Calculates the final value for the photovoltaic figure of merit from Crovetto 2024 as a percentage of the Shockley Queisser efficiency limit.
 
     Parameters:
@@ -69,19 +81,20 @@ def SQ_relative_FOM_PV_efficiency(E_gap, photon_spectrum, alpha, tau, sigma, dos
 def plot_FOM(
         fig: Figure,
         axes: list[Axes],
-        E_gap,
-        photon_spectrum,
-        alpha,
-        tau,
-        sigma,
-        dos_mass,
-        dop_density,
-        epsilon,
-        mu,
-        Tcell,
+        E_gap: float,
+        photon_spectrum: NDArray,
+        alpha: float,
+        tau: float,
+        sigma: float,
+        dos_mass: float,
+        dop_density: float,
+        epsilon: float,
+        mu: float,
+        Tcell: float,
         dop_range: tuple[float, float],
         tau_range: tuple[float, float],
-        mu_range: tuple[float, float]):
+        mu_range: tuple[float, float],
+) -> None:
     """
     Plots the photovoltaic figure of merit as a function of key transport parameters.
 
@@ -178,7 +191,7 @@ def plot_FOM(
         "Figure of Merit vs Carrier Mobility \n" + "(Density=" + f"{dop_density:.2e}" + r", $\tau$=" + f"{tau:.2e}" + ")")
 
 
-def _get_step(quantity_range):
+def _get_step(quantity_range: tuple[float, float]) -> float:
     """
     Calculates the step size for a specified quantity range.
 
@@ -196,19 +209,20 @@ def _get_step(quantity_range):
 
 
 def plot_final_result_interactive(
-        E_gap,
-        photon_spectrum,
-        alpha,
-        tau,
-        sigma,
-        dos_mass,
-        dop_density,
-        epsilon,
-        mu,
-        Tcell,
+        E_gap: float,
+        photon_spectrum: NDArray,
+        alpha: float,
+        tau: float,
+        sigma: float,
+        dos_mass: float,
+        dop_density: float,
+        epsilon: float,
+        mu: float,
+        Tcell: float,
         dop_range: tuple[float, float] = (1e10, 1e18),
         tau_range: tuple[float, float] = (1e-15, 1e3),
-        mu_range: tuple[float, float] = (1e-2, 1e9)):
+        mu_range: tuple[float, float] = (1e-2, 1e9),
+) -> None:
     """
     Creates an interactive Figure of Merit visualization dashboard.
 
@@ -236,13 +250,13 @@ def plot_final_result_interactive(
     # These three attributes exist only on the ipympl canvas, i.e. under
     # %matplotlib widget. Install it with the "interactive" extra:
     #     pip install "solphin[interactive]"
-    fig.canvas.header_visible = False  # hides the figure “header” in JupyterLab
-    fig.canvas.footer_visible = False  # hides the footer
-    fig.canvas.toolbar_visible = False  # hides the toolbar
+    fig.canvas.header_visible = False  # type: ignore[attr-defined]  # hides the figure “header” in JupyterLab
+    fig.canvas.footer_visible = False  # type: ignore[attr-defined]  # hides the footer
+    fig.canvas.toolbar_visible = False  # type: ignore[attr-defined]  # hides the toolbar
 
     # wrapping that clears axes and redraws combined DB plots
 
-    def plot_combined_wrapper(density, lifetime, mobility):
+    def plot_combined_wrapper(density: float, lifetime: float, mobility: float) -> None:
         """
         Updates the combined figure using the selected transport parameters.
 
@@ -305,7 +319,7 @@ def plot_final_result_interactive(
     interact(plot_combined_wrapper, density=dopant_slider, lifetime=lifetime_slider, mobility=mobility_slider)
 
 
-def _clearlines(n):
+def _clearlines(n: int) -> None:
     """
     Clears a specified number of previously printed terminal lines.
 
@@ -327,19 +341,20 @@ def _clearlines(n):
 
 
 def print_final_result_interactive(
-        E_gap,
-        photon_spectrum,
-        alpha,
-        tau,
-        sigma,
-        dos_mass,
-        dop_density,
-        epsilon,
-        mu,
-        Tcell,
+        E_gap: float,
+        photon_spectrum: NDArray,
+        alpha: float,
+        tau: float,
+        sigma: float,
+        dos_mass: float,
+        dop_density: float,
+        epsilon: float,
+        mu: float,
+        Tcell: float,
         dop_range: tuple[float, float] = (1e10, 1e18),
         tau_range: tuple[float, float] = (1e-15, 1e3),
-        mu_range: tuple[float, float] = (1e-2, 1e9)):
+        mu_range: tuple[float, float] = (1e-2, 1e9),
+) -> None:
     """
     Interactively writes figure of merit information.
 
@@ -362,7 +377,7 @@ def print_final_result_interactive(
         None
     """
 
-    def print_fom(density, lifetime, mobility):
+    def print_fom(density: float, lifetime: float, mobility: float) -> None:
         _clearlines(5)
 
         sq, fom_sq, eff = SQ_relative_FOM_PV_efficiency(E_gap, photon_spectrum, alpha, lifetime, sigma, dos_mass,
@@ -389,20 +404,53 @@ def print_final_result_interactive(
 
 
 def mobility_plot(
-        E_gap,
-        photon_spectrum,
-        alpha,
-        sigma,
-        dos_mass,
-        epsilon,
-        dop_density=1e10,
-        mob_min=-2,
-        mob_max=9,
-        lifetime_min=-15,
-        lifetime_max=3,
-        step=1,
-        Tcell=300
-):
+        E_gap: float,
+        photon_spectrum: NDArray,
+        alpha: float,
+        sigma: float,
+        dos_mass: float,
+        epsilon: float,
+        dop_density: float = 1e10,
+        mob_min: float = -2,
+        mob_max: float = 9,
+        lifetime_min: float = -15,
+        lifetime_max: float = 3,
+        step: float = 1,
+        Tcell: float = 300,
+) -> None:
+    """
+    Plots the figure-of-merit efficiency against carrier mobility, one line per
+    carrier lifetime.
+
+    Mobility and lifetime are swept on logarithmic grids: the *_min and *_max
+    arguments are base-10 exponents, not values, so the defaults cover
+    1e-2 to 1e9 cm2V-1s-1 and 1e-15 to 1e3 s.
+
+    Parameters:
+        E_gap(float): Optical Band Gap in eV.
+        photon_spectrum(np.ndarray): Converted photon spectrum from
+            db_fom.convert_spectrum; column 0 energy (eV), column 1 photon
+            flux (m-2 s-1 eV-1).
+        alpha(float): Spectral average of incident light in cm-1.
+        sigma(float): Spectral dispersion of the absorption coefficient
+            spectrum, unitless.
+        dos_mass(float): Density of States effective mass in m0.
+        epsilon(float): Static dielectric constant, unitless.
+        dop_density(float): Doping density in cm-3. Default is 1e10.
+        mob_min(float): Base-10 exponent of the lowest mobility swept.
+            Default is -2.
+        mob_max(float): Base-10 exponent of the highest mobility swept.
+            Default is 9.
+        lifetime_min(float): Base-10 exponent of the shortest lifetime swept.
+            Default is -15.
+        lifetime_max(float): Base-10 exponent of the longest lifetime swept.
+            Default is 3.
+        step(float): Spacing between successive exponents. Default is 1.
+        Tcell(float): Operating temperature of the cell in K. Default is 300.
+
+    Returns:
+        None
+    """
     # Exponents
     mobility_exp = np.arange(mob_min, mob_max, step)
     lifetime_exp = np.arange(lifetime_min, lifetime_max, step)
@@ -465,8 +513,8 @@ def mobility_plot(
 
     # Larger text
     ax.tick_params(axis="both", labelsize=12)
-    ax.xaxis.label.set_size(14)
-    ax.yaxis.label.set_size(14)
+    ax.xaxis.label.set_fontsize(14)
+    ax.yaxis.label.set_fontsize(14)
     cbar.ax.tick_params(labelsize=12)
 
     fig.tight_layout()
