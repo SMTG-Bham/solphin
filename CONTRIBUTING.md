@@ -110,6 +110,17 @@ Beyond that, follow the conventions already in the package:
 * explicit units in variable names or comments wherever a quantity is
   dimensional — this is a physics code and unit errors are the easiest bugs to
   introduce and the hardest to spot;
+* no global configuration at import time. A module must not call
+  `logging.basicConfig`, set the level of the root logger, disable another
+  library's logger, or install `warnings.filterwarnings` at module scope —
+  `solphin/__init__.py` imports every module eagerly, so anything at module
+  level runs on `import solphin` and reconfigures the logging of whatever
+  program imported us. Choosing handlers, levels and filters belongs to the
+  application; see the setup cell in
+  [tutorial/full_workflow_tutorial.ipynb](tutorial/full_workflow_tutorial.ipynb)
+  for how the tutorial does it for itself. If a module needs to log, use
+  `logger = logging.getLogger(__name__)` and emit records without configuring
+  anything. `tests/test_import_side_effects.py` enforces this;
 * docstrings on every module and function, in strict
   [numpydoc](https://numpydoc.readthedocs.io/en/latest/format.html) format
   (see `solphin/db_fom.py` for examples), naming the type and the unit of each

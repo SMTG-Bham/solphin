@@ -1,8 +1,5 @@
 """Combine the detailed-balance limit and Γₚᵥ into final relative-efficiency results."""
 
-import logging
-import warnings
-
 import matplotlib.pyplot as plt
 import numpy as np
 from ipywidgets import interact, widgets
@@ -14,14 +11,6 @@ from numpy.typing import NDArray
 
 from solphin.db_fom import max_eff
 from solphin.pv_fom import Final_equation
-
-logging.getLogger('matplotlib.font_manager').disabled = True
-logging.basicConfig(level=logging.INFO)
-
-warnings.filterwarnings(action="ignore",
-                        message="This figure was using a layout engine that is incompatible with subplots_adjust{1}.+")
-warnings.filterwarnings(action="ignore", message="invalid value encountered in multiply{1}.+")
-
 
 # Calculating equation 33 from the FOM paper
 

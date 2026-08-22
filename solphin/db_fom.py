@@ -1,14 +1,11 @@
 """Detailed-balance (Shockley-Queisser) limit efficiency and its constituent quantities."""
 
-import logging
 from importlib.resources import files
 from typing import overload
 
 import numpy as np
 import scipy.constants as sc
 from numpy.typing import NDArray
-
-logging.basicConfig(level=logging.INFO)
 
 h = sc.h  # Planck's constant (J·s)
 c = sc.c  # Speed of light (m/s)

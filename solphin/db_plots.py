@@ -1,7 +1,5 @@
 """Plots of detailed-balance quantities: photon flux, J-V curves and efficiency limits."""
 
-import logging
-import warnings
 from typing import Any, overload
 
 import matplotlib.pyplot as plt
@@ -12,13 +10,6 @@ from matplotlib.figure import Figure
 from numpy.typing import NDArray
 
 import solphin.db_fom as db_fom
-
-logging.getLogger('matplotlib.font_manager').disabled = True
-logging.basicConfig(level=logging.INFO)
-
-warnings.filterwarnings(action="ignore",
-                        message="This figure was using a layout engine that is incompatible with subplots_adjust{1}.+")
-warnings.filterwarnings(action="ignore", message="invalid value encountered in multiply{1}.+")
 
 
 @overload
@@ -291,7 +282,10 @@ def plot_db_combined_interactive(
         Maximum bandgap energy in eV. Default is ``3.1``.
     """
     plt.close("all")
-    fig, axes = plt.subplots(1, 3, figsize=(12, 3), dpi=120, constrained_layout=True)
+    # No constrained_layout here: plot_db_combined finishes with
+    # fig.subplots_adjust(wspace=0.5), which a layout engine would override and
+    # warn about, so the static and interactive figures are built the same way.
+    fig, axes = plt.subplots(1, 3, figsize=(12, 3), dpi=120)
     ax2 = axes[1].twinx()
 
     # These three attributes exist only on the ipympl canvas, i.e. under

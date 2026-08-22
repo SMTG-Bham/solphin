@@ -44,6 +44,15 @@ The two `.dat` regeneration tests are worth calling out: the committed files are
 reproducible from the committed `vasprun.xml`, which makes them verified
 reference data rather than a snapshot of whatever the code emits today.
 
+`test_import_side_effects.py` checks a different kind of property: that
+`import solphin` leaves the root logger, matplotlib's `font_manager` logger and
+the warnings filters as it found them. Seven modules used to reconfigure those
+at module scope, which `solphin/__init__.py`'s eager imports made unavoidable
+for anyone importing the package. Each check runs in a subprocess, because
+`conftest.py` imports solphin at collection time and pytest's own logging plugin
+attaches a handler to the root logger for the duration of every test — in-process
+the property is unobservable either way.
+
 ## Known defects (`xfail`)
 
 Ten tests state behaviour the code does not yet have. They are all

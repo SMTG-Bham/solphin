@@ -1,6 +1,5 @@
 """Optical properties from VASP dielectric data: absorption, refractive index and SLME."""
 
-import logging
 from pathlib import Path
 
 import numpy as np
@@ -15,8 +14,6 @@ from scipy.interpolate import interp1d
 
 import solphin.spectral as spectral
 from solphin.db_fom import load_spectrum
-
-logging.getLogger('matplotlib.font_manager').disabled = True
 
 hc_eV_nm = 1239.84193  # eV nm
 
