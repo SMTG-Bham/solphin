@@ -1,9 +1,13 @@
 import logging
 import warnings
+from typing import Any, overload
 
 import matplotlib.pyplot as plt
 import numpy as np
 from ipywidgets import interact, widgets
+from matplotlib.axes import Axes
+from matplotlib.figure import Figure
+from numpy.typing import NDArray
 
 import solphin.db_fom as db_fom
 
@@ -15,7 +19,13 @@ warnings.filterwarnings(action="ignore",
 warnings.filterwarnings(action="ignore", message="invalid value encountered in multiply{1}.+")
 
 
-def photons_above_bandgap_plot(spectrum, Egap, ax=None):
+@overload
+def photons_above_bandgap_plot(spectrum: NDArray, Egap: float, ax: Axes) -> Axes: ...
+@overload
+def photons_above_bandgap_plot(spectrum: NDArray, Egap: float, ax: None = None) -> None: ...
+def photons_above_bandgap_plot(
+        spectrum: NDArray, Egap: float, ax: Axes | None = None
+) -> Axes | None:
     """
     Plots the number of photons above a given bandgap as a function of bandgap energy.
 
@@ -43,7 +53,7 @@ def photons_above_bandgap_plot(spectrum, Egap, ax=None):
         # print row
         row[1] = db_fom._photons_above_bandgap(row[0], spectrum)
 
-    canvas = ax if ax else plt
+    canvas: Any = ax if ax else plt
 
     canvas.plot(a[:, 0], a[:, 1], color='#231123')
 
@@ -67,8 +77,12 @@ def photons_above_bandgap_plot(spectrum, Egap, ax=None):
         fig.set_dpi(150)
         plt.show()
 
+        return None
 
-def iv_curve_plot(spectrum, Egap, Tcell, power=False):
+
+def iv_curve_plot(
+        spectrum: NDArray, Egap: float, Tcell: float, power: bool = False
+) -> None:
     """
     Plots the ideal current-voltage (IV) curve or power-voltage curve for a photovoltaic material.
 
@@ -103,7 +117,14 @@ def iv_curve_plot(spectrum, Egap, Tcell, power=False):
         plt.plot(v, i, color='#231123')
 
 
-def iv_pv_curve_plot(spectrum, Egap, Tcell, power=False, ax1=None, ax2=None):
+def iv_pv_curve_plot(
+        spectrum: NDArray,
+        Egap: float,
+        Tcell: float,
+        power: bool = False,
+        ax1: Axes | None = None,
+        ax2: Axes | None = None,
+) -> None:
     """
     Plots the ideal current-voltage (IV) curve and power-voltage curve for a photovoltaic material.
 
@@ -158,7 +179,9 @@ def iv_pv_curve_plot(spectrum, Egap, Tcell, power=False, ax1=None, ax2=None):
         fig.set_dpi(150)
 
 
-def sq_limit_plot(spectrum, Egap, Tcell, ax=None):
+def sq_limit_plot(
+        spectrum: NDArray, Egap: float, Tcell: float, ax: Axes | None = None
+) -> None:
     """
     Plots the Shockley–Queisser (SQ) efficiency limit as a function of bandgap energy.
 
@@ -176,8 +199,7 @@ def sq_limit_plot(spectrum, Egap, Tcell, ax=None):
             is created.
 
     Returns:
-        None or matplotlib.axes.Axes:
-            Returns the axis object if provided; otherwise displays the plot.
+        None
     """
     # Plot the famous SQ limit
     a = np.copy(spectrum)
@@ -187,7 +209,7 @@ def sq_limit_plot(spectrum, Egap, Tcell, ax=None):
         # print row
         row[1] = db_fom.max_eff(row[0], spectrum, Tcell) * 100
 
-    canvas = ax if ax else plt
+    canvas: Any = ax if ax else plt
 
     # Not plotting whole array becase some bad values happen
     canvas.plot(a[2:, 0], a[2:, 1])
@@ -214,7 +236,15 @@ def sq_limit_plot(spectrum, Egap, Tcell, ax=None):
         fig.set_dpi(150)
 
 
-def plot_db_combined(spectrum, Egap, Tcell, spectrum_type, fig=None, axes=None, ax2=None):
+def plot_db_combined(
+        spectrum: NDArray,
+        Egap: float,
+        Tcell: float,
+        spectrum_type: str,
+        fig: Figure | None = None,
+        axes: NDArray | None = None,
+        ax2: Axes | None = None,
+) -> None:
     """
     Generates a combined detailed-balance photovoltaic analysis figure.
 
@@ -252,7 +282,9 @@ def plot_db_combined(spectrum, Egap, Tcell, spectrum_type, fig=None, axes=None, 
     fig.suptitle("$E_{gap}$" + f"= {Egap} eV, T = {Tcell} K, {spectrum_type} Spectrum", y=1.1)
 
 
-def plot_db_combined_interactive(Tmin=1, Tmax=1000, Emin=0.1, Emax=3.1):
+def plot_db_combined_interactive(
+        Tmin: float = 1, Tmax: float = 1000, Emin: float = 0.1, Emax: float = 3.1
+) -> None:
     """
     Creates an interactive photovoltaic detailed-balance visualization dashboard.
 
@@ -277,13 +309,14 @@ def plot_db_combined_interactive(Tmin=1, Tmax=1000, Emin=0.1, Emax=3.1):
     # These three attributes exist only on the ipympl canvas, i.e. under
     # %matplotlib widget. Install it with the "interactive" extra:
     #     pip install "solphin[interactive]"
-    fig.canvas.header_visible = False  # hides the figure “header” in JupyterLab
-    fig.canvas.footer_visible = False  # hides the footer
-    fig.canvas.toolbar_visible = False  # hides the toolbar
+    # hides the figure “header” in JupyterLab
+    fig.canvas.header_visible = False  # type: ignore[attr-defined]
+    fig.canvas.footer_visible = False  # type: ignore[attr-defined]  # hides the footer
+    fig.canvas.toolbar_visible = False  # type: ignore[attr-defined]  # hides the toolbar
 
     # wrapping that clears axes and redraws combined DB plots
 
-    def plot_combined_wrapper(Egap, Tcell, spectrum_type):
+    def plot_combined_wrapper(Egap: float, Tcell: float, spectrum_type: str) -> None:
         for ax in fig.axes:
             ax.clear()
             ax.set_xlabel("")
