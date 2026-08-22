@@ -8,6 +8,7 @@ import scipy.constants as sc
 from matplotlib import pyplot as plt
 from numpy.typing import NDArray
 from pymatgen.core.structure import Structure
+from pymatgen.electronic_structure.dos import CompleteDos
 from pymatgen.io.vasp import Vasprun
 from pymatgen.io.vasp.inputs import Kpoints
 from scipy.constants import physical_constants as pc
@@ -24,7 +25,13 @@ MIN_DOS_FIT_R2 = 0.80
 MIN_DOS_FIT_POINTS = 10
 
 
-def plot_dos(filename, xmin=-3, xmax=3, gaussian=0.05, save=False):
+def plot_dos(
+        filename: str | Path,
+        xmin: float = -3,
+        xmax: float = 3,
+        gaussian: float = 0.05,
+        save: bool = False,
+) -> None:
     """
     Plots the electronic density of states (DOS) from a calculation output file.
 
@@ -77,10 +84,10 @@ class _DOSEffectiveMassResult:
     fit_coefficient: float
 
     @property
-    def E_c(self):
+    def E_c(self) -> float:
         return self.E_edge
 
-    def __str__(self):
+    def __str__(self) -> str:
         edge_label = (
             "CBM"
             if self.carrier == "electrons"
@@ -131,13 +138,13 @@ class DOSResult:
 
         return self.em_holes
 
-    def __str__(self):
+    def __str__(self) -> str:
         return _format_dos_summary(self)
 
 
 def _load_dos(
         dos_vasprun: str
-):
+) -> tuple[Vasprun, CompleteDos, NDArray, NDArray]:
     """
     Loads the electronic density of states (DOS) from a VASP calculation output file.
 
@@ -191,7 +198,13 @@ def _load_dos(
     return vr, cdos, energies, densities
 
 
-def _get_band_edge(cdos, carrier, energies, energy_window, densities):
+def _get_band_edge(
+        cdos: CompleteDos,
+        carrier: str,
+        energies: NDArray,
+        energy_window: float,
+        densities: NDArray,
+) -> tuple[float, NDArray, NDArray]:
     """
     Extracts the electronic density of states near a selected band edge.
 
@@ -261,7 +274,12 @@ def _get_band_edge(cdos, carrier, energies, energy_window, densities):
     return E_edge, delta_E_ev, dos
 
 
-def _clean_dos_values(delta_E_ev, dos, min_dos, energy_window):
+def _clean_dos_values(
+        delta_E_ev: NDArray,
+        dos: NDArray,
+        min_dos: float,
+        energy_window: float,
+) -> tuple[NDArray, NDArray]:
     """
     Cleans and validates density of states (DOS) data near a band edge.
 
@@ -314,7 +332,7 @@ def _clean_dos_values(delta_E_ev, dos, min_dos, energy_window):
     return delta_E_ev, dos
 
 
-def _convert_dos(vr, delta_E_ev, dos):
+def _convert_dos(vr: Vasprun, delta_E_ev: NDArray, dos: NDArray) -> tuple[NDArray, NDArray]:
     """
     Converts density of states (DOS) data from VASP units to SI units.
 
@@ -359,7 +377,7 @@ def _convert_dos(vr, delta_E_ev, dos):
     return delta_E_J, dos_si
 
 
-def _check_fit(A, x, y):
+def _check_fit(A: float, x: NDArray, y: NDArray) -> float:
     """
     Evaluates the quality of a linear fit constrained to pass through the origin.
 
@@ -401,7 +419,9 @@ def _check_fit(A, x, y):
     return r2
 
 
-def _calculate_DOS(delta_E_J, dos_si):
+def _calculate_DOS(
+        delta_E_J: NDArray, dos_si: NDArray
+) -> tuple[float, float, float, NDArray, float]:
     """
     Calculates the density-of-states effective mass from DOS data near a band edge.
 
@@ -562,9 +582,9 @@ def get_dos_effective_mass(
 def test_dos_mass_windows(
         dos_vasprun: str,
         carrier: str = "electrons",
-        windows=(0.05, 0.10, 0.15, 0.20, 0.30),
+        windows: tuple[float, ...] = (0.05, 0.10, 0.15, 0.20, 0.30),
         min_dos: float = 0.0,
-):
+) -> list[_DOSEffectiveMassResult]:
     """
     Tests the sensitivity of the DOS effective mass to the fitting energy window.
 
@@ -660,7 +680,7 @@ def _format_em_table(
         edge: float,
         is_dos_carrier: bool,
         fit: float | None,
-) -> list:
+) -> list[str]:
     """
     Formats DOS effective-mass results for display in a summary table.
 
@@ -735,7 +755,7 @@ def _format_em_table(
 
 
 def _format_dos_summary(
-        result: "DOSResult",
+        result: DOSResult,
 ) -> str:
     """
     Formats a complete density-of-states (DOS) result summary for display.
@@ -830,7 +850,7 @@ def _format_dos_summary(
 
 
 def print_dos_summary(
-        result: "DOSResult",
+        result: DOSResult,
 ) -> None:
     """
     Prints a formatted density-of-states (DOS) result summary.
@@ -858,7 +878,7 @@ def print_dos_summary(
 def _check_dos_fit_quality(
         result: _DOSEffectiveMassResult,
         dos_vasprun: str,
-        windows=(0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.40),
+        windows: tuple[float, ...] = (0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.40),
         min_dos: float = 0.0,
 ) -> bool:
     """
@@ -1195,7 +1215,7 @@ Density of states file generation
 
 def _generate_local_kpoints(
         k0_frac: NDArray,
-        mesh: tuple,
+        mesh: tuple[int, int, int],
         delta: float,
 ) -> Kpoints:
     """
@@ -1238,23 +1258,23 @@ def _generate_local_kpoints(
                     k0_frac + np.array([dx, dy, dz])
                 )
 
-    pts = np.asarray(pts)
+    pts_grid = np.asarray(pts)
 
     return Kpoints(
         comment="Local k-mesh around band edge",
         style=Kpoints.supported_modes.Reciprocal,
-        num_kpts=len(pts),
-        kpts=pts.tolist(),
-        kpts_weights=[1.0] * len(pts),
+        num_kpts=len(pts_grid),
+        kpts=pts_grid.tolist(),
+        kpts_weights=[1.0] * len(pts_grid),
     )
 
 
 def write_local_kpoints(
-        folder: str,
+        folder: str | Path,
         k0_frac: NDArray,
-        mesh: tuple,
-        delta: float
-):
+        mesh: tuple[int, int, int],
+        delta: float,
+) -> None:
     """
     Generates and writes a dense local VASP KPOINTS file around a band-edge k-point.
 
@@ -1281,8 +1301,8 @@ def write_local_kpoints(
     """
 
     kpoints = _generate_local_kpoints(k0_frac, mesh, delta)
-    folder = Path(folder)
-    folder.mkdir(parents=True, exist_ok=True)
+    folder_path = Path(folder)
+    folder_path.mkdir(parents=True, exist_ok=True)
 
     kp = Kpoints(
         comment="Local k-mesh for effective mass",
@@ -1291,7 +1311,7 @@ def write_local_kpoints(
         kpts=kpoints.tolist(),
         kpts_weights=[1] * len(kpoints), )
 
-    kp.write_file(f"{folder}/KPOINTS")
+    kp.write_file(f"{folder_path}/KPOINTS")
 
 
 def write_eff_mass(
@@ -1300,9 +1320,9 @@ def write_eff_mass(
         functional: str,
         encut: int,
         folder: str = "eff_mass",
-        mesh: tuple = (5, 5, 5),
+        mesh: tuple[int, int, int] = (5, 5, 5),
         delta: float = 0.01,
-):
+) -> None:
     """
     Writes a VASP calculation setup for an effective-mass calculation.
 
