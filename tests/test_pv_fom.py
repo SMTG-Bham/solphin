@@ -78,6 +78,7 @@ def test_denominator_components_exceed_one() -> None:
 
 @pytest.mark.parametrize("name", COMPONENT_NAMES)
 def test_all_components_positive_and_finite(name: str) -> None:
+    """Every Γₚᵥ component evaluates to a positive finite number."""
     value = _call_with(getattr(pv_fom, name))
 
     assert math.isfinite(value)
@@ -101,16 +102,20 @@ def test_scalar_return_type() -> None:
 
 
 def test_increases_with_lifetime() -> None:
+    """A longer carrier lifetime raises Γₚᵥ."""
     assert np.all(np.diff(_sweep("tau", [1e-9, 1e-8, 1e-7, 1e-6])) > 0)
 
 
 def test_increases_with_mobility() -> None:
+    """Higher carrier mobility raises Γₚᵥ."""
     assert np.all(np.diff(_sweep("mu", [1e0, 1e2, 1e4, 1e6])) > 0)
 
 
 def test_increases_with_absorption() -> None:
+    """Stronger absorption raises Γₚᵥ."""
     assert np.all(np.diff(_sweep("alpha", [1e3, 1e4, 1e5])) > 0)
 
 
 def test_decreases_with_dispersion() -> None:
+    """A broader spread of log(α) lowers Γₚᵥ."""
     assert np.all(np.diff(_sweep("sigma", [0.1, 0.5, 1.0, 2.0])) < 0)

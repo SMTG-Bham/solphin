@@ -1,7 +1,8 @@
-# Configuration file for the Sphinx documentation builder.
-#
-# For the full list of built-in configuration values, see the documentation:
-# https://www.sphinx-doc.org/en/master/usage/configuration.html
+"""Configuration file for the Sphinx documentation builder.
+
+For the full list of built-in configuration values, see the documentation:
+https://www.sphinx-doc.org/en/master/usage/configuration.html
+"""
 
 import os
 import sys
@@ -48,11 +49,23 @@ extensions = [
     "myst_nb",  # for jupyter notebooks
 ]
 
-# Every function in the package is annotated, and the docstrings name the type
-# and unit of each argument as CONTRIBUTING requires. autodoc's default of
-# "signature" would render both, so each parameter would carry its type twice.
-# "description" merges the annotation into the existing Parameters: entry.
+# Docstrings are strict numpydoc (see CONTRIBUTING.md) and, as CONTRIBUTING
+# requires, name the type and unit of every argument themselves. autodoc's
+# default of "signature" would render the annotation as well, so each parameter
+# would carry its type twice. "description" merges the annotation into the
+# existing Parameters entry -- and where the docstring already gives a type,
+# the docstring's type wins.
 autodoc_typehints = "description"
+
+# The package is numpy-format only; turning the Google parser off stops
+# napoleon from ever mis-reading an indented block as a Google section.
+napoleon_google_docstring = False
+napoleon_numpy_docstring = True  # the default, kept explicit alongside the line above
+
+# Render Attributes sections as a variables list. The default attribute
+# directives would collide with the entries autodoc already generates for the
+# annotated dataclass fields ("duplicate object description" warnings).
+napoleon_use_ivar = True
 
 myst_enable_extensions = [
     "html_admonition",

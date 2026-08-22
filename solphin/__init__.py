@@ -1,3 +1,5 @@
+"""Figures of merit for photovoltaic absorbers from first-principles (VASP) data."""
+
 from importlib.metadata import PackageNotFoundError, version
 
 from solphin import (

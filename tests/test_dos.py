@@ -52,11 +52,13 @@ def test_calculate_dos_recovers_known_mass(target_mass: float) -> None:
 
 
 def test_calculate_dos_rejects_zero_energy_spread() -> None:
+    """All-zero energies cannot support a fit and raise the zero-spread ValueError."""
     with pytest.raises(ValueError, match="zero energy spread"):
         dos._calculate_DOS(np.zeros(5), np.zeros(5))
 
 
 def test_calculate_dos_rejects_non_positive_coefficient() -> None:
+    """A negative DOS fits to a non-positive coefficient, which raises."""
     delta_E_J = np.linspace(1e-23, 1e-20, 10)
 
     with pytest.raises(ValueError, match="non-positive"):
@@ -123,6 +125,7 @@ def test_compute_dos_holes_carrier(dos_vasprun: Path) -> None:
 
 
 def test_compute_dos_rejects_bad_carrier(dos_vasprun: Path) -> None:
+    """An unknown carrier name raises a ValueError."""
     with pytest.raises(ValueError):
         dos.compute_dos(dos_vasprun=str(dos_vasprun), carrier="phonons")
 
@@ -139,6 +142,7 @@ def test_compute_dos_m_eff_override(dos_vasprun: Path) -> None:
 def test_get_dos_effective_mass_matches_compute_dos(
         dos_vasprun: Path, dos_result: DOSResult
 ) -> None:
+    """The single-carrier entry point agrees with compute_dos, and E_c aliases E_edge."""
     single = dos.get_dos_effective_mass(
         dos_vasprun=str(dos_vasprun), carrier="electrons", energy_window=0.1
     )
@@ -157,6 +161,7 @@ def test_dos_mass_windows_widen_the_fit(dos_vasprun: Path) -> None:
 
 
 def test_dos_result_str_contains_mass(dos_result: DOSResult) -> None:
+    """The rendered summary names the fitted mass and the carrier."""
     rendered = str(dos_result)
 
     assert "0.072754" in rendered
@@ -176,6 +181,7 @@ def test_generate_local_kpoints_mesh_size() -> None:
 
 @requires_potcars
 def test_write_eff_mass_creates_inputs(relax_dir: Path, tmp_path: Path) -> None:
+    """write_eff_mass writes the four VASP input files into the target folder."""
     structure = vasp_inputs.read_structure_pmg(relax_dir / "CONTCAR")
 
     dos.write_eff_mass(
@@ -193,11 +199,12 @@ def test_write_eff_mass_creates_inputs(relax_dir: Path, tmp_path: Path) -> None:
 @pytest.mark.xfail(
     strict=True,
     reason=(
-        "dos.py:1283 calls len() and .tolist() on the pymatgen Kpoints object "
+        "dos.py:1273 calls len() and .tolist() on the pymatgen Kpoints object "
         "returned by _generate_local_kpoints; Kpoints has neither -> TypeError"
     ),
 )
 def test_write_local_kpoints_writes_file(tmp_path: Path) -> None:
+    """write_local_kpoints should produce a KPOINTS file in the folder."""
     dos.write_local_kpoints(str(tmp_path), np.array([0.0, 0.0, 0.0]), (3, 3, 3), 0.01)
 
     assert (tmp_path / "KPOINTS").is_file()

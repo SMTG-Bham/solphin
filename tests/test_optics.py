@@ -22,7 +22,7 @@ import solphin.optics as optics
 def test_calc_dielectric_returns_five_tuple(
         dielectric: tuple[float, NDArray, NDArray, NDArray, NDArray]
 ) -> None:
-    """The docstring documents two return values; there are five."""
+    """calc_dielectric returns five values: eps_inf, tensor, eps_full, eps_imag, energies."""
     assert len(dielectric) == 5
 
     eps_inf, tensor, eps_full, eps_imag, energies = dielectric
@@ -61,6 +61,7 @@ def test_eps_inf_is_tensor_trace_average(
 
 
 def test_calc_absorption_keys(dielectric: tuple[float, NDArray, NDArray, NDArray, NDArray]) -> None:
+    """The optics dict carries the six documented keys, each on the full energy grid."""
     _, _, eps_full, _, energies = dielectric
 
     data = optics.calc_absorption(eps_full, energies)
@@ -87,6 +88,7 @@ def test_calc_absorption_on_lossless_dielectric() -> None:
 def test_absorption_non_negative(
         dielectric: tuple[float, NDArray, NDArray, NDArray, NDArray]
 ) -> None:
+    """Absorption is never negative and the real refractive index stays positive."""
     _, _, eps_full, _, energies = dielectric
 
     data = optics.calc_absorption(eps_full, energies)
@@ -255,6 +257,7 @@ def test_make_blank_plot_smoke(tmp_opt_dir: Path, monkeypatch: pytest.MonkeyPatc
 
 
 def test_plot_absorption_smoke(tmp_opt_dir: Path) -> None:
+    """Plotting the absorption spectrum produces a matplotlib figure."""
     import matplotlib.pyplot as plt
 
     optics.generate_absorption(str(tmp_opt_dir))

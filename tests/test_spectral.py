@@ -44,6 +44,7 @@ def test_extract_int_limits() -> None:
 
 
 def test_truncate_abs_spectra_respects_bounds() -> None:
+    """Truncated absorption wavelengths all fall between 300 nm and the gap wavelength."""
     energies_eV = np.linspace(0.3, 5.0, 400)
     coefficients = np.linspace(1.0, 1e5, 400)
 
@@ -55,6 +56,7 @@ def test_truncate_abs_spectra_respects_bounds() -> None:
 
 
 def test_truncate_light_spectra_respects_bounds(am15: NDArray) -> None:
+    """Truncated spectrum wavelengths all fall between 300 nm and the gap wavelength."""
     wavelengths, irradiance = spectral._truncate_light_spectra(am15, 1.5)
 
     _, gap_wavelength = spectral._extract_int_limits(1.5)
@@ -63,6 +65,7 @@ def test_truncate_light_spectra_respects_bounds(am15: NDArray) -> None:
 
 
 def test_truncate_light_spectra_does_not_mutate_input(am15: NDArray) -> None:
+    """_truncate_light_spectra works on a copy and leaves its input untouched."""
     before = am15.copy()
 
     spectral._truncate_light_spectra(am15, 1.5)
@@ -99,6 +102,7 @@ def test_match_wavelengths_averages_ties() -> None:
 
 
 def test_match_wavelengths_picks_nearest() -> None:
+    """An off-grid wavelength takes the irradiance of its nearest neighbour."""
     matched = spectral._match_wavelengths([505.0], [400.0, 500.0, 700.0], [1.0, 2.0, 3.0])
 
     assert matched == [2.0]

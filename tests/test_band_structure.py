@@ -18,6 +18,7 @@ import solphin.vasp_inputs as vasp_inputs
 
 @pytest.fixture(scope="module")
 def relaxed_structure(relax_dir: Path) -> Structure:
+    """Provide the relaxed Cu2GeS3 structure read from the committed CONTCAR."""
     return vasp_inputs.read_structure_pmg(relax_dir / "CONTCAR")
 
 
@@ -27,6 +28,7 @@ def relaxed_structure(relax_dir: Path) -> Structure:
 def test_generate_band_structure_path_returns_structure_and_path(
         relaxed_structure: Structure
 ) -> None:
+    """The generated path has 3-vector k-points, matching labels, and labelled endpoints."""
     canonical, (kpoints, labels) = band_structure.generate_band_structure_path(
         structure=relaxed_structure, definition="bradcrack"
     )
@@ -39,6 +41,7 @@ def test_generate_band_structure_path_returns_structure_and_path(
 
 
 def test_generate_band_structure_path_is_deterministic(relaxed_structure: Structure) -> None:
+    """Two runs over the same structure give identical k-points and labels."""
     first = band_structure.generate_band_structure_path(structure=relaxed_structure)
     second = band_structure.generate_band_structure_path(structure=relaxed_structure)
 
@@ -50,6 +53,7 @@ def test_generate_band_structure_path_is_deterministic(relaxed_structure: Struct
 
 
 def test_get_band_structure_returns_symmline(band_structure_obj: BandStructureSymmLine) -> None:
+    """The reconstruction yields a BandStructureSymmLine with a Fermi level and branches."""
     assert isinstance(band_structure_obj, BandStructureSymmLine)
     assert band_structure_obj.efermi is not None
     assert len(band_structure_obj.branches) > 0
@@ -72,6 +76,7 @@ def test_direct_gap_at_least_fundamental(band_structure_obj: BandStructureSymmLi
 
 
 def test_plot_band_structure_smoke(band_structure_obj: BandStructureSymmLine) -> None:
+    """Plotting the band structure produces a matplotlib figure."""
     import matplotlib.pyplot as plt
 
     band_structure.plot_band_structure(band_structure_obj, plt, ymin=-6, ymax=6)
@@ -85,13 +90,14 @@ def test_plot_band_structure_smoke(band_structure_obj: BandStructureSymmLine) ->
 @pytest.mark.xfail(
     strict=True,
     reason=(
-        "band_structure.py:212 prints 'ERROR: ...' and returns None when the "
+        "band_structure.py:267 prints 'ERROR: ...' and returns None when the "
         "hybrid path is missing scf_kpoints, so a caller cannot detect the failure"
     ),
 )
 def test_write_band_structure_missing_scf_raises(
         relaxed_structure: Structure, tmp_path: Path
 ) -> None:
+    """A hybrid setup missing SCF k-points should raise instead of printing an error."""
     canonical, kpath = band_structure.generate_band_structure_path(
         structure=relaxed_structure
     )

@@ -49,18 +49,21 @@ def test_photons_above_bandgap_plot_standalone(photon_spectrum: NDArray) -> None
 
 
 def test_iv_curve_plot(photon_spectrum: NDArray) -> None:
+    """The IV curve draws onto the current axes."""
     db_plots.iv_curve_plot(photon_spectrum, E_GAP, TCELL)
 
     assert plt.gca().lines
 
 
 def test_iv_curve_plot_power_variant(photon_spectrum: NDArray) -> None:
+    """power=True switches the plot to the power-voltage curve."""
     db_plots.iv_curve_plot(photon_spectrum, E_GAP, TCELL, power=True)
 
     assert plt.gca().get_ylabel().startswith("Power")
 
 
 def test_iv_pv_curve_plot(photon_spectrum: NDArray) -> None:
+    """Current and power each land on the axis they were handed."""
     _, ax1 = plt.subplots()
     _, ax2 = plt.subplots()
 
@@ -71,6 +74,7 @@ def test_iv_pv_curve_plot(photon_spectrum: NDArray) -> None:
 
 
 def test_sq_limit_plot(photon_spectrum: NDArray) -> None:
+    """The SQ-limit curve draws onto the supplied axis."""
     _, ax = plt.subplots()
 
     db_plots.sq_limit_plot(photon_spectrum, E_GAP, TCELL, ax=ax)
@@ -79,6 +83,7 @@ def test_sq_limit_plot(photon_spectrum: NDArray) -> None:
 
 
 def test_plot_db_combined(photon_spectrum: NDArray) -> None:
+    """The combined three-panel figure builds without pre-made axes."""
     db_plots.plot_db_combined(photon_spectrum, E_GAP, TCELL, "AM1.5")
 
     assert plt.get_fignums()
@@ -88,6 +93,7 @@ def test_plot_db_combined(photon_spectrum: NDArray) -> None:
 
 
 def test_plot_dos_smoke(opt_dir: Path) -> None:
+    """Plotting the DOS from a vasprun produces a figure."""
     dos.plot_dos(filename=str(opt_dir / "vasprun.xml"), xmin=-3, xmax=4, gaussian=0.05)
 
     assert plt.get_fignums()
@@ -129,6 +135,7 @@ def test_sq_relative_is_spectrum_independent(photon_spectrum: NDArray) -> None:
 
 
 def test_plot_fom_three_panels(photon_spectrum: NDArray) -> None:
+    """plot_FOM draws a curve in each of the three panels."""
     fig, axes = plt.subplots(1, 3)
 
     final_results.plot_FOM(
@@ -144,7 +151,7 @@ def test_plot_fom_three_panels(photon_spectrum: NDArray) -> None:
 @pytest.mark.xfail(
     strict=True,
     reason=(
-        "final_results.py:439 appends the whole (SQ, SQ_relative, FOM_efficiency) "
+        "final_results.py:506 appends the whole (SQ, SQ_relative, FOM_efficiency) "
         "tuple instead of indexing one element the way plot_FOM does, so "
         "matplotlib unpacks each row into three lines and the axis labelled "
         "'PV efficiency' carries the SQ limit and the SQ-relative ratio too"
