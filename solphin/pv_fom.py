@@ -11,7 +11,10 @@ This module calculates all the components required for the Γₚᵥ Figure of Me
 '''
 
 
-def Final_equation(E_gap, alpha, tau, sigma, dos_mass, dop_density, epsilon, mu):
+def Final_equation(
+        E_gap: float, alpha: float, tau: float, sigma: float, dos_mass: float, dop_density: float,
+        epsilon: float, mu: float
+) -> float:
     ''' Calculates the total Γₚᵥ from Crovetto 2024
 
     Parameters:
@@ -44,7 +47,10 @@ def Final_equation(E_gap, alpha, tau, sigma, dos_mass, dop_density, epsilon, mu)
     return PV_FOM
 
 
-def _Final_numerator(E_gap, alpha, tau, sigma, dos_mass, dop_density, epsilon):
+def _Final_numerator(
+        E_gap: float, alpha: float, tau: float, sigma: float, dos_mass: float, dop_density: float,
+        epsilon: float
+) -> float:
     ''' Calculates the numerator for the Γₚᵥ from Crovetto 2024
 
     Parameters:
@@ -69,7 +75,9 @@ def _Final_numerator(E_gap, alpha, tau, sigma, dos_mass, dop_density, epsilon):
     return numerator
 
 
-def _Final_D_denominator(E_gap, alpha, tau, dop_density, epsilon):
+def _Final_D_denominator(
+        E_gap: float, alpha: float, tau: float, dop_density: float, epsilon: float
+) -> float:
     ''' Calculates the D₂D₃D₄ component of the denominator of Γₚᵥ from Crovetto 2024
 
     Parameters:
@@ -92,7 +100,10 @@ def _Final_D_denominator(E_gap, alpha, tau, dop_density, epsilon):
     return D_denominator
 
 
-def _Final_T_denominator(E_gap, alpha, tau, sigma, dos_mass, dop_density, epsilon, mu):
+def _Final_T_denominator(
+        E_gap: float, alpha: float, tau: float, sigma: float, dos_mass: float, dop_density: float,
+        epsilon: float, mu: float
+) -> float:
     ''' Calculates the 1 + (T₁T₂T₃) component of the Γₚᵥ from Crovetto 2024
 
     Parameters:
@@ -118,7 +129,9 @@ def _Final_T_denominator(E_gap, alpha, tau, sigma, dos_mass, dop_density, epsilo
     return T_denominator
 
 
-def _Final_S_denominator(E_gap, alpha, tau, dos_mass, dop_density, mu):
+def _Final_S_denominator(
+        E_gap: float, alpha: float, tau: float, dos_mass: float, dop_density: float, mu: float
+) -> float:
     ''' Calculates the 1 + (S₁S₂) component of the Γₚᵥ from Crovetto 2024
 
     Parameters:
@@ -141,7 +154,7 @@ def _Final_S_denominator(E_gap, alpha, tau, dos_mass, dop_density, mu):
     return S_denominator
 
 
-def _A_1_equation(E_gap, alpha, tau, sigma, dos_mass):
+def _A_1_equation(E_gap: float, alpha: float, tau: float, sigma: float, dos_mass: float) -> float:
     ''' Calculates the A₁ component of Γₚᵥ from Crovetto 2024
 
     Parameters:
@@ -171,7 +184,7 @@ def _A_1_equation(E_gap, alpha, tau, sigma, dos_mass):
     return A_1
 
 
-def _A_2_equation(alpha, tau, sigma):
+def _A_2_equation(alpha: float, tau: float, sigma: float) -> float:
     ''' Calculates the A₂ component of Γₚᵥ from Crovetto 2024
 
     Parameters:
@@ -194,7 +207,7 @@ def _A_2_equation(alpha, tau, sigma):
 
 # D_1 Equation
 
-def _D_1_equation(alpha, dop_density, epsilon):
+def _D_1_equation(alpha: float, dop_density: float, epsilon: float) -> float:
     ''' Calculates the D₁ component of Γₚᵥ from Crovetto 2024
 
     Parameters:
@@ -222,7 +235,7 @@ def _D_1_equation(alpha, dop_density, epsilon):
 
 # D_2 Equation
 
-def _D_2_equation(E_gap, alpha, tau, dop_density):
+def _D_2_equation(E_gap: float, alpha: float, tau: float, dop_density: float) -> float:
     ''' Calculates the D₂ component of Γₚᵥ from Crovetto 2024
 
     Parameters:
@@ -249,7 +262,9 @@ def _D_2_equation(E_gap, alpha, tau, dop_density):
 
 # D_3 Equation
 
-def _D_3_equation(E_gap, alpha, tau, dop_density, epsilon):
+def _D_3_equation(
+        E_gap: float, alpha: float, tau: float, dop_density: float, epsilon: float
+) -> float:
     ''' Calculates the D₃ component of Γₚᵥ from Crovetto 2024
 
     Parameters:
@@ -283,7 +298,7 @@ def _D_3_equation(E_gap, alpha, tau, dop_density, epsilon):
 
 # D_4 Equation
 
-def _D_4_equation(E_gap, alpha, tau):
+def _D_4_equation(E_gap: float, alpha: float, tau: float) -> float:
     ''' Calculates the D₄ component of Γₚᵥ from Crovetto 2024
 
     Parameters:
@@ -306,7 +321,7 @@ def _D_4_equation(E_gap, alpha, tau):
 
 # T_1 Equation
 
-def _T_1_equation(E_gap, dos_mass, epsilon, mu):
+def _T_1_equation(E_gap: float, dos_mass: float, epsilon: float, mu: float) -> float:
     ''' Calculates the total Γₚᵥ from Crovetto 2024
 
     Parameters:
@@ -334,7 +349,7 @@ def _T_1_equation(E_gap, dos_mass, epsilon, mu):
 
 # T_2 Equation
 
-def _T_2_equation(E_gap, tau, sigma, dop_density):
+def _T_2_equation(E_gap: float, tau: float, sigma: float, dop_density: float) -> float:
     ''' Calculates the T₂ component of Γₚᵥ from Crovetto 2024
 
     Parameters:
@@ -366,7 +381,7 @@ def _T_2_equation(E_gap, tau, sigma, dop_density):
 
 # T_3 Equation
 
-def _T_3_prime_equation(E_gap, alpha):
+def _T_3_prime_equation(E_gap: float, alpha: float) -> float:
     ''' Calculates the T₃' component of T₃ used in Γₚᵥ from Crovetto 2024
 
     Parameters:
@@ -392,7 +407,9 @@ def _T_3_prime_equation(E_gap, alpha):
     return T_3_prime
 
 
-def _T_3_double_prime_equation(E_gap, alpha, dos_mass, dop_density):
+def _T_3_double_prime_equation(
+        E_gap: float, alpha: float, dos_mass: float, dop_density: float
+) -> float:
     ''' Calculates the T₃'' component of T₃ used in the Γₚᵥ from Crovetto 2024
 
     Parameters:
@@ -418,7 +435,7 @@ def _T_3_double_prime_equation(E_gap, alpha, dos_mass, dop_density):
     return T_3_double_prime
 
 
-def _T_3_equation(E_gap, alpha, dos_mass, dop_density):
+def _T_3_equation(E_gap: float, alpha: float, dos_mass: float, dop_density: float) -> float:
     ''' Calculates the T₃ component of Γₚᵥ from Crovetto 2024
 
     Parameters:
@@ -444,7 +461,7 @@ def _T_3_equation(E_gap, alpha, dos_mass, dop_density):
     return T_3
 
 
-def _S_1_equation(E_gap, alpha, tau, dos_mass, mu):
+def _S_1_equation(E_gap: float, alpha: float, tau: float, dos_mass: float, mu: float) -> float:
     ''' Calculates the S₁ component of Γₚᵥ from Crovetto 2024
 
     Parameters:
@@ -474,7 +491,7 @@ def _S_1_equation(E_gap, alpha, tau, dos_mass, mu):
     return S_1
 
 
-def _S_2_equation(alpha, dop_density, mu):
+def _S_2_equation(alpha: float, dop_density: float, mu: float) -> float:
     ''' Calculates the S₂ component of Γₚᵥ from Crovetto 2024
 
     Parameters:
