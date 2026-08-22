@@ -131,6 +131,20 @@ is the ideal contribution. For numerical routines, prefer checking against an
 analytic limit or a published value over pinning whatever the code currently
 returns.
 
+CI measures coverage on every run and reports it to
+[Codecov](https://codecov.io/gh/SMTG-Bham/solphin), which comments on the pull
+request. The whole suite currently covers about 85% of `solphin/`; the patch
+check asks for 80% on the lines you add or change, so new code should arrive
+with tests. To see the same numbers before you push — bare `--cov` reads its
+settings from `[tool.coverage.run]` in [pyproject.toml](pyproject.toml):
+
+```bash
+pytest --cov --cov-report=term-missing
+```
+
+Add `--cov-report=html` for a line-by-line report in `htmlcov/`. Both that
+directory and the `coverage.xml` CI uploads are already gitignored.
+
 ### Documentation
 
 Documentation is built with Sphinx from `docs/source`:

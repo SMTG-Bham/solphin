@@ -6,6 +6,8 @@
 
 ***
 
+[![codecov](https://codecov.io/gh/SMTG-Bham/solphin/branch/main/graph/badge.svg)](https://codecov.io/gh/SMTG-Bham/solphin)
+
 `solphin` is a code developed to assist with the characterisation of novel photovoltaic materials with `VASP`. It
 combines detailed balance analysis with other tools such as the photovoltaic figure of merit proposed by A. Crovetto,
 Spectroscopic Limited Maximum Efficiency (SLME), Blank et. al. Maximum Efficiency and optical absorption plots to
