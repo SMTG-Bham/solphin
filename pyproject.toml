@@ -63,7 +63,7 @@ tutorial = ["jupyterlab", "ipykernel", "nbformat", "ipympl"]
 # widget) provides. Everything else in the package works without it, so this is
 # an extra rather than a runtime dependency.
 interactive = ["ipympl"]
-dev = ["pytest", "pytest-cov", "ruff", "mypy", "pre-commit"]
+dev = ["pytest", "pytest-cov", "ruff", "mypy", "pre-commit", "build", "twine"]
 
 [project.urls]
 # Still no Documentation entry: .readthedocs.yaml now configures the build, but
