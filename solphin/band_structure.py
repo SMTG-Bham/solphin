@@ -3,6 +3,7 @@ import math
 import shutil
 import warnings
 from pathlib import Path
+from types import ModuleType
 from typing import Any
 
 import numpy as np
@@ -31,7 +32,7 @@ def generate_band_structure_path(
         symprec: float = 0.01,
         density: int = 60,
         cartesian: bool = False
-) -> tuple[Structure, tuple[NDArray, list[str]]]:
+) -> tuple[Structure, tuple[list[NDArray], list[str]]]:
     """
     Generates a high-symmetry k-point path for band structure calculations.
 
@@ -97,13 +98,13 @@ def generate_band_structure_path(
 
     print(f"Generated high-symmetry path of {len(canonical_kpoints)} k-points")
 
-    return canonical_structure, (canonical_kpoints, canonical_labels)  # type: ignore
+    return canonical_structure, (canonical_kpoints, canonical_labels)
 
 
 # Simplified version of sumo.io.vasp.write_kpoint_files
 def _write_kpoint_files(
         directory: str | Path,
-        kpoints: NDArray,
+        kpoints: list[NDArray],
         labels: list[str],
         make_folders: bool = True,
         ibzkpt: Kpoints | None = None,
@@ -211,15 +212,16 @@ def _write_kpoint_files(
 
 def write_band_structure_calculation(
         structure: Structure,
-        kpath: tuple[NDArray, list[str]],
+        kpath: tuple[list[NDArray], list[str]],
         band_directory: str | Path,
         functional: str,
         splits: int,
-        patches: list[str] = [],
+        patches: list[str] | None = None,
         scf_charge: str | None = None,
         scf_kpoints: str | None = None,
         cartesian: bool = False,
-        user_incar_settings: dict[str, Any] | None = None):
+        user_incar_settings: dict[str, Any] | None = None,
+) -> None:
     """
     Generates and writes a band structure calculation setup for VASP.
 
@@ -236,7 +238,8 @@ def write_band_structure_calculation(
         band_directory(string or Path): output directory for band structure inputs.
         functional(string): exchange-correlation functional (e.g. PBE, HSE06).
         splits(int): number of segments to split the k-point path into separate runs.
-        patches(list[str]): optional list of input patches applied to VASP inputs.
+        patches(list[str] or None): optional list of input patches applied to VASP
+            inputs. Default is None, treated as no patches.
             Default is empty list.
         scf_charge(string or None): path to converged CHGCAR file (required for GGA).
         scf_kpoints(string or None): path to SCF KPOINTS file (required for hybrid functionals).
@@ -367,8 +370,7 @@ def get_band_structure(band_directory: str | Path, splits: int) -> BandStructure
     bandstructures = []
     for vr_file in vaspruns:
         vr = BSVasprun(vr_file, parse_projected_eigen=False)
-        bs = vr.get_band_structure(line_mode=True, efermi="smart")
-        bandstructures.append(bs)
+        bandstructures.append(vr.get_band_structure(line_mode=True, efermi="smart"))
 
     bs: BandStructureSymmLine = get_reconstructed_band_structure(bandstructures)
 
@@ -378,45 +380,45 @@ def get_band_structure(band_directory: str | Path, splits: int) -> BandStructure
 # Simplified version of sumo.cli.bandplot
 def plot_band_structure(
         bs: BandStructureSymmLine,
-        plt,
-        ymin=-6.0,
-        ymax=6.0,
-        ylabel="Energy (eV)",
+        plt: ModuleType,
+        ymin: float = -6.0,
+        ymax: float = 6.0,
+        ylabel: str = "Energy (eV)",
 
-        dos_file=None,
-        dos_label=None,
-        total_only=False,
-        plot_total=True,
-        gaussian=None,
-        yscale=1,
-        legend_cutoff=3,
+        dos_file: str | Path | None = None,
+        dos_label: str | None = None,
+        total_only: bool = False,
+        plot_total: bool = True,
+        gaussian: float | None = None,
+        yscale: float = 1,
+        legend_cutoff: int = 3,
 
-        vbm_cbm_marker=False,
-        projection_selection=None,
-        mode="rgb",
-        normalise="all",
-        interpolate_factor=4,
-        color1="#FF0000",
-        color2="#0000FF",
-        color3="#00FF00",
-        colorspace="lab",
-        circle_size=150,
+        vbm_cbm_marker: bool = False,
+        projection_selection: list[Any] | None = None,
+        mode: str = "rgb",
+        normalise: str = "all",
+        interpolate_factor: int = 4,
+        color1: str = "#FF0000",
+        color2: str = "#0000FF",
+        color3: str = "#00FF00",
+        colorspace: str = "lab",
+        circle_size: float = 150,
 
-        scissor=None,
-        zero_line=False,
-        zero_energy=None,
+        scissor: float | None = None,
+        zero_line: bool = False,
+        zero_energy: float | None = None,
 
-        elements=None,
-        lm_orbitals=None,
-        atoms=None,
-        spin=None,
+        elements: list[Any] | None = None,
+        lm_orbitals: list[Any] | None = None,
+        atoms: list[Any] | None = None,
+        spin: bool | None = None,
 
-        colours=None,
+        colours: dict[str, Any] | None = None,
 
-        style=None,
-        no_base_style=False,
+        style: str | None = None,
+        no_base_style: bool = False,
 
-):
+) -> ModuleType:
     """
     Plots a band structure (and optionally density of states) for a symmetry-line band structure object.
 
