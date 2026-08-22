@@ -1,0 +1,238 @@
+"""VASP input generation.
+
+Most of the logic here is pure dictionary assembly and needs no pseudopotentials,
+so it is tested unconditionally. Only the final write_input call needs POTCARs,
+which are licensed and machine-local, so that one test is gated.
+"""
+
+import pytest
+from conftest import requires_potcars
+from pymatgen.core import Structure
+
+import solphin.vasp_inputs as vasp_inputs
+
+FUNCTIONALS = ["LDA", "PBEsol", "PBE", "HSE06", "PBE0", "R2SCAN"]
+
+
+@pytest.fixture
+def config():
+    """A fresh config per test - _prepare_incar mutates what it is given."""
+    return vasp_inputs._load_config("base_recipes.json")
+
+
+# --- the packaged recipe file ---------------------------------------------
+
+
+def test_load_config_structure(config):
+    assert set(config) == {"INCAR", "PATCHES", "POTCAR", "POTCAR_FUNCTIONAL"}
+    assert set(FUNCTIONALS) <= set(config["INCAR"])
+    assert config["POTCAR_FUNCTIONAL"] == "PBE_64"
+
+
+def test_load_config_resolves_through_package_resources(config):
+    """It must work from an installed wheel, not just a source checkout.
+
+    _load_config goes through importlib.resources, and pyproject declares the
+    json under package-data; this fails loudly if either is dropped.
+    """
+    assert config["PATCHES"]["optics"]["LOPTICS"] is True
+
+
+@pytest.mark.parametrize("patch", ["relax_cell", "tight_relax", "optics", "eff_mass"])
+def test_patches_used_by_the_tutorial_exist(config, patch):
+    assert patch in config["PATCHES"]
+
+
+# --- POTCAR functional selection ------------------------------------------
+
+
+def test_determine_potcar_functional_prefers_explicit_argument(config):
+    chosen = vasp_inputs._determine_potcar_functional("HSE06", "PBE_52", config)
+
+    assert chosen == "PBE_52"
+
+
+def test_determine_potcar_functional_lda_special_case(config):
+    assert vasp_inputs._determine_potcar_functional("LDA", None, config) == "LDA_64"
+
+
+def test_determine_potcar_functional_falls_back_to_config(config):
+    chosen = vasp_inputs._determine_potcar_functional("HSE06", None, config)
+
+    assert chosen == config["POTCAR_FUNCTIONAL"]
+
+
+# --- INCAR assembly --------------------------------------------------------
+
+
+def test_prepare_incar_applies_patches(config):
+    incar = vasp_inputs._prepare_incar("PBE", ["optics"], config)
+
+    assert incar["LOPTICS"] is True
+    assert "CSHIFT" in incar
+    assert "NEDOS" in incar
+
+
+@pytest.mark.parametrize("recipe", ["HSE06", "PBE0"])
+def test_prepare_incar_hybrid_adds_ncore(config, recipe):
+    assert vasp_inputs._prepare_incar(recipe, [], config)["NCORE"] == 4
+
+
+def test_prepare_incar_defect_patch_expands(config):
+    """'defect' is not a patch in the json - it stands for two that are."""
+    incar = vasp_inputs._prepare_incar("PBE", ["defect"], config)
+
+    for key, value in config["PATCHES"]["relax_atoms"].items():
+        assert incar[key] == value
+    for key, value in config["PATCHES"]["spin_polarised"].items():
+        assert incar[key] == value
+
+
+def test_prepare_incar_gamma_only_is_not_an_incar_patch(config):
+    """gamma_only changes k-points, not the INCAR, so it is skipped here."""
+    plain = dict(vasp_inputs._prepare_incar("PBE", [], config))
+    fresh = vasp_inputs._load_config("base_recipes.json")
+    with_gamma = dict(vasp_inputs._prepare_incar("PBE", ["gamma_only"], fresh))
+
+    assert plain == with_gamma
+
+
+# --- van der Waals tags ----------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "patch,recipe,expected_ivdw",
+    [
+        ("vdw_d3_bj", "PBE", 12),
+        ("vdw_d3_bj", "HSE06", 12),
+        ("vdw_d3", "PBE", 11),
+        ("vdw_d3", "HSE06", 11),
+        ("vdw_d4", "PBE", 13),
+        ("vdw_d4", "HSE06", 13),
+    ],
+)
+def test_prepare_vdw_tags_per_scheme(patch, recipe, expected_ivdw):
+    tags = vasp_inputs._prepare_vdw_tags(recipe, [patch])
+
+    assert tags["IVDW"] == expected_ivdw
+
+
+def test_prepare_vdw_tags_hse06_carries_refitted_parameters():
+    """HSE06 needs its own damping parameters; PBE uses the VASP defaults."""
+    hse = vasp_inputs._prepare_vdw_tags("HSE06", ["vdw_d3_bj"])
+    pbe = vasp_inputs._prepare_vdw_tags("PBE", ["vdw_d3_bj"])
+
+    assert {"VDW_S8", "VDW_A1", "VDW_A2"} <= set(hse)
+    assert set(pbe) == {"IVDW"}
+
+
+def test_prepare_vdw_tags_rvv10_only_for_r2scan():
+    assert vasp_inputs._prepare_vdw_tags("R2SCAN", ["rvv10"])["LUSE_VDW"] is True
+    assert vasp_inputs._prepare_vdw_tags("PBE", ["rvv10"]) == {}
+
+
+def test_prepare_vdw_tags_empty_without_patch():
+    assert vasp_inputs._prepare_vdw_tags("HSE06", ["optics"]) == {}
+
+
+# --- structures ------------------------------------------------------------
+
+
+@pytest.mark.parametrize("filename", ["POSCAR", "CONTCAR"])
+def test_read_structure_pmg(relax_dir, filename):
+    structure = vasp_inputs.read_structure_pmg(relax_dir / filename)
+
+    assert isinstance(structure, Structure)
+    assert structure.composition.reduced_formula == "Cu2GeS3"
+    assert len(structure) == 12
+
+
+# --- the write path --------------------------------------------------------
+
+
+def test_relax_cell_scales_encut(relax_dir, config):
+    """relax_cell raises ENCUT by 30 %, which is how the committed INCAR got 585.
+
+    Checked against tutorial/Cu2GeS3/Relax/INCAR, which the tutorial produced
+    from ENCUT = 450 with this patch applied.
+    """
+    structure = vasp_inputs.read_structure_pmg(relax_dir / "POSCAR")
+    incar = vasp_inputs._prepare_incar("HSE06", ["relax_cell"], config)
+    vasp_set = vasp_inputs._create_vasp_set(
+        structure,
+        incar,
+        "PBE_64",
+        config,
+        user_incar_settings={"KSPACING": 0.2, "ENCUT": 450},
+    )
+
+    vasp_inputs._apply_patches(vasp_set, ["relax_cell"], "HSE06", incar)
+
+    assert vasp_set.user_incar_settings["ENCUT"] == pytest.approx(585.0)
+
+
+@requires_potcars
+def test_write_vasp_calculation_writes_inputs(relax_dir, tmp_path):
+    structure = vasp_inputs.read_structure_pmg(relax_dir / "POSCAR")
+
+    vasp_inputs.write_vasp_calculation(
+        structure=structure,
+        recipe="HSE06",
+        out_dir=tmp_path,
+        patches=["relax_cell", "tight_relax"],
+        user_incar_settings={"KSPACING": 0.2, "ENCUT": 450},
+    )
+
+    written = {p.name for p in tmp_path.iterdir()}
+    incar_text = (tmp_path / "INCAR").read_text()
+
+    assert {"INCAR", "POSCAR", "POTCAR"} <= written
+    # KSPACING replaces the KPOINTS file, so pymatgen writes no KPOINTS here.
+    assert "KSPACING" in incar_text
+    assert "KPOINTS" not in written
+    assert "ENCUT = 585" in incar_text
+
+
+# --- defects ---------------------------------------------------------------
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "_prepare_incar mutates config['INCAR'][recipe] in place, so a second "
+        "call with the same config inherits the first call's patches; latent "
+        "only because write_vasp_calculation re-reads the json every time"
+    ),
+)
+def test_prepare_incar_does_not_mutate_config(config):
+    vasp_inputs._prepare_incar("PBE", ["optics"], config)
+
+    unpatched = vasp_inputs._prepare_incar("PBE", [], config)
+
+    assert "LOPTICS" not in unpatched
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason=(
+        'vasp_inputs.py:246 reads `... or "vdw_d4"`, a bare truthy string, so '
+        "the vdW branch runs for every calculation; latent because "
+        "_prepare_vdw_tags returns {} when no vdW patch was asked for"
+    ),
+)
+def test_vdw_branch_skipped_without_vdw_patch(relax_dir, config, monkeypatch):
+    structure = vasp_inputs.read_structure_pmg(relax_dir / "POSCAR")
+    incar = vasp_inputs._prepare_incar("HSE06", ["optics"], config)
+    vasp_set = vasp_inputs._create_vasp_set(
+        structure, incar, "PBE_64", config, user_incar_settings={"KSPACING": 0.2}
+    )
+    called = []
+    monkeypatch.setattr(
+        vasp_inputs,
+        "_prepare_vdw_tags",
+        lambda recipe, patches: called.append(patches) or {},
+    )
+
+    vasp_inputs._apply_patches(vasp_set, ["optics"], "HSE06", incar)
+
+    assert called == []
