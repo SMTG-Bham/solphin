@@ -1,6 +1,5 @@
 """Density-of-states effective masses from VASP output, and DOS calculation setup."""
 
-import logging
 import warnings
 from dataclasses import dataclass
 from pathlib import Path
@@ -17,8 +16,6 @@ from scipy.constants import physical_constants as pc
 from sumo.cli.dosplot import dosplot
 
 from solphin.vasp_inputs import write_vasp_calculation
-
-logging.getLogger('matplotlib.font_manager').disabled = True
 
 HBAR = sc.hbar  # J·s
 M_E = pc["atomic unit of mass"][0]  # kg

@@ -1,9 +1,7 @@
 """Band-structure workflows: k-path generation, VASP inputs, reconstruction and plotting."""
 
-import logging
 import math
 import shutil
-import warnings
 from pathlib import Path
 from types import ModuleType
 from typing import Any
@@ -21,11 +19,6 @@ from sumo.plotting.dos_plotter import SDOSPlotter
 from sumo.symmetry.kpoints import get_path_data
 
 from solphin.vasp_inputs import write_vasp_calculation
-
-logger = logging.getLogger()
-logger.setLevel(logging.WARNING)
-
-warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 
 def generate_band_structure_path(

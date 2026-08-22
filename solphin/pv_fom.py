@@ -5,13 +5,9 @@ References
 Andrea Crovetto, 2024, J. Phys. Energy 6 025009.
 """
 
-import logging
-
 import numpy as np
 
 __all__ = []
-
-logging.basicConfig(level=logging.INFO)
 
 
 def Final_equation(
