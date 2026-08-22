@@ -51,15 +51,22 @@ conda activate solphin
 ```
 
 ```bash
+pip install --no-deps sumo castepxbin
+```
+
+```bash
 pip install -e . --no-deps
 ```
 
-The editable install is deliberately a separate step — see the comment at the
-top of [environment.yml](environment.yml) for why `--no-deps` matters here.
+Both pip steps are deliberately separate from the conda solve — see the comment
+at the top of [environment.yml](environment.yml) for why `--no-deps` matters,
+and why `sumo` cannot come from conda-forge.
 
-Python 3.10 or newer is required: `solphin/band_structure.py` uses PEP 604
-unions (`str | Path`) in annotations that are evaluated at runtime. The
-development environment pins 3.11.
+Python 3.11 or newer is required. `solphin/band_structure.py` uses PEP 604
+unions (`str | Path`) in annotations that are evaluated at runtime, which would
+allow 3.10, but the current releases of `pymatgen`, `numpy`, `scipy` and
+`matplotlib` all declare `Requires-Python >=3.11`. The development environment
+pins 3.11.
 
 For the `VASP` input generation functionality you will also need your `VASP`
 pseudopotentials configured through `$HOME/.pmgrc.yaml`, as described in the
@@ -70,8 +77,9 @@ pseudopotentials configured through `$HOME/.pmgrc.yaml`, as described in the
 1. Fork the repository and create a branch off `main`, named after what it
    does (e.g. `fix-slme-units`, `add-thickness-sweep`).
 2. Make your change, keeping it focused — one logical change per pull request.
-3. Run the checks below locally. There is currently no CI, so local checks are
-   what stands between a change and `main`.
+3. Run the checks below locally. CI runs the same lint and test steps on every
+   pull request (see `.github/workflows/test.yml`), so running them first saves
+   a round trip.
 4. Open a pull request against `main`, explaining what the change does and why.
    Link any related issue. If the change affects results, include a before/after
    plot or numbers.
@@ -80,7 +88,10 @@ Please keep unrelated reformatting out of the diff; it makes review much harder.
 
 ### Style and linting
 
-The project uses [ruff](https://docs.astral.sh/ruff/) with its default rule set:
+The project uses [ruff](https://docs.astral.sh/ruff/). The lint rules are
+narrowed to import hygiene for now (`E402`, `F401`, `F811`, `I`) — see
+`[tool.ruff.lint]` in [pyproject.toml](pyproject.toml). `ruff check` is what CI
+enforces:
 
 ```bash
 ruff check .
@@ -103,10 +114,13 @@ Beyond that, follow the conventions already in the package:
 
 ### Tests
 
-`pytest` and `pytest-cov` are included in the development environment. There is
-no test suite yet, so new tests are especially valuable — put them in a
-top-level `tests/` directory mirroring the module layout
-(`tests/test_db_fom.py` and so on):
+`pytest` and `pytest-cov` are included in the development environment. The
+suite lives in the top-level `tests/` directory and mirrors the module layout
+(`tests/test_db_fom.py` and so on). Read [tests/README.md](tests/README.md)
+first — it explains what is anchored to analytic limits and documents the ten
+`xfail(strict=True)` markers that stand in for known defects, which means
+**fixing one of those defects turns the suite red** and is your cue to drop the
+marker:
 
 ```bash
 pytest
@@ -133,10 +147,12 @@ in the tutorial notebook.
 
 Runtime dependencies must be added to **both**
 [pyproject.toml](pyproject.toml) and [environment.yml](environment.yml), which
-are kept in sync by hand. Note that `sumo` is currently listed only in
-`environment.yml` despite being imported by `solphin/dos.py` and
-`solphin/band_structure.py`. Please keep new additions in both files, and say in
-the pull request why the dependency is needed.
+are kept in sync by hand. `environment.yml` carries one deliberate asymmetry:
+`sumo` is a runtime dependency in `pyproject.toml` but is absent from the conda
+list, because conda-forge's build pins `castepxbin 0.1.0.*` and so caps
+`numpy<2`. It is installed from PyPI instead, as a documented `--no-deps` step.
+Please keep new additions in both files, and say in the pull request why the
+dependency is needed.
 
 ## Licence
 

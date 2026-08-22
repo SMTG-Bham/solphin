@@ -18,17 +18,25 @@ of `VASP` input files for the required calculations based on an initial crystal 
 
 ## Installation
 
-`solphin` is currently only installable through the following method:
+`solphin` is not yet published to PyPI, so install it from a checkout:
 
-```
-git clone https://github.com/SMTG-Bham/PV-FoM
+```bash
+git clone https://github.com/SMTG-Bham/solphin
+cd solphin
+pip install -e .
 ```
 
-Navigate into `solphin` and run:
+`plot_db_combined_interactive` and `plot_final_result_interactive` drive
+`%matplotlib widget`, which needs the `ipympl` backend:
 
+```bash
+pip install -e ".[interactive]"
 ```
-pip install -e.
-```
+
+For a full conda development environment — tutorial, docs and dev tooling
+included — see [environment.yml](environment.yml). Note that `sumo` has to be
+installed from PyPI rather than conda-forge there; the reason is documented at
+the top of that file.
 
 If using the `VASP` input file generation functionality, please ensure that your `VASP` pseudopotentials are added to
 your path through the use of a `pymatgen` configuration file `$HOME/.pmgrc.yaml`. The file should contain:
@@ -52,4 +60,4 @@ If you use `solphin` in your work, please cite the following:
 
 The developers Philippa U. Cox and Peter P. Russell would like to thank Alexander G. Squires, Andrea Crovetto and David
 O. Scanlon for their guidance on this project, Brooke Busbee for her work on the branding and Jacob Baggott for his
-assistance. 
+assistance.

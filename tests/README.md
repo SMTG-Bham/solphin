@@ -70,10 +70,16 @@ from the tutorial, which is why nothing has ever exercised it.
 
 ## Not covered, and why
 
-* **Executing the notebook.** Cell 27 uses a PEP 701 nested-quote f-string,
-  which is a `SyntaxError` on Python ≤ 3.11 — and `environment.yml` pins 3.11.
-* **The four `*_interactive` functions.** They set `fig.canvas.header_visible`,
-  an ipympl-only attribute; ipympl is neither declared nor installed.
+* **Executing the notebook.** No longer blocked on syntax — cell 27's PEP 701
+  nested-quote f-string was rewritten to use inner single quotes, so the
+  notebook parses on the pinned 3.11. Executing it end to end is still not
+  wired into the suite; `test_tutorial_workflow.py` reproduces its recorded
+  numbers through the library instead.
+* **The `*_interactive` functions.** `plot_db_combined_interactive` and
+  `plot_final_result_interactive` set `fig.canvas.header_visible`, an
+  ipympl-only attribute. ipympl is now declared — `pyproject.toml`'s
+  `interactive` extra and `environment.yml` both carry it — but the functions
+  need a live widget backend, so they stay outside the suite.
 
 ## Observations that are not tests
 

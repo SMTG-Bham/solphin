@@ -274,6 +274,9 @@ def plot_db_combined_interactive(Tmin=1, Tmax=1000, Emin=0.1, Emax=3.1):
     fig, axes = plt.subplots(1, 3, figsize=(12, 3), dpi=120, constrained_layout=True)
     ax2 = axes[1].twinx()
 
+    # These three attributes exist only on the ipympl canvas, i.e. under
+    # %matplotlib widget. Install it with the "interactive" extra:
+    #     pip install "solphin[interactive]"
     fig.canvas.header_visible = False  # hides the figure “header” in JupyterLab
     fig.canvas.footer_visible = False  # hides the footer
     fig.canvas.toolbar_visible = False  # hides the toolbar
