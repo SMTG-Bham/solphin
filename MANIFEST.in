@@ -1,0 +1,24 @@
+include LICENSE
+include README.md
+include CITATION.cff
+include CONTRIBUTING.md
+include CODE_OF_CONDUCT.md
+include environment.yml
+
+recursive-include solphin/resources *.csv *.json
+
+# tutorial/ is 134 MB of tracked VASP vasprun.xml against PyPI's 100 MB
+# per-file limit. Today's sdist happens to exclude it because setuptools only
+# walks the packages it was told about, but that is incidental -- a stray graft
+# or a future move to setuptools-scm (which sweeps in every git-tracked file)
+# would produce an sdist that cannot be uploaded. Prune it explicitly.
+prune tutorial
+
+# docs/ carries a symlink into tutorial/; tests/ read REPO_ROOT/"tutorial" in
+# conftest.py and so cannot run from an sdist at all.
+prune docs
+prune tests
+prune .github
+
+global-exclude *.py[cod]
+global-exclude __pycache__

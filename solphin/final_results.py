@@ -24,9 +24,9 @@ warnings.filterwarnings(action="ignore", message="invalid value encountered in m
 
 def SQ_relative_FOM_PV_efficiency(E_gap, photon_spectrum, alpha, tau, sigma, dos_mass, dop_density, epsilon, mu, Tcell):
     ''' Calculates the final value for the photovoltaic figure of merit from Crovetto 2024 as a percentage of the Shockley Queisser efficiency limit.
-    
+
     Parameters:
-        E_gap(float): Optical Band Gap in eV  
+        E_gap(float): Optical Band Gap in eV
         photon_spectrum(numpy.ndarrray): Converted input spectrum from DB_FOM.convert_spectrum y: Number of photons (Np/m2/s/dE) x: Energy (eV)
         alpha(float): Spectral average of incident light in cm⁻¹
         tau(float): Non-radiative recombination lifetime in s
@@ -213,7 +213,7 @@ def plot_final_result_interactive(
     Creates an interactive Figure of Merit visualization dashboard.
 
     Parameters:
-        E_gap(float): Optical Band Gap in eV  
+        E_gap(float): Optical Band Gap in eV
         photon_spectrum(numpy.ndarrray): Converted input spectrum from DB_FOM.convert_spectrum y: Number of photons (Np/m2/s/dE) x: Energy (eV)
         alpha(float): Spectral average of incident light in cm⁻¹
         tau(float): Non-radiative recombination lifetime in s
@@ -233,6 +233,9 @@ def plot_final_result_interactive(
     plt.close("all")
     fig, axes = plt.subplots(1, 3, figsize=(12, 3), dpi=120, constrained_layout=True)
 
+    # These three attributes exist only on the ipympl canvas, i.e. under
+    # %matplotlib widget. Install it with the "interactive" extra:
+    #     pip install "solphin[interactive]"
     fig.canvas.header_visible = False  # hides the figure “header” in JupyterLab
     fig.canvas.footer_visible = False  # hides the footer
     fig.canvas.toolbar_visible = False  # hides the toolbar
@@ -341,7 +344,7 @@ def print_final_result_interactive(
     Interactively writes figure of merit information.
 
     Parameters:
-        E_gap(float): Optical Band Gap in eV  
+        E_gap(float): Optical Band Gap in eV
         photon_spectrum(numpy.ndarrray): Converted input spectrum from DB_FOM.convert_spectrum y: Number of photons (Np/m2/s/dE) x: Energy (eV)
         alpha(float): Spectral average of incident light in cm⁻¹
         tau(float): Non-radiative recombination lifetime in s
