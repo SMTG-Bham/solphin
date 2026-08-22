@@ -66,8 +66,10 @@ interactive = ["ipympl"]
 dev = ["pytest", "pytest-cov", "ruff", "pre-commit"]
 
 [project.urls]
-# No Documentation entry yet: docs/ builds with Sphinx but is not hosted
-# anywhere (no .readthedocs.yaml, no gh-pages). Add one when it is published.
+# Still no Documentation entry: .readthedocs.yaml now configures the build, but
+# the project has not been imported on readthedocs.org yet, so there is no URL
+# to point at. Add `Documentation = "https://solphin.readthedocs.io"` (or
+# whatever slug the import claims) once the first build is live.
 Homepage = "https://github.com/SMTG-Bham/solphin"
 Repository = "https://github.com/SMTG-Bham/solphin"
 Issues = "https://github.com/SMTG-Bham/solphin/issues"
