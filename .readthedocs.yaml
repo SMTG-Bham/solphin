@@ -12,10 +12,10 @@ build:
 
 sphinx:
   configuration: docs/source/conf.py
-  # Left at the default (false) on purpose. `make -C docs html` currently ends
-  # with one WARNING -- a malformed inline emphasis in the get_band_structure
-  # docstring in solphin/band_structure.py -- so turning this on today would
-  # fail every build. Worth enabling once that docstring is fixed.
+  # Left at the default (false) on purpose. The docstring warnings that used
+  # to block this (malformed inline emphasis in get_band_structure and
+  # mobility_plot) are fixed and a local `make -C docs html` is warning-free,
+  # so enabling this is now viable whenever a maintainer wants the guard.
   fail_on_warning: false
 
 python:

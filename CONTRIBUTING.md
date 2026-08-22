@@ -88,10 +88,10 @@ Please keep unrelated reformatting out of the diff; it makes review much harder.
 
 ### Style and linting
 
-The project uses [ruff](https://docs.astral.sh/ruff/). The lint rules are
-narrowed to import hygiene for now (`E402`, `F401`, `F811`, `I`) — see
-`[tool.ruff.lint]` in [pyproject.toml](pyproject.toml). `ruff check` is what CI
-enforces:
+The project uses [ruff](https://docs.astral.sh/ruff/). The lint rules cover
+import hygiene and docstring conventions (`E402`, `F401`, `F811`, `I`, `D`
+under the numpy convention) — see `[tool.ruff.lint]` in
+[pyproject.toml](pyproject.toml). `ruff check` is what CI enforces:
 
 ```bash
 ruff check .
@@ -108,9 +108,35 @@ Beyond that, follow the conventions already in the package:
 * explicit units in variable names or comments wherever a quantity is
   dimensional — this is a physics code and unit errors are the easiest bugs to
   introduce and the hardest to spot;
-* docstrings on every public function, in the `Parameters:` / `Returns:` style
-  used throughout (see `solphin/db_fom.py` for an example), naming the type and
-  the unit of each argument and return value.
+* docstrings on every module and function, in strict
+  [numpydoc](https://numpydoc.readthedocs.io/en/latest/format.html) format
+  (see `solphin/db_fom.py` for examples), naming the type and the unit of each
+  argument and return value. The one-line summary starts on the same line as
+  the opening `"""`, in the imperative mood; parameter entries are
+  `name : type`, with a `, optional` marker and a ``Default is `x`.`` sentence
+  for defaulted arguments:
+
+  ```python
+  def voc(E_gap: float, photon_spectrum: NDArray, Tcell: float) -> float:
+      """Calculate the open-circuit voltage.
+
+      Parameters
+      ----------
+      E_gap : float
+          Optical band gap in eV.
+      photon_spectrum : numpy.ndarray
+          Converted photon flux spectrum from ``convert_spectrum``.
+      Tcell : float
+          Operating temperature of the cell in K.
+
+      Returns
+      -------
+      float
+          Open-circuit voltage in V.
+      """
+  ```
+
+  `ruff check` enforces the layout (`D` rules, numpy convention).
 
 ### Tests
 

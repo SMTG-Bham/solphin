@@ -115,9 +115,20 @@ line-length = 100
 extend-exclude = ["docs/source/full_workflow_tutorial.ipynb"]
 
 [tool.ruff.lint]
-# Import hygiene only for now; widen once the outstanding F841/UP032 findings
-# in db_plots.py and final_results.py are dealt with.
-select = ["E402", "F401", "F811", "I"]
+# Import hygiene plus docstring conventions; widen further once the outstanding
+# F841/UP032 findings in db_plots.py and final_results.py are dealt with.
+# The numpy convention below disables two rules the house style requires, so
+# they are named explicitly (exact-code selection overrides the convention):
+# D212 pins the summary to the opening-quote line; D417 requires every
+# argument to appear under Parameters.
+select = ["E402", "F401", "F811", "I", "D", "D212", "D417"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+
+[tool.ruff.lint.per-file-ignores]
+# Test docstrings are declarative statements of the property under test.
+"tests/*" = ["D401"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["solphin"]

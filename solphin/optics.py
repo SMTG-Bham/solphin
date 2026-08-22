@@ -1,3 +1,5 @@
+"""Optical properties from VASP dielectric data: absorption, refractive index and SLME."""
+
 import logging
 from pathlib import Path
 
@@ -29,17 +31,26 @@ _T = 293.15
 def calc_dielectric(
         filename: str | Path
 ) -> tuple[float, NDArray, NDArray, NDArray, NDArray]:
-    """
-    Calculates the dielectric constants from a vasprun.xml
-    
-    Parameters:
-        filename(string): filename/ path of the vasprun, typically vasprun.xml.
-        
-    Returns:
-        eps_full(np.array): static dielectric constant (complex, contains both real and imaginary components)
-        energies(np.array): energy of the incident radiation eV
-    """
+    """Calculate the dielectric constants from a vasprun.xml file.
 
+    Parameters
+    ----------
+    filename : str or Path
+        Path of the vasprun file, typically ``vasprun.xml``.
+
+    Returns
+    -------
+    eps_inf : float
+        Static dielectric constant, averaged over the tensor diagonal.
+    eps_inf_tensor : numpy.ndarray
+        Static dielectric tensor (real part at zero energy), shape (3, 3).
+    eps_full : numpy.ndarray
+        Complex frequency-dependent dielectric tensor, shape (N, 3, 3).
+    eps_imag : numpy.ndarray
+        Imaginary part of the dielectric tensor, shape (N, 3, 3).
+    energies : numpy.ndarray
+        Energies of the incident radiation in eV.
+    """
     load_vasprun = Vasprun(filename)
     dielectric = load_vasprun.dielectric
 
@@ -55,26 +66,25 @@ def calc_dielectric(
 
 
 def calc_absorption(eps_full: NDArray, energies: NDArray) -> dict[str, NDArray]:
+    """Calculate optical properties from the complex dielectric tensor.
+
+    Parameters
+    ----------
+    eps_full : numpy.ndarray
+        Frequency-dependent dielectric tensor with complex components,
+        shape (N, 3, 3) where N is the number of energy points.
+    energies : numpy.ndarray
+        Incident photon energies in eV for each dielectric tensor entry.
+
+    Returns
+    -------
+    dict of str to numpy.ndarray
+        Derived optical properties, keyed by ``"eps_real"`` and ``"eps_imag"``
+        (averaged dielectric function), ``"n_real"`` and ``"n_imag"`` (complex
+        refractive index; the imaginary part is the extinction coefficient),
+        ``"loss"`` (energy loss function Im(-1/ε)) and ``"absorption"``
+        (absorption coefficient in m⁻¹).
     """
-    Calculates optical properties from the complex dielectric tensor.
-
-    Parameters:
-        eps_full(np.array): frequency-dependent dielectric tensor 
-            with complex components. Expected shape is (N, 3, 3),
-            where N is the number of energy points.
-        energies(np.array): incident photon energies in eV corresponding
-            to each dielectric tensor entry.
-
-    Returns:
-        dict: Dictionary containing derived optical properties:
-            eps_real(np.array): real part of the averaged dielectric function.
-            eps_imag(np.array): imaginary part of the averaged dielectric function.
-            n_real(np.array): real part of the complex refractive index.
-            n_imag(np.array): imaginary part of the complex refractive index (extinction coefficient, k).
-            loss(np.array): energy loss function Im(-1/ε).
-            absorption(np.array): absorption coefficient in m^-1.
-    """
-
     eps_eig = np.linalg.eigvals(eps_full)
 
     # Scalar averaged dielectric (for eps outputs and loss function)
@@ -103,18 +113,16 @@ def calc_absorption(eps_full: NDArray, energies: NDArray) -> dict[str, NDArray]:
 def print_n_real_file(
         data: dict[str, NDArray], energies: NDArray, directory: str | Path
 ) -> None:
-    """
-    Writes the real part of the refractive index to a data file.
+    """Write the real part of the refractive index to ``n_real.dat``.
 
-    Parameters:
-        data(dict): dictionary containing calculated optical properties.
-            Must contain the key "n_real".
-        energies(np.array): incident photon energies in eV corresponding
-            to the optical property data.
-        directory(Path): output directory where the file will be written.
-
-    Returns:
-        None
+    Parameters
+    ----------
+    data : dict of str to numpy.ndarray
+        Calculated optical properties; must contain the key ``"n_real"``.
+    energies : numpy.ndarray
+        Incident photon energies in eV for the optical property data.
+    directory : str or Path
+        Output directory where the file is written.
     """
     out_path = Path(directory) / "n_real.dat" if directory else Path("n_real.dat")
     out = np.stack((energies, data["n_real"]), axis=1)
@@ -124,8 +132,17 @@ def print_n_real_file(
 def print_absorption_file(
         data: dict[str, NDArray], energies: NDArray, directory: str | Path
 ) -> None:
-    """
-    Writes the absorption coefficient in cm^-1.
+    """Write the absorption coefficient in cm⁻¹ to ``absorption.dat``.
+
+    Parameters
+    ----------
+    data : dict of str to numpy.ndarray
+        Calculated optical properties; must contain the key ``"absorption"``
+        in m⁻¹.
+    energies : numpy.ndarray
+        Incident photon energies in eV for the optical property data.
+    directory : str or Path
+        Output directory where the file is written.
     """
     out_path = Path(directory) / "absorption.dat" if directory else Path("absorption.dat")
 
@@ -142,17 +159,14 @@ def print_absorption_file(
 
 
 def generate_absorption(optics_directory: str | Path) -> None:
+    """Generate and write the absorption coefficient from a VASP optics calculation.
+
+    Parameters
+    ----------
+    optics_directory : str or Path
+        Directory containing the ``vasprun.xml`` file, and where the output
+        file is written.
     """
-    Generates and writes the real part of the refractive index from a VASP optics calculation.
-
-    Parameters:
-        optics_directory(string or Path): directory containing the
-            vasprun.xml file and where the output file will be written.
-
-    Returns:
-        None
-    """
-
     filename = f'{optics_directory}/vasprun.xml'
 
     _, _, eps_full, _, energies = calc_dielectric(filename)
@@ -161,17 +175,14 @@ def generate_absorption(optics_directory: str | Path) -> None:
 
 
 def generate_n_real(optics_directory: str | Path) -> None:
+    """Generate and write the real refractive index from a VASP optics calculation.
+
+    Parameters
+    ----------
+    optics_directory : str or Path
+        Directory containing the ``vasprun.xml`` file, and where the output
+        file is written.
     """
-    Generates and writes the real part of the refractive index from a VASP optics calculation.
-
-    Parameters:
-        optics_directory(string or Path): directory containing the
-            vasprun.xml file and where the output file will be written.
-
-    Returns:
-        None
-    """
-
     filename = f'{optics_directory}/vasprun.xml'
 
     _, _, eps_full, _, energies = calc_dielectric(filename)
@@ -182,23 +193,20 @@ def generate_n_real(optics_directory: str | Path) -> None:
 def plot_absorption(
         optics_directory: str | Path, xmax: float = 4, xmin: float = 0, save: bool = False
 ) -> None:
+    """Plot the optical absorption spectrum from a VASP optics calculation.
+
+    Parameters
+    ----------
+    optics_directory : str or Path
+        Directory containing the ``vasprun.xml`` file.
+    xmax : float, optional
+        Maximum energy in eV shown on the x-axis. Default is ``4``.
+    xmin : float, optional
+        Minimum energy in eV shown on the x-axis. Default is ``0``.
+    save : bool, optional
+        Save the figure as ``absorption.png`` in the current directory.
+        Default is ``False``.
     """
-    Plots the optical absorption spectrum from a VASP optics calculation.
-
-    Parameters:
-        optics_directory(string or Path): directory containing the
-            vasprun.xml file.
-        xmin(float): minimum energy value (eV) shown on the x-axis.
-            Default is 0.
-        xmax(float): maximum energy value (eV) shown on the x-axis.
-            Default is 6.
-        save(boolean): allows the ability to save the figure as png in the current directory.
-            Default is False.
-
-    Returns:
-        None
-    """
-
     filename = f'{optics_directory}/vasprun.xml'
     eps_inf, eps_inf_tensor, eps_full, eps_imag, energies = calc_dielectric(filename)
     data = calc_absorption(eps_full, energies)
@@ -242,23 +250,24 @@ def plot_absorption(
 
 
 def _spectrum_select(spectrum_type: str) -> tuple[NDArray, NDArray, bool]:
+    """Select and load a solar or illuminant spectrum.
+
+    Parameters
+    ----------
+    spectrum_type : str
+        Identifier for the spectrum to load. ``"AM1.5"`` uses the standard
+        AM1.5G spectrum bundled with the SLME package; anything else is
+        loaded with ``load_spectrum``.
+
+    Returns
+    -------
+    sol_wl : numpy.ndarray
+        Wavelengths of the spectrum in nm.
+    sol_irr : numpy.ndarray
+        Spectral irradiance in W m⁻² nm⁻¹.
+    use_slme : bool
+        True if the built-in AM1.5G spectrum was used.
     """
-    Selects and loads a solar or illuminant spectrum.
-
-    Parameters:
-        spectrum_type(string): identifier for the spectrum to load.
-            If set to "AM1.5", the standard AM1.5G solar spectrum
-            included with the SLME package is used. Otherwise,
-            the spectrum is loaded using load_spectrum().
-
-    Returns:
-        sol_wl(np.array): wavelength values of the spectrum in nm.
-        sol_irr(np.array): spectral irradiance values in
-            W m^-2 nm^-1.
-        use_slme(bool): True if the built-in AM1.5G spectrum was used,
-            otherwise False.
-    """
-
     use_slme = (spectrum_type == "AM1.5")
 
     # --- solar / illuminant spectrum in wavelength space ---
@@ -275,20 +284,22 @@ def _spectrum_select(spectrum_type: str) -> tuple[NDArray, NDArray, bool]:
 
 
 def _convert_spec(sol_wl: NDArray, sol_irr: NDArray) -> tuple[NDArray, NDArray]:
+    """Convert a spectral irradiance distribution into photon flux.
+
+    Parameters
+    ----------
+    sol_wl : numpy.ndarray
+        Wavelengths of the spectrum in nm.
+    sol_irr : numpy.ndarray
+        Spectral irradiance in W m⁻² nm⁻¹.
+
+    Returns
+    -------
+    sol_wl_m : numpy.ndarray
+        Wavelengths converted to m.
+    sol_phot_flux : numpy.ndarray
+        Photon flux in photons m⁻² s⁻¹ nm⁻¹.
     """
-    Converts a spectral irradiance distribution into photon flux.
-
-    Parameters:
-        sol_wl(np.array): wavelength values of the spectrum in nm.
-        sol_irr(np.array): spectral irradiance values in
-            W m^-2 nm^-1.
-
-    Returns:
-        sol_wl_m(np.array): wavelength values converted to meters.
-        sol_phot_flux(np.array): photon flux in
-            photons m^-2 s^-1 nm^-1.
-    """
-
     sol_wl_m = sol_wl * 1e-9  # Convert wavelength to meters
     sol_phot_flux = sol_irr * (sol_wl_m / (_h * _c))  # photons m-2 s-1 nm-1
 
@@ -296,40 +307,40 @@ def _convert_spec(sol_wl: NDArray, sol_irr: NDArray) -> tuple[NDArray, NDArray]:
 
 
 def _calc_incident_power(sol_irr: NDArray, sol_wl: NDArray) -> float:
+    """Calculate the total incident power from a spectral irradiance distribution.
+
+    Parameters
+    ----------
+    sol_irr : numpy.ndarray
+        Spectral irradiance in W m⁻² nm⁻¹.
+    sol_wl : numpy.ndarray
+        Wavelengths for the irradiance spectrum in nm.
+
+    Returns
+    -------
+    float
+        Total incident power density in W m⁻², integrated over wavelength.
     """
-    Calculates the total incident power from a spectral irradiance distribution.
-
-    Parameters:
-        sol_irr(np.array): spectral irradiance values in
-            W m^-2 nm^-1.
-        sol_wl(np.array): wavelength values corresponding to the
-            irradiance spectrum in nm.
-
-    Returns:
-        power_in(float): total incident power density in W m^-2,
-            obtained by integrating the spectrum over wavelength.
-    """
-
     power_in = simpson(sol_irr, x=sol_wl)  # W m-2
 
     return power_in
 
 
 def _bb_per_eV(E_eV: NDArray) -> NDArray:
+    """Compute the blackbody photon flux spectrum in energy space.
+
+    Evaluated at the module temperature ``_T``.
+
+    Parameters
+    ----------
+    E_eV : numpy.ndarray
+        Photon energies in eV.
+
+    Returns
+    -------
+    numpy.ndarray
+        Blackbody photon flux in photons m⁻² s⁻¹ eV⁻¹.
     """
-    Computes the blackbody photon flux spectrum in energy space.
-
-    This function evaluates the photon flux of a blackbody radiator
-    at temperature _T, expressed in units of photons m^-2 s^-1 eV^-1.
-
-    Parameters:
-        E_eV(np.array): photon energies in electron volts (eV).
-
-    Returns:
-        np.array: blackbody photon flux in
-            photons m^-2 s^-1 eV^-1.
-    """
-
     # blackbody photon flux in energy space [photons m-2 s-1 eV-1] for pe integral
 
     E_J = E_eV * _e
@@ -338,20 +349,20 @@ def _bb_per_eV(E_eV: NDArray) -> NDArray:
 
 
 def _bb_per_wl(sol_wl_m: NDArray) -> NDArray:
+    """Compute the blackbody photon flux spectrum in wavelength space.
+
+    Evaluated at the module temperature ``_T``.
+
+    Parameters
+    ----------
+    sol_wl_m : numpy.ndarray
+        Wavelengths in m.
+
+    Returns
+    -------
+    numpy.ndarray
+        Blackbody photon flux in photons m⁻² s⁻¹ m⁻¹.
     """
-    Computes the blackbody photon flux spectrum in wavelength space.
-
-    This function evaluates the spectral photon flux of a blackbody
-    radiator at temperature _T in units of photons m^-2 s^-1 m^-1.
-
-    Parameters:
-        sol_wl_m(np.array): wavelength values in meters.
-
-    Returns:
-        bb_phot_wl(np.array): blackbody photon flux in
-            photons m^-2 s^-1 m^-1.
-    """
-
     # blackbody photon flux in wavelength space [photons m-2 s-1 m-1]
     bb_irr = (2 * _h * _c ** 2 / sol_wl_m ** 5) / (np.exp(_h * _c / (sol_wl_m * _k * _T)) - 1.0)
     bb_phot_wl = bb_irr * (sol_wl_m / (_h * _c))
@@ -362,27 +373,28 @@ def _bb_per_wl(sol_wl_m: NDArray) -> NDArray:
 def _n_real_abs_fit(
         abs_file: str | Path, n_real_file: str | Path
 ) -> tuple[NDArray, NDArray, NDArray, NDArray]:
+    """Load absorption data and interpolate the refractive index onto its energy grid.
+
+    Parameters
+    ----------
+    abs_file : str or Path
+        File containing absorption data: energy in eV against absorption
+        coefficient in cm⁻¹.
+    n_real_file : str or Path
+        File containing real refractive index data: energy in eV against
+        n_real.
+
+    Returns
+    -------
+    energy_abs : numpy.ndarray
+        Energy grid in eV from the absorption dataset.
+    alpha_cm : numpy.ndarray
+        Absorption coefficient in cm⁻¹.
+    alpha_m : numpy.ndarray
+        Absorption coefficient converted to m⁻¹.
+    n_real : numpy.ndarray
+        Real refractive index interpolated onto the absorption energy grid.
     """
-    Loads absorption data and interpolates the real refractive index onto the same energy grid.
-
-    This function reads absorption coefficient data and real refractive index data,
-    ensures they share a common energy grid, and returns both in consistent units
-    for further optical analysis.
-
-    Parameters:
-        abs_file(string or Path): file containing absorption data.
-            Expected format: energy (eV), absorption coefficient (cm^-1).
-        n_real_file(string or Path): file containing real refractive index data.
-            Expected format: energy (eV), n_real.
-
-    Returns:
-        energy_abs(np.array): energy grid in eV from the absorption dataset.
-        alpha_cm(np.array): absorption coefficient in cm^-1.
-        alpha_m(np.array): absorption coefficient converted to m^-1.
-        n_real(np.array): real refractive index interpolated onto the
-            absorption energy grid.
-    """
-
     # --- absorption and n_real data (on the same energy grid) ---
     energy_abs, alpha_cm = spectral._load_absorption(abs_file)
     alpha_m = alpha_cm * 1e2  # cm-1 → m-1
@@ -396,27 +408,28 @@ def _n_real_abs_fit(
 def _interpolate_a(
         energy_abs: NDArray, alpha_m: NDArray, direct_gap: float, sol_wl: NDArray
 ) -> NDArray:
+    """Interpolate the absorption coefficient onto a solar wavelength grid.
+
+    Converts the absorption data from energy to wavelength space and enforces
+    a cutoff: no absorption at wavelengths beyond the direct band gap.
+
+    Parameters
+    ----------
+    energy_abs : numpy.ndarray
+        Energy grid in eV for the absorption data.
+    alpha_m : numpy.ndarray
+        Absorption coefficient in m⁻¹.
+    direct_gap : float
+        Direct band gap energy in eV.
+    sol_wl : numpy.ndarray
+        Solar spectrum wavelength grid in nm.
+
+    Returns
+    -------
+    numpy.ndarray
+        Absorption coefficient on the solar wavelength grid, zero beyond the
+        band-gap cutoff wavelength.
     """
-    Interpolates the absorption coefficient onto a solar wavelength grid,
-    with a cutoff below the direct band gap.
-
-    This function converts absorption data from energy space into wavelength
-    space, interpolates it onto the solar spectrum grid, and enforces a
-    band-gap cutoff (no absorption for wavelengths corresponding to energies
-    below the direct gap).
-
-    Parameters:
-        energy_abs(np.array): energy grid in eV corresponding to absorption data.
-        alpha_m(np.array): absorption coefficient in m^-1.
-        direct_gap(float): direct band gap energy in eV.
-        sol_wl(np.array): solar spectrum wavelength grid in nm.
-
-    Returns:
-        alpha_on_sol(np.array): absorption coefficient interpolated onto the
-            solar wavelength grid, with values set to zero below the band-gap
-            cutoff wavelength.
-    """
-
     # --- interpolate alpha onto solar wavelength grid (pymatgen style) ---
     wl_alpha = ((_c * _h_e) / (energy_abs + 1e-8)) * 1e9  # nm
     alpha_func = interp1d(wl_alpha, alpha_m, kind='cubic',
@@ -442,29 +455,34 @@ def make_blank_plot(
         thickness_range: NDArray | None = None,
         save: bool = False,
 ) -> None:
+    """Generate the efficiency-versus-thickness plot for the Blank and SLME models.
+
+    Loads the absorption and refractive index data, selects a spectrum,
+    computes photon fluxes, and evaluates the efficiency models across a
+    range of thicknesses.
+
+    Parameters
+    ----------
+    optics_directory : str or Path
+        Directory containing the optical data files ``absorption.dat`` and
+        ``n_real.dat``.
+    direct_gap : float
+        Direct band gap energy in eV.
+    indirect_gap : float
+        Indirect band gap energy in eV.
+    spectrum_type : str, optional
+        Type of solar spectrum to use. Default is ``"AM1.5"``.
+    Qi : float, optional
+        Internal quantum efficiency factor. Default is ``1.0``.
+    n : float, optional
+        Refractive index used in the model calculations. Default is ``3.5``.
+    thickness_range : numpy.ndarray or None, optional
+        Thickness values in m to evaluate. Default is None, which uses a
+        logarithmic range.
+    save : bool, optional
+        Save the figure as ``slme.png`` in the current directory.
+        Default is ``False``.
     """
-    Generates a blank efficiency plot for optical absorption analysis as a function of thickness.
-
-    This function loads absorption and refractive index data, selects a solar spectrum,
-    computes photon fluxes, and evaluates efficiency models across a range of thicknesses.
-    It then produces a comparison plot for different efficiency assumptions.
-
-    Parameters:
-        optics_directory(string or Path): directory containing optical data files:
-            - absorption.dat
-            - n_real.dat
-        direct_gap(float): direct band gap energy in eV.
-        indirect_gap(float): indirect band gap energy in eV.
-        spectrum_type(string): type of solar spectrum to use (default is "AM1.5").
-        Qi(float): internal quantum efficiency factor (default is 1.0).
-        n(float): refractive index used in model calculations (default is 3.5).
-        thickness_range(np.array or None): array of thickness values to evaluate.
-            If None, a default range is used.
-
-    Returns:
-        None
-    """
-
     abs_file = f'{optics_directory}/absorption.dat'
     n_real_file = f'{optics_directory}/n_real.dat'
 
@@ -493,25 +511,29 @@ def make_blank_plot(
 def power_efficiency(
         A_E: NDArray, energy_abs: NDArray, n_real: NDArray, alpha_m: NDArray, d: float
 ) -> float:
+    """Compute the power conversion efficiency using a spectral absorption model.
+
+    Follows the detailed-balance framework of Blank et al., weighting the
+    absorptance by the blackbody photon flux.
+
+    Parameters
+    ----------
+    A_E : numpy.ndarray
+        Absorptance evaluated on the energy grid.
+    energy_abs : numpy.ndarray
+        Energy grid in eV.
+    n_real : numpy.ndarray
+        Real refractive index on the same energy grid.
+    alpha_m : numpy.ndarray
+        Absorption coefficient in m⁻¹.
+    d : float
+        Material thickness in m.
+
+    Returns
+    -------
+    float
+        Power efficiency, dimensionless and capped at 1.0.
     """
-    Computes the power conversion efficiency using a spectral absorption model.
-
-    This function evaluates the efficiency based on a photon flux-weighted
-    absorption spectrum and a thickness-dependent normalization factor, following
-    a detailed balance / spectral efficiency framework.
-
-    Parameters:
-        A_E(np.array): energy-dependent absorption function or absorptance
-            evaluated on the energy grid.
-        energy_abs(np.array): energy grid in eV.
-        n_real(np.array): real refractive index evaluated on the same energy grid.
-        alpha_m(np.array): absorption coefficient in m^-1.
-        d(float): material thickness in meters.
-
-    Returns:
-        pe(float): calculated power efficiency (dimensionless, capped at 1.0).
-    """
-
     phi_bb_E = _bb_per_eV(energy_abs)
 
     # pe denominator: ∫n²(E)·α(E)·φ_BB(E) dE  — independent of thickness
@@ -538,31 +560,43 @@ def _eta_d(
         Qi: float,
         power_in: float,
 ) -> float:
+    """Calculate the power conversion efficiency at one thickness.
+
+    Combines optical absorption, radiative recombination limits and external
+    luminescence efficiency within a detailed-balance framework.
+
+    Parameters
+    ----------
+    d : float
+        Material thickness in m.
+    A_sol : numpy.ndarray
+        Absorptance on the solar wavelength grid.
+    A_E : numpy.ndarray
+        Absorptance on the energy grid.
+    energy_abs : numpy.ndarray
+        Energy grid in eV.
+    n_real : numpy.ndarray
+        Real refractive index on the energy grid.
+    alpha_m : numpy.ndarray
+        Absorption coefficient in m⁻¹.
+    bb_phot_wl : numpy.ndarray
+        Blackbody photon flux in wavelength space.
+    sol_wl_m : numpy.ndarray
+        Solar wavelength grid in m.
+    sol_phot_flux : numpy.ndarray
+        Solar photon flux in wavelength space.
+    sol_wl : numpy.ndarray
+        Solar wavelength grid in nm.
+    Qi : float
+        Internal quantum efficiency factor.
+    power_in : float
+        Incident solar power density in W m⁻².
+
+    Returns
+    -------
+    float
+        Power conversion efficiency in % at the optimal operating point.
     """
-    Calculates the power conversion efficiency for a given thickness using detailed-balance optics.
-
-    This function evaluates thickness-dependent efficiency by combining optical absorption,
-    radiative recombination limits, and external luminescence efficiency within a
-    detailed-balance framework.
-
-    Parameters:
-        d(float): material thickness in meters.
-        A_sol(np.array): wavelength-dependent absorptance on the solar spectrum grid.
-        A_E(np.array): energy-dependent absorptance on the energy grid.
-        energy_abs(np.array): energy grid in eV.
-        n_real(np.array): real refractive index evaluated on the energy grid.
-        alpha_m(np.array): absorption coefficient in m^-1.
-        bb_phot_wl(np.array): blackbody photon flux in wavelength space.
-        sol_wl_m(np.array): solar wavelength grid in meters.
-        sol_phot_flux(np.array): solar photon flux in wavelength space.
-        sol_wl(np.array): solar wavelength grid in nm.
-        Qi(float): internal quantum efficiency factor.
-        power_in(float): incident solar power density in W m^-2.
-
-    Returns:
-        float: power conversion efficiency (%) at the optimal operating point.
-    """
-
     pe = power_efficiency(A_E, energy_abs, n_real, alpha_m, d)
 
     # External luminescence efficiency (Blank eq. after eq. 6)
@@ -577,9 +611,11 @@ def _eta_d(
         return 0.0
 
     def Jfn(V: float) -> float:
+        """Diode-law current density at voltage ``V``."""
         return Jsc - J0 * (np.exp(_e * V / (_k * _T)) - 1.0)
 
     def Pfn(V: float) -> float:
+        """Output power density at voltage ``V``."""
         return Jfn(V) * V
 
     tv = 0.0;
@@ -606,37 +642,56 @@ def _thickness_calc(
         Qi: float,
         power_in: float,
 ) -> tuple[list[float], list[float], list[float], NDArray]:
+    """Compute thickness-dependent power conversion efficiencies for several models.
+
+    Evaluates efficiency against thickness with two absorption models
+    (flat Beer-Lambert and Lambertian), and with SLME when requested.
+
+    Parameters
+    ----------
+    thickness_range : numpy.ndarray or None
+        Thickness values in m. If None, a logarithmic range from 1e-8 m to
+        1e-3 m is used.
+    alpha_m : numpy.ndarray
+        Absorption coefficient in m⁻¹ on the energy grid.
+    use_slme : bool
+        Whether to also compute the SLME efficiency.
+    n : float
+        Refractive index used in the optical model.
+    energy_abs : numpy.ndarray
+        Energy grid in eV.
+    alpha_cm : numpy.ndarray
+        Absorption coefficient in cm⁻¹, used for SLME.
+    direct_gap : float
+        Direct band gap energy in eV.
+    indirect_gap : float
+        Indirect band gap energy in eV.
+    n_real : numpy.ndarray
+        Real refractive index on the energy grid.
+    bb_phot_wl : numpy.ndarray
+        Blackbody photon flux in wavelength space.
+    sol_wl_m : numpy.ndarray
+        Solar wavelength grid in m.
+    sol_phot_flux : numpy.ndarray
+        Solar photon flux in wavelength space.
+    sol_wl : numpy.ndarray
+        Solar wavelength grid in nm.
+    Qi : float
+        Internal quantum efficiency factor.
+    power_in : float
+        Incident solar power density in W m⁻².
+
+    Returns
+    -------
+    eff_flat : list of float
+        Efficiencies from the flat Beer-Lambert absorption model.
+    eff_lam : list of float
+        Efficiencies from the Lambertian (interference-enhanced) model.
+    eff_slme : list of float
+        SLME efficiencies; empty if ``use_slme`` is False.
+    thickness_range : numpy.ndarray
+        Thickness values used for the evaluation.
     """
-Computes thickness-dependent power conversion efficiencies using different optical models.
-
-This function evaluates efficiency as a function of material thickness using two
-absorption models (Beer-Lambert and optical interference approximation), and optionally
-compares against the SLME model if available.
-
-Parameters:
-    thickness_range(np.array or None): array of thickness values in meters.
-        If None, a default logarithmic range from 1e-8 to 1e-3 m is used.
-    alpha_m(np.array): absorption coefficient in m^-1 on the energy grid.
-    use_slme(bool): whether to also compute SLME efficiency.
-    n(float): refractive index used in optical model.
-    energy_abs(np.array): energy grid in eV.
-    alpha_cm(np.array): absorption coefficient in cm^-1 (used for SLME).
-    direct_gap(float): direct band gap energy in eV.
-    indirect_gap(float): indirect band gap energy in eV.
-    n_real(np.array): real refractive index on the energy grid.
-    bb_phot_wl(np.array): blackbody photon flux in wavelength space.
-    sol_wl_m(np.array): solar wavelength grid in meters.
-    sol_phot_flux(np.array): solar photon flux in wavelength space.
-    sol_wl(np.array): solar wavelength grid in nm.
-    Qi(float): internal quantum efficiency factor.
-    power_in(float): incident solar power density in W m^-2.
-
-Returns:
-    eff_flat(list): efficiency values using exponential Beer–Lambert absorption model.
-    eff_lam(list): efficiency values using optical interference-enhanced model.
-    eff_slme(list): SLME efficiency values (empty if use_slme is False).
-    thickness_range(np.array): thickness values used for evaluation.
-"""
     alpha_on_sol = _interpolate_a(energy_abs, alpha_m, direct_gap, sol_wl)
 
     if thickness_range is None:
@@ -678,25 +733,28 @@ def plot_blank(
         linestyle: str,
         save: bool,
 ) -> None:
+    """Plot the thickness-dependent maximum efficiency for each optical model.
+
+    Compares the SLME model (when enabled) with the Blank Lambertian and
+    flat Beer-Lambert models.
+
+    Parameters
+    ----------
+    use_slme : bool
+        Whether SLME results are included and plotted.
+    thickness_range : numpy.ndarray
+        Film thickness values in m.
+    eff_slme : list of float
+        SLME efficiencies; may be empty when unused.
+    eff_lam : list of float
+        Efficiencies from the Lambertian optical model.
+    eff_flat : list of float
+        Efficiencies from the flat Beer-Lambert model.
+    linestyle : str
+        Matplotlib line style for the flat-model curve.
+    save : bool
+        Save the figure as ``slme.png`` in the current directory.
     """
-    Plots thickness-dependent maximum photovoltaic efficiency for different optical models.
-
-    This function visualizes and compares efficiency curves obtained from:
-    - SLME model (if enabled),
-    - Blank Lambertian optical model,
-    - Flat (Beer-Lambert) optical model.
-
-    Parameters:
-        use_slme(bool): whether SLME results are included and plotted.
-        thickness_range(np.array): array of film thickness values in meters.
-        eff_slme(list or np.array): SLME efficiency values (may be empty if not used).
-        eff_lam(list or np.array): efficiency values from Lambertian optical model.
-        eff_flat(list or np.array): efficiency values from flat Beer-Lambert model.
-
-    Returns:
-        None
-    """
-
     fig, ax = plt.subplots(figsize=(8, 4))
 
     if use_slme:

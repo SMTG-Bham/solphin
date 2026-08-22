@@ -33,6 +33,7 @@ SPECTRUM_TYPES = [
 
 @pytest.mark.parametrize("spectrum_type", SPECTRUM_TYPES)
 def test_load_spectrum_all_types(spectrum_type: str) -> None:
+    """Every bundled spectrum loads as a finite two-column array with ascending wavelength."""
     spectrum = db_fom.load_spectrum(spectrum_type)
 
     assert spectrum.ndim == 2
@@ -59,6 +60,7 @@ def test_am15_integrated_irradiance(am15: NDArray) -> None:
 
 
 def test_convert_spectrum_does_not_mutate_input(am15: NDArray) -> None:
+    """convert_spectrum works on a copy and leaves its input array untouched."""
     before = am15.copy()
 
     db_fom.convert_spectrum(am15)
@@ -145,6 +147,7 @@ def test_jsc_equals_q_times_photon_flux(photon_spectrum: NDArray) -> None:
 
 
 def test_current_density_broadcasts_over_voltage(photon_spectrum: NDArray) -> None:
+    """An array of voltages yields an array of currents of the same shape."""
     voltages = np.linspace(0.0, 0.8, 17)
 
     current = db_fom.current_density(1.34, photon_spectrum, voltages, 300.0)
@@ -225,9 +228,10 @@ def test_max_power_between_zero_and_jsc_voc(photon_spectrum: NDArray) -> None:
 
 @pytest.mark.xfail(
     strict=True,
-    reason="db_fom.py:177 calls _rr0(E_gap, photon_spectrum) without Tcell -> TypeError",
+    reason="db_fom.py:179 calls _rr0(E_gap, photon_spectrum) without Tcell -> TypeError",
 )
 def test_recomb_rate_returns_finite_float(photon_spectrum: NDArray) -> None:
+    """recomb_rate should return a finite positive rate."""
     rate = db_fom.recomb_rate(1.34, photon_spectrum, 0.5, 300.0)
 
     assert np.isfinite(rate)
@@ -236,9 +240,10 @@ def test_recomb_rate_returns_finite_float(photon_spectrum: NDArray) -> None:
 
 @pytest.mark.xfail(
     strict=True,
-    reason="db_fom.py:248 calls voc(E_gap, photon_spectrum) without Tcell -> TypeError",
+    reason="db_fom.py:274 calls voc(E_gap, photon_spectrum) without Tcell -> TypeError",
 )
 def test_v_at_mpp_between_zero_and_voc(photon_spectrum: NDArray) -> None:
+    """The maximum-power voltage should sit between zero and Voc."""
     v_mpp = db_fom.v_at_mpp(1.34, photon_spectrum)
     v_oc = db_fom.voc(1.34, photon_spectrum, 300.0)
 
@@ -247,9 +252,10 @@ def test_v_at_mpp_between_zero_and_voc(photon_spectrum: NDArray) -> None:
 
 @pytest.mark.xfail(
     strict=True,
-    reason="db_fom.py:269 calls max_power(E_gap, photon_spectrum) without Tcell -> TypeError",
+    reason="db_fom.py:297 calls max_power(E_gap, photon_spectrum) without Tcell -> TypeError",
 )
 def test_j_at_mpp_below_jsc(photon_spectrum: NDArray) -> None:
+    """The maximum-power current should sit between zero and Jsc."""
     j_mpp = db_fom.j_at_mpp(1.34, photon_spectrum)
     j_sc = db_fom.jsc(1.34, photon_spectrum, 300.0)
 
@@ -259,7 +265,7 @@ def test_j_at_mpp_below_jsc(photon_spectrum: NDArray) -> None:
 @pytest.mark.xfail(
     strict=True,
     reason=(
-        "db_fom.py:326 calls jsc() without Tcell, and db_fom.py:331 then divides "
+        "db_fom.py:366 calls jsc() without Tcell, and db_fom.py:371 then divides "
         "by the tuple (j_sc, v_oc) - two bugs, the second hidden behind the first"
     ),
 )

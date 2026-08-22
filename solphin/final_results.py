@@ -1,3 +1,5 @@
+"""Combine the detailed-balance limit and Γₚᵥ into final relative-efficiency results."""
+
 import logging
 import warnings
 
@@ -35,24 +37,43 @@ def SQ_relative_FOM_PV_efficiency(
         mu: float,
         Tcell: float,
 ) -> tuple[float, float, float]:
-    ''' Calculates the final value for the photovoltaic figure of merit from Crovetto 2024 as a percentage of the Shockley Queisser efficiency limit.
+    """Calculate the Γₚᵥ efficiency and its value relative to the Shockley-Queisser limit.
 
-    Parameters:
-        E_gap(float): Optical Band Gap in eV
-        photon_spectrum(numpy.ndarrray): Converted input spectrum from DB_FOM.convert_spectrum y: Number of photons (Np/m2/s/dE) x: Energy (eV)
-        alpha(float): Spectral average of incident light in cm⁻¹
-        tau(float): Non-radiative recombination lifetime in s
-        sigma(float): Spectral dispersion of the absorption coefficient spectrum, unitless
-        dos_mass(float): Density of States effective mass in m₀
-        dop_density(float): Doping density in cm⁻³
-        epsilon(float): Static dielectric constant, unitless
-        mu(float): Charge carrier mobility in cm²V⁻¹s⁻¹
-        Tcell(float): Operating temperature of the cell in K
+    Implements equation 33 of Crovetto 2024.
 
-    Returns:
-        efficiency(float): Percentage photovoltaic figure of merit efficiency.
-    '''
+    Parameters
+    ----------
+    E_gap : float
+        Optical band gap in eV.
+    photon_spectrum : numpy.ndarray
+        Converted photon flux spectrum from ``convert_spectrum``: photon
+        energy in eV against photon flux in m⁻² s⁻¹ eV⁻¹.
+    alpha : float
+        Spectrally averaged absorption coefficient in cm⁻¹.
+    tau : float
+        Non-radiative recombination lifetime in s.
+    sigma : float
+        Spectral dispersion of the absorption coefficient, dimensionless.
+    dos_mass : float
+        Density-of-states effective mass in units of m₀.
+    dop_density : float
+        Doping density in cm⁻³.
+    epsilon : float
+        Static dielectric constant, dimensionless.
+    mu : float
+        Charge carrier mobility in cm² V⁻¹ s⁻¹.
+    Tcell : float
+        Operating temperature of the cell in K.
 
+    Returns
+    -------
+    SQ : float
+        Shockley-Queisser limit efficiency in %.
+    SQ_relative : float
+        Figure-of-merit efficiency relative to the SQ limit, in %.
+    FOM_efficiency : float
+        Figure-of-merit photovoltaic efficiency in %.
+    """
     PV_FOM = Final_equation(E_gap, alpha, tau, sigma, dos_mass, dop_density, epsilon, mu)
 
     k_1 = 3.3e-1
@@ -95,65 +116,48 @@ def plot_FOM(
         tau_range: tuple[float, float],
         mu_range: tuple[float, float],
 ) -> None:
-    """
-    Plots the photovoltaic figure of merit as a function of key transport parameters.
+    """Plot the figure of merit against doping density, lifetime and mobility.
 
-    This function evaluates and plots the photovoltaic figure of merit while
-    independently varying dopant density, carrier lifetime, and carrier
-    mobility. For each plot, the other two transport parameters are held fixed
+    Each panel varies one transport parameter while the other two stay fixed
     at their supplied values.
 
-    Parameters:
-        fig(Figure): Matplotlib figure containing the axes used for the
-            figure-of-merit plots.
-
-        axes(list[Axes]): List of three Matplotlib axes used to plot the figure
-            of merit against dopant density, carrier lifetime, and mobility,
-            respectively.
-
-        E_gap(float): Electronic band gap used in the photovoltaic efficiency
-            calculation.
-
-        photon_spectrum: Incident photon spectrum used in the photovoltaic
-            efficiency calculation.
-
-        alpha: Absorption coefficient data used in the photovoltaic efficiency
-            calculation.
-
-        tau(float): Carrier lifetime held fixed when varying dopant density and
-            mobility.
-
-        sigma: Carrier capture cross section used in the photovoltaic efficiency
-            calculation.
-
-        dos_mass(float): Density-of-states effective mass used in the
-            photovoltaic efficiency calculation.
-
-        dop_density(float): Dopant density held fixed when varying carrier
-            lifetime and mobility.
-
-        epsilon(float): Dielectric constant used in the photovoltaic efficiency
-            calculation.
-
-        mu(float): Carrier mobility held fixed when varying dopant density and
-            carrier lifetime.
-
-        Tcell(float): Cell temperature used in the photovoltaic efficiency
-            calculation.
-
-        dop_range(tuple[float, float]): Minimum and maximum dopant densities
-            over which the figure of merit is evaluated.
-
-        tau_range(tuple[float, float]): Minimum and maximum carrier lifetimes
-            over which the figure of merit is evaluated.
-
-        mu_range(tuple[float, float]): Minimum and maximum carrier mobilities
-            over which the figure of merit is evaluated.
-
-    Returns:
-        None
+    Parameters
+    ----------
+    fig : Figure
+        Matplotlib figure containing the axes for the plots.
+    axes : list of Axes
+        Three axes for the plots against dopant density, carrier lifetime
+        and mobility, respectively.
+    E_gap : float
+        Optical band gap in eV.
+    photon_spectrum : numpy.ndarray
+        Converted photon flux spectrum from ``convert_spectrum``.
+    alpha : float
+        Spectrally averaged absorption coefficient in cm⁻¹.
+    tau : float
+        Carrier lifetime in s, held fixed when varying dopant density and
+        mobility.
+    sigma : float
+        Spectral dispersion of the absorption coefficient, dimensionless.
+    dos_mass : float
+        Density-of-states effective mass in units of m₀.
+    dop_density : float
+        Dopant density in cm⁻³, held fixed when varying carrier lifetime
+        and mobility.
+    epsilon : float
+        Static dielectric constant, dimensionless.
+    mu : float
+        Carrier mobility in cm² V⁻¹ s⁻¹, held fixed when varying dopant
+        density and carrier lifetime.
+    Tcell : float
+        Operating temperature of the cell in K.
+    dop_range : tuple of float
+        Minimum and maximum dopant densities evaluated.
+    tau_range : tuple of float
+        Minimum and maximum carrier lifetimes evaluated.
+    mu_range : tuple of float
+        Minimum and maximum carrier mobilities evaluated.
     """
-
     # For each of the three quantities, take the other two as fixed and iterate over a sensible range
 
     # Plot vs dopant density
@@ -192,18 +196,17 @@ def plot_FOM(
 
 
 def _get_step(quantity_range: tuple[float, float]) -> float:
-    """
-    Calculates the step size for a specified quantity range.
+    """Calculate the slider step size for a quantity range.
 
-    This function divides the interval between the minimum and maximum values
-    of the supplied range into 100 equal steps.
+    Parameters
+    ----------
+    quantity_range : tuple of float
+        Minimum and maximum values defining the range.
 
-    Parameters:
-        quantity_range(tuple): Minimum and maximum values defining the range,
-            specified as (minimum, maximum).
-
-    Returns:
-        float: Step size corresponding to one hundredth of the supplied range.
+    Returns
+    -------
+    float
+        Step size, one hundredth of the supplied range.
     """
     return (quantity_range[1] - quantity_range[0]) / 100
 
@@ -223,26 +226,39 @@ def plot_final_result_interactive(
         tau_range: tuple[float, float] = (1e-15, 1e3),
         mu_range: tuple[float, float] = (1e-2, 1e9),
 ) -> None:
-    """
-    Creates an interactive Figure of Merit visualization dashboard.
+    """Create an interactive figure-of-merit dashboard with parameter sliders.
 
-    Parameters:
-        E_gap(float): Optical Band Gap in eV
-        photon_spectrum(numpy.ndarrray): Converted input spectrum from DB_FOM.convert_spectrum y: Number of photons (Np/m2/s/dE) x: Energy (eV)
-        alpha(float): Spectral average of incident light in cm⁻¹
-        tau(float): Non-radiative recombination lifetime in s
-        sigma(float): Spectral dispersion of the absorption coefficient spectrum, unitless
-        dos_mass(float): Density of States effective mass in m₀
-        dop_density(float): Doping density in cm⁻³
-        epsilon(float): Static dielectric constant, unitless
-        mu(float): Charge carrier mobility in cm²V⁻¹s⁻¹
-        Tcell(float): Operating temperature of the cell in K
-        dop_range(tuple[float,float]): Range of dopant densities to explore in the interactive plot (default: (1e8, 1e24))
-        tau_range(tuple[float,float]): Range of carrier lifetimes to explore in the interactive plot (default: (1e-8, 1e-6))
-        mu_range(tuple[float,float]): Range of carrier mobilities to explore in the interactive plot (default: (1, 300))
-
-    Returns:
-        None
+    Parameters
+    ----------
+    E_gap : float
+        Optical band gap in eV.
+    photon_spectrum : numpy.ndarray
+        Converted photon flux spectrum from ``convert_spectrum``.
+    alpha : float
+        Spectrally averaged absorption coefficient in cm⁻¹.
+    tau : float
+        Non-radiative recombination lifetime in s.
+    sigma : float
+        Spectral dispersion of the absorption coefficient, dimensionless.
+    dos_mass : float
+        Density-of-states effective mass in units of m₀.
+    dop_density : float
+        Doping density in cm⁻³.
+    epsilon : float
+        Static dielectric constant, dimensionless.
+    mu : float
+        Charge carrier mobility in cm² V⁻¹ s⁻¹.
+    Tcell : float
+        Operating temperature of the cell in K.
+    dop_range : tuple of float, optional
+        Dopant density range explored by the slider.
+        Default is ``(1e10, 1e18)``.
+    tau_range : tuple of float, optional
+        Carrier lifetime range explored by the slider.
+        Default is ``(1e-15, 1e3)``.
+    mu_range : tuple of float, optional
+        Carrier mobility range explored by the slider.
+        Default is ``(1e-2, 1e9)``.
     """
     plt.close("all")
     fig, axes = plt.subplots(1, 3, figsize=(12, 3), dpi=120, constrained_layout=True)
@@ -257,28 +273,17 @@ def plot_final_result_interactive(
     # wrapping that clears axes and redraws combined DB plots
 
     def plot_combined_wrapper(density: float, lifetime: float, mobility: float) -> None:
+        """Clear the axes and redraw the plots for the selected slider values.
+
+        Parameters
+        ----------
+        density : float
+            Doping density in cm⁻³.
+        lifetime : float
+            Carrier lifetime in s.
+        mobility : float
+            Carrier mobility in cm² V⁻¹ s⁻¹.
         """
-        Updates the combined figure using the selected transport parameters.
-
-        This function clears the existing figure axes and redraws the
-        figure-of-merit plots using the specified doping density, carrier
-        lifetime, and mobility together with the fixed material and simulation
-        parameters defined in the enclosing scope.
-
-        Parameters:
-            density(float): Doping density used for the figure-of-merit
-                calculation.
-
-            lifetime(float): Carrier lifetime used for the figure-of-merit
-                calculation.
-
-            mobility(float): Carrier mobility used for the figure-of-merit
-                calculation.
-
-        Returns:
-            None
-        """
-
         for ax in fig.axes:
             ax.clear()
             ax.set_xlabel("")
@@ -320,20 +325,13 @@ def plot_final_result_interactive(
 
 
 def _clearlines(n: int) -> None:
+    """Clear previously printed terminal lines with ANSI escape sequences.
+
+    Parameters
+    ----------
+    n : int
+        Number of terminal lines to move upward and clear.
     """
-    Clears a specified number of previously printed terminal lines.
-
-    This function uses ANSI escape sequences to move the terminal cursor upward
-    and clear each selected line. It is intended for updating or replacing
-    previously printed command-line output.
-
-    Parameters:
-        n(int): Number of terminal lines to move upward and clear.
-
-    Returns:
-        None
-    """
-
     LINE_UP = '\033[1A'
     LINE_CLEAR = '\x1b[2K'
     for i in range(n):
@@ -355,29 +353,43 @@ def print_final_result_interactive(
         tau_range: tuple[float, float] = (1e-15, 1e3),
         mu_range: tuple[float, float] = (1e-2, 1e9),
 ) -> None:
-    """
-    Interactively writes figure of merit information.
+    """Interactively print the figure-of-merit efficiencies with parameter sliders.
 
-    Parameters:
-        E_gap(float): Optical Band Gap in eV
-        photon_spectrum(numpy.ndarrray): Converted input spectrum from DB_FOM.convert_spectrum y: Number of photons (Np/m2/s/dE) x: Energy (eV)
-        alpha(float): Spectral average of incident light in cm⁻¹
-        tau(float): Non-radiative recombination lifetime in s
-        sigma(float): Spectral dispersion of the absorption coefficient spectrum, unitless
-        dos_mass(float): Density of States effective mass in m₀
-        dop_density(float): Doping density in cm⁻³
-        epsilon(float): Static dielectric constant, unitless
-        mu(float): Charge carrier mobility in cm²V⁻¹s⁻¹
-        Tcell(float): Operating temperature of the cell in K
-        dop_range(tuple[float,float]): Range of dopant densities to explore in the interactive plot (default: (1e8, 1e24))
-        tau_range(tuple[float,float]): Range of carrier lifetimes to explore in the interactive plot (default: (1e-8, 1e-6))
-        mu_range(tuple[float,float]): Range of carrier mobilities to explore in the interactive plot (default: (1, 300))
-
-    Returns:
-        None
+    Parameters
+    ----------
+    E_gap : float
+        Optical band gap in eV.
+    photon_spectrum : numpy.ndarray
+        Converted photon flux spectrum from ``convert_spectrum``.
+    alpha : float
+        Spectrally averaged absorption coefficient in cm⁻¹.
+    tau : float
+        Non-radiative recombination lifetime in s.
+    sigma : float
+        Spectral dispersion of the absorption coefficient, dimensionless.
+    dos_mass : float
+        Density-of-states effective mass in units of m₀.
+    dop_density : float
+        Doping density in cm⁻³.
+    epsilon : float
+        Static dielectric constant, dimensionless.
+    mu : float
+        Charge carrier mobility in cm² V⁻¹ s⁻¹.
+    Tcell : float
+        Operating temperature of the cell in K.
+    dop_range : tuple of float, optional
+        Dopant density range explored by the slider.
+        Default is ``(1e10, 1e18)``.
+    tau_range : tuple of float, optional
+        Carrier lifetime range explored by the slider.
+        Default is ``(1e-15, 1e3)``.
+    mu_range : tuple of float, optional
+        Carrier mobility range explored by the slider.
+        Default is ``(1e-2, 1e9)``.
     """
 
     def print_fom(density: float, lifetime: float, mobility: float) -> None:
+        """Print the figure-of-merit efficiencies for the selected slider values."""
         _clearlines(5)
 
         sq, fom_sq, eff = SQ_relative_FOM_PV_efficiency(E_gap, photon_spectrum, alpha, lifetime, sigma, dos_mass,
@@ -418,38 +430,41 @@ def mobility_plot(
         step: float = 1,
         Tcell: float = 300,
 ) -> None:
-    """
-    Plots the figure-of-merit efficiency against carrier mobility, one line per
-    carrier lifetime.
+    """Plot the figure-of-merit efficiency against mobility, one line per lifetime.
 
-    Mobility and lifetime are swept on logarithmic grids: the *_min and *_max
-    arguments are base-10 exponents, not values, so the defaults cover
-    1e-2 to 1e9 cm2V-1s-1 and 1e-15 to 1e3 s.
+    Mobility and lifetime are swept on logarithmic grids: the ``*_min`` and
+    ``*_max`` arguments are base-10 exponents, not values, so the defaults
+    cover 10⁻² to 10⁹ cm² V⁻¹ s⁻¹ and 10⁻¹⁵ to 10³ s.
 
-    Parameters:
-        E_gap(float): Optical Band Gap in eV.
-        photon_spectrum(np.ndarray): Converted photon spectrum from
-            db_fom.convert_spectrum; column 0 energy (eV), column 1 photon
-            flux (m-2 s-1 eV-1).
-        alpha(float): Spectral average of incident light in cm-1.
-        sigma(float): Spectral dispersion of the absorption coefficient
-            spectrum, unitless.
-        dos_mass(float): Density of States effective mass in m0.
-        epsilon(float): Static dielectric constant, unitless.
-        dop_density(float): Doping density in cm-3. Default is 1e10.
-        mob_min(float): Base-10 exponent of the lowest mobility swept.
-            Default is -2.
-        mob_max(float): Base-10 exponent of the highest mobility swept.
-            Default is 9.
-        lifetime_min(float): Base-10 exponent of the shortest lifetime swept.
-            Default is -15.
-        lifetime_max(float): Base-10 exponent of the longest lifetime swept.
-            Default is 3.
-        step(float): Spacing between successive exponents. Default is 1.
-        Tcell(float): Operating temperature of the cell in K. Default is 300.
-
-    Returns:
-        None
+    Parameters
+    ----------
+    E_gap : float
+        Optical band gap in eV.
+    photon_spectrum : numpy.ndarray
+        Converted photon flux spectrum from ``convert_spectrum``: photon
+        energy in eV against photon flux in m⁻² s⁻¹ eV⁻¹.
+    alpha : float
+        Spectrally averaged absorption coefficient in cm⁻¹.
+    sigma : float
+        Spectral dispersion of the absorption coefficient, dimensionless.
+    dos_mass : float
+        Density-of-states effective mass in units of m₀.
+    epsilon : float
+        Static dielectric constant, dimensionless.
+    dop_density : float, optional
+        Doping density in cm⁻³. Default is ``1e10``.
+    mob_min : float, optional
+        Base-10 exponent of the lowest mobility swept. Default is ``-2``.
+    mob_max : float, optional
+        Base-10 exponent of the highest mobility swept. Default is ``9``.
+    lifetime_min : float, optional
+        Base-10 exponent of the shortest lifetime swept. Default is ``-15``.
+    lifetime_max : float, optional
+        Base-10 exponent of the longest lifetime swept. Default is ``3``.
+    step : float, optional
+        Spacing between successive exponents. Default is ``1``.
+    Tcell : float, optional
+        Operating temperature of the cell in K. Default is ``300``.
     """
     # Exponents
     mobility_exp = np.arange(mob_min, mob_max, step)

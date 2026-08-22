@@ -1,3 +1,5 @@
+"""Band-structure workflows: k-path generation, VASP inputs, reconstruction and plotting."""
+
 import logging
 import math
 import shutil
@@ -33,35 +35,33 @@ def generate_band_structure_path(
         density: int = 60,
         cartesian: bool = False
 ) -> tuple[Structure, tuple[list[NDArray], list[str]]]:
-    """
-    Generates a high-symmetry k-point path for band structure calculations.
+    """Generate a high-symmetry k-point path for band structure calculations.
 
-    This function constructs a Brillouin-zone path based on a specified symmetry
-    definition, ensuring consistency with a canonical primitive structure if needed.
-    It supports different k-path conventions and optionally converts coordinates
-    into Cartesian space.
+    If the input structure differs from the canonical primitive cell, the
+    path is recomputed with the primitive structure for consistency.
 
-    If the input structure differs from the canonical primitive cell, the path is
-    recomputed using the primitive structure for consistency.
+    Parameters
+    ----------
+    structure : Structure
+        Input crystal structure.
+    definition : str, optional
+        K-path generation scheme. Default is ``"bradcrack"``.
+    symprec : float, optional
+        Symmetry tolerance used for structure analysis. Default is ``0.01``.
+    density : int, optional
+        Number of k-points per unit length along the path; higher values
+        produce smoother band structures. Default is ``60``.
+    cartesian : bool, optional
+        Return k-points in Cartesian rather than reciprocal coordinates.
+        Default is ``False``.
 
-    Parameters:
-        structure(Structure): input crystal structure.
-        definition(string): k-path generation scheme (e.g. "bradcrack").
-            Default is "bradcrack".
-        symprec(float): symmetry tolerance used for structure analysis.
-            Default is 0.01.
-        density(int): number of k-points per unit length along the path.
-            Higher values produce smoother band structures.
-            Default is 60.
-        cartesian(bool): if True, returns k-points in Cartesian coordinates;
-            otherwise returns reciprocal coordinates.
-
-    Returns:
-        tuple:
-            canonical_structure(Structure): primitive/canonical structure used
-                for k-path generation.
-            (canonical_kpoints(np.array), canonical_labels(list[str])):
-                tuple containing the k-point path and corresponding labels.
+    Returns
+    -------
+    canonical_structure : Structure
+        Primitive/canonical structure used for the k-path generation.
+    kpath : tuple of (list of numpy.ndarray, list of str)
+        The k-point path coordinates and the corresponding high-symmetry
+        labels.
     """
     kpath, kpoints, labels = get_path_data(
         structure,
@@ -111,34 +111,39 @@ def _write_kpoint_files(
         kpts_per_split: int | None = None,
         cart_coords: bool = False,
 ) -> list[str]:
+    """Generate and write KPOINTS files for band structure calculations.
+
+    The band path can be split into segments for parallel or chunked runs,
+    written either into separate folders or as individual files. Hybrid
+    calculations are supported by prepending an irreducible k-point mesh
+    with adjusted weights.
+
+    Parameters
+    ----------
+    directory : str or Path
+        Output directory where KPOINTS files or folders are written.
+    kpoints : list of numpy.ndarray
+        K-point coordinates defining the band path.
+    labels : list of str
+        High-symmetry point labels corresponding to ``kpoints``.
+    make_folders : bool, optional
+        Create a separate folder for each split segment. Default is ``True``.
+    ibzkpt : Kpoints or None, optional
+        Irreducible Brillouin-zone k-point mesh for hybrid calculations.
+        If provided, k-point weights are set accordingly. Default is None.
+    kpts_per_split : int or None, optional
+        Number of k-points per split segment. Default is None, meaning no
+        splitting.
+    cart_coords : bool, optional
+        Treat ``kpoints`` as Cartesian rather than reciprocal coordinates.
+        Default is ``False``.
+
+    Returns
+    -------
+    list of str
+        Folder name for each generated KPOINTS segment, or empty strings
+        when folders are not used.
     """
-    Generates and writes KPOINTS files for band structure calculations, optionally split into multiple segments.
-
-    This function takes a band path defined by k-points and labels, optionally splits it into
-    multiple segments for parallel or chunked calculations, and writes VASP-compatible KPOINTS
-    files either into separate folders or as individual files.
-
-    It also supports hybrid calculations by incorporating irreducible k-point meshes (IBZ)
-    and adjusting k-point weights accordingly.
-
-    Parameters:
-        directory(string or Path): output directory where KPOINTS files or folders are written.
-        kpoints(NDArray): array of k-point coordinates defining the band path.
-        labels(list[str]): high-symmetry point labels corresponding to kpoints.
-        make_folders(bool): if True, creates separate folders for each split segment.
-            Default is True.
-        ibzkpt(Kpoints or None): irreducible Brillouin zone k-point mesh for hybrid calculations.
-            If provided, k-point weights are set accordingly.
-        kpts_per_split(int or None): number of k-points per split segment.
-            If None, no splitting is performed.
-        cart_coords(bool): if True, treats kpoints as Cartesian coordinates;
-            otherwise uses reciprocal coordinates.
-
-    Returns:
-        list[str]: list of folder names (or empty strings if folders are not used)
-            corresponding to each generated KPOINTS segment.
-    """
-
     if kpts_per_split:
         kpt_splits = [
             kpoints[i: i + kpts_per_split]
@@ -222,34 +227,38 @@ def write_band_structure_calculation(
         cartesian: bool = False,
         user_incar_settings: dict[str, Any] | None = None,
 ) -> None:
+    """Generate and write a band structure calculation setup for VASP.
+
+    Prepares KPOINTS paths, INCAR settings and structure files. Supports
+    hybrid-functional and GGA calculations, split k-point paths, and copying
+    a precomputed charge density for non-self-consistent runs.
+
+    Parameters
+    ----------
+    structure : Structure
+        Atomic structure used for the calculation.
+    kpath : tuple of (list of numpy.ndarray, list of str)
+        K-point coordinates along the band path and the high-symmetry
+        labels, as returned by ``generate_band_structure_path``.
+    band_directory : str or Path
+        Output directory for the band structure inputs.
+    functional : str
+        Exchange-correlation functional, e.g. ``"PBE"`` or ``"HSE06"``.
+    splits : int
+        Number of segments to split the k-point path into separate runs.
+    patches : list of str or None, optional
+        Input patches applied to the VASP inputs. Default is None, treated
+        as no patches.
+    scf_charge : str or None, optional
+        Path to a converged CHGCAR file; required for GGA functionals.
+    scf_kpoints : str or None, optional
+        Path to the SCF KPOINTS file; required for hybrid functionals.
+    cartesian : bool, optional
+        Whether k-points are given in Cartesian coordinates. Default is
+        ``False``.
+    user_incar_settings : dict or None, optional
+        Additional INCAR settings provided by the user. Default is None.
     """
-    Generates and writes a band structure calculation setup for VASP.
-
-    This function prepares input files for band structure calculations, including
-    KPOINTS paths, INCAR settings, and structure files. It supports both hybrid
-    functional and GGA calculations, handles split k-point path calculations, and
-    optionally copies precomputed charge densities for non-self-consistent runs.
-
-    Parameters:
-        structure(Structure): atomic structure used for the calculation.
-        kpath(tuple[NDArray, list[str]]): tuple containing:
-            - kpoints (NDArray): array of k-point coordinates along the band path
-            - labels (list[str]): high-symmetry point labels for plotting
-        band_directory(string or Path): output directory for band structure inputs.
-        functional(string): exchange-correlation functional (e.g. PBE, HSE06).
-        splits(int): number of segments to split the k-point path into separate runs.
-        patches(list[str] or None): optional list of input patches applied to VASP
-            inputs. Default is None, treated as no patches.
-            Default is empty list.
-        scf_charge(string or None): path to converged CHGCAR file (required for GGA).
-        scf_kpoints(string or None): path to SCF KPOINTS file (required for hybrid functionals).
-        cartesian(bool): whether k-points are given in Cartesian coordinates.
-        user_incar_settings(dict or None): additional INCAR settings provided by user.
-
-    Returns:
-        None
-    """
-
     hybrid = functional in ["PBE0", "HSE06", "DD_hybrid", "R2SCAN"]
 
     if hybrid:
@@ -315,22 +324,19 @@ def write_band_structure_calculation(
 
 
 def _is_soc_vasprun(vr: BSVasprun) -> bool:
+    """Determine whether a VASP calculation includes spin-orbit coupling.
+
+    Parameters
+    ----------
+    vr : BSVasprun
+        Parsed VASP run object with INCAR settings and calculation metadata.
+
+    Returns
+    -------
+    bool
+        True if spin-orbit coupling was enabled (``LSORBIT = True``);
+        False otherwise, or if the INCAR data cannot be accessed.
     """
-    Determines whether a VASP calculation includes spin–orbit coupling (SOC).
-
-    This function checks the INCAR settings stored within a Vasprun object for
-    the presence of the `LSORBIT` flag, which indicates that spin–orbit coupling
-    was enabled during the calculation.
-
-    Parameters:
-        vr(Vasprun): Parsed VASP run object containing INCAR settings and
-            calculation metadata.
-
-    Returns:
-        bool: True if spin–orbit coupling was enabled (`LSORBIT = True`),
-            otherwise False. Returns False if the INCAR data cannot be accessed.
-    """
-
     try:
         return bool(vr.incar.get("LSORBIT", False))
     except Exception:
@@ -338,26 +344,28 @@ def _is_soc_vasprun(vr: BSVasprun) -> bool:
 
 
 def get_band_structure(band_directory: str | Path, splits: int) -> BandStructureSymmLine:
+    """Load and reconstruct a symmetry-line band structure from VASP outputs.
+
+    Reads one or more ``vasprun.xml`` files (including split band
+    calculations) and reconstructs the full band structure along the
+    high-symmetry k-path.
+
+    Parameters
+    ----------
+    band_directory : str or Path
+        Directory containing the ``vasprun.xml`` files. Split calculations
+        are expected in subfolders named ``"split-*"``.
+    splits : int
+        Number of split calculations used. If greater than 1, one
+        ``vasprun.xml`` per split directory is read; otherwise a single
+        file.
+
+    Returns
+    -------
+    BandStructureSymmLine
+        Reconstructed band structure with eigenvalues along the full
+        symmetry-line path.
     """
-    Loads and reconstructs a symmetry-line band structure from VASP calculation outputs.
-
-    This function reads one or multiple vasprun.xml files (including split band
-    calculations), extracts band structures using pymatgen's BSVasprun parser,
-    and reconstructs a full band structure along a high-symmetry k-path.
-
-    Parameters:
-        band_directory(string or Path): directory containing vasprun.xml files.
-            If multiple split calculations are used, they are expected in subfolders
-            named "split-*".
-        splits(int): number of split calculations used.
-            If greater than 1, the function searches for multiple vasprun.xml files
-            in split directories; otherwise it reads a single file.
-
-    Returns:
-        BandStructureSymmLine: reconstructed band structure object containing
-            eigenvalues along the full symmetry line path.
-    """
-
     if splits > 1:
         vaspruns = sorted(
             Path(band_directory).glob("split-*/vasprun.xml"),
@@ -419,59 +427,91 @@ def plot_band_structure(
         no_base_style: bool = False,
 
 ) -> ModuleType:
+    """Plot a band structure, optionally with a projected view and density of states.
+
+    A simplified interface over sumo's plotters, with scissor correction,
+    VBM/CBM markers and energy alignment.
+
+    Parameters
+    ----------
+    bs : BandStructureSymmLine
+        Band structure object with k-point paths and eigenvalues.
+    plt : module
+        Matplotlib or compatible plotting interface used for rendering.
+    ymin : float, optional
+        Minimum energy in eV on the y-axis. Default is ``-6.0``.
+    ymax : float, optional
+        Maximum energy in eV on the y-axis. Default is ``6.0``.
+    ylabel : str, optional
+        Label for the energy axis. Default is ``"Energy (eV)"``.
+    dos_file : str or Path or None, optional
+        Path to density of states data; when provided, the DOS is plotted
+        alongside the band structure. Default is None.
+    dos_label : str or None, optional
+        Label for the DOS plot. Default is None.
+    total_only : bool, optional
+        Plot only the total DOS. Default is ``False``.
+    plot_total : bool, optional
+        Include the total DOS in the plot. Default is ``True``.
+    gaussian : float or None, optional
+        Gaussian smearing applied to the DOS. Default is None.
+    yscale : float, optional
+        Scaling factor for the DOS axis. Default is ``1``.
+    legend_cutoff : int, optional
+        Threshold for legend simplification. Default is ``3``.
+    vbm_cbm_marker : bool, optional
+        Mark the valence band maximum and conduction band minimum.
+        Default is ``False``.
+    projection_selection : list or None, optional
+        Orbital/element projections for projected band structure plotting.
+        Default is None.
+    mode : str, optional
+        Projection visualisation mode. Default is ``"rgb"``.
+    normalise : str, optional
+        Normalisation method for projections. Default is ``"all"``.
+    interpolate_factor : int, optional
+        Interpolation factor for smoothing bands. Default is ``4``.
+    color1 : str, optional
+        First colour for projected band visualisation. Default is
+        ``"#FF0000"``.
+    color2 : str, optional
+        Second colour for projected band visualisation. Default is
+        ``"#0000FF"``.
+    color3 : str, optional
+        Third colour for projected band visualisation. Default is
+        ``"#00FF00"``.
+    colorspace : str, optional
+        Colour mapping space. Default is ``"lab"``.
+    circle_size : float, optional
+        Size of the projection markers. Default is ``150``.
+    scissor : float or None, optional
+        Band gap correction applied to the band structure. Default is None.
+    zero_line : bool, optional
+        Draw a horizontal reference line at zero energy. Default is
+        ``False``.
+    zero_energy : float or None, optional
+        Reference energy level for alignment. Default is None.
+    elements : list or None, optional
+        Element selection for the DOS projection. Default is None.
+    lm_orbitals : list or None, optional
+        Orbital selection for the DOS projection. Default is None.
+    atoms : list or None, optional
+        Atomic selection for the DOS projection. Default is None.
+    spin : bool or None, optional
+        Spin-polarised plotting option. Default is None.
+    colours : dict or None, optional
+        Custom colour mapping for the DOS and bands. Default is None.
+    style : str or None, optional
+        Plotting style preset. Default is None.
+    no_base_style : bool, optional
+        Disable the default plotting style. Default is ``False``.
+
+    Returns
+    -------
+    module
+        The plotting module with the rendered band structure, and the DOS
+        when included.
     """
-    Plots a band structure (and optionally density of states) for a symmetry-line band structure object.
-
-    This function provides a simplified interface for plotting electronic band structures,
-    optionally including projected band structures and density of states (DOS), with
-    customizable visual styling and analysis features such as scissor correction,
-    VBM/CBM markers, and energy alignment.
-
-    Parameters:
-        bs(BandStructureSymmLine): band structure object containing k-point paths
-            and eigenvalues.
-        plt: Matplotlib or compatible plotting interface used for rendering.
-        ymin(float): minimum energy value (eV) for plot y-axis. Default is -6.0.
-        ymax(float): maximum energy value (eV) for plot y-axis. Default is 6.0.
-        ylabel(string): label for the energy axis. Default is "Energy (eV)".
-
-        dos_file(string or None): file path to density of states data. If provided,
-            DOS is plotted alongside the band structure.
-        dos_label(string or None): label for DOS plot.
-        total_only(bool): whether to plot only total DOS.
-        plot_total(bool): whether to include total DOS in plot.
-        gaussian(float or None): Gaussian smearing applied to DOS.
-        yscale(float): scaling factor for DOS axis.
-        legend_cutoff(int): threshold for legend simplification.
-
-        vbm_cbm_marker(bool): whether to mark valence band maximum and conduction
-            band minimum.
-        projection_selection(list or None): orbital/element projections for
-            projected band structure plotting.
-        mode(string): projection visualization mode (e.g. "rgb").
-        normalise(string): normalization method for projections.
-        interpolate_factor(int): interpolation factor for smoothing bands.
-        color1, color2, color3(string): colors used for projected band visualization.
-        colorspace(string): color mapping space (e.g. "lab").
-        circle_size(float): size of projection markers.
-
-        scissor(float or None): band gap correction applied to band structure.
-        zero_line(bool): whether to draw a horizontal reference line at zero energy.
-        zero_energy(float or None): reference energy level for alignment.
-
-        elements(list or None): element selection for DOS projection.
-        lm_orbitals(list or None): orbital selection for DOS projection.
-        atoms(list or None): atomic selection for DOS projection.
-        spin(bool or None): spin-polarized plotting option.
-
-        colours(dict or None): custom color mapping for DOS/bands.
-        style(string or None): plotting style preset.
-        no_base_style(bool): disables default plotting style.
-
-    Returns:
-        plt: modified plotting object with the rendered band structure (and DOS if included).
-    """
-
     if projection_selection and mode == "rgb" and len(projection_selection) > 3:
         print(
             "ERROR: RGB projected band structure only "
