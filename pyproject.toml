@@ -94,6 +94,11 @@ xfail_strict = true
 
 [tool.coverage.run]
 source = ["solphin"]
+# Without this, coverage.xml records <source> as the absolute path of the
+# package directory and every filename relative to it ("dos.py"), which is the
+# shape Codecov cannot map back onto the repo tree. Relative paths make them
+# "solphin/dos.py" and the line hits land on the right files.
+relative_files = true
 
 [tool.ruff]
 target-version = "py311"

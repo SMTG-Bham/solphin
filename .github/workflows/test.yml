@@ -50,10 +50,32 @@ jobs:
           cache-dependency-path: pyproject.toml
       - run: python -m pip install --upgrade pip
       - run: pip install -e ".[dev]"
-      # -rx and xfail_strict come from [tool.pytest.ini_options].
+      # -rx and xfail_strict come from [tool.pytest.ini_options]; bare --cov
+      # picks up source and relative_files from [tool.coverage.run].
       #
       # Two tests skip here by design: requires_potcars keys on
       # PMG_VASP_PSP_DIR, and VASP pseudopotentials are licensed and cannot be
       # put in CI. Ten more are strict xfails standing in for known defects --
       # see tests/README.md. Either turning into a failure is a real signal.
-      - run: pytest
+      - run: pytest --cov --cov-report=xml
+      # Every matrix job uploads and Codecov merges the reports under the
+      # commit. There is no version-gated code in solphin/, so the three are
+      # identical today, but the flags keep them separable if that changes and
+      # the merge means a coverage report survives one job being skipped.
+      # Deliberately not `if: always()` -- a failed run's partial coverage
+      # would read as a drop rather than as the test failure it is.
+      - uses: codecov/codecov-action@v7
+        with:
+          # Tokenless upload works on a public repo but is rate-limited and
+          # drops reports under load. Add a CODECOV_TOKEN repository secret and
+          # this picks it up; while it is unset the input is empty and the
+          # action falls back to tokenless.
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: coverage.xml
+          disable_search: true
+          flags: python-${{ matrix.python-version }}
+          name: python-${{ matrix.python-version }}
+          # The action's default, but pinned explicitly for the same reason
+          # ruff is pinned above: a Codecov outage must not turn the branch red
+          # the way a real test failure does.
+          fail_ci_if_error: false
