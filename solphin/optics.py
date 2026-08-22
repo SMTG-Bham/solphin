@@ -5,6 +5,7 @@ import numpy as np
 import pymatgen.analysis.solar.slme as slme_mod
 from matplotlib import pyplot as plt
 from matplotlib.ticker import FormatStrFormatter
+from numpy.typing import NDArray
 from pymatgen.io.vasp import Vasprun
 from scipy import constants as sc
 from scipy.integrate import simpson
@@ -25,7 +26,9 @@ _e = sc.e
 _T = 293.15
 
 
-def calc_dielectric(filename):
+def calc_dielectric(
+        filename: str | Path
+) -> tuple[float, NDArray, NDArray, NDArray, NDArray]:
     """
     Calculates the dielectric constants from a vasprun.xml
     
@@ -51,7 +54,7 @@ def calc_dielectric(filename):
     return eps_inf, eps_inf_tensor, eps_full, eps_imag, energies
 
 
-def calc_absorption(eps_full, energies):
+def calc_absorption(eps_full: NDArray, energies: NDArray) -> dict[str, NDArray]:
     """
     Calculates optical properties from the complex dielectric tensor.
 
@@ -97,7 +100,9 @@ def calc_absorption(eps_full, energies):
     }
 
 
-def print_n_real_file(data, energies, directory: Path):
+def print_n_real_file(
+        data: dict[str, NDArray], energies: NDArray, directory: str | Path
+) -> None:
     """
     Writes the real part of the refractive index to a data file.
 
@@ -116,7 +121,9 @@ def print_n_real_file(data, energies, directory: Path):
     np.savetxt(out_path, out, header="energy(eV) n_real")
 
 
-def print_absorption_file(data, energies, directory: Path):
+def print_absorption_file(
+        data: dict[str, NDArray], energies: NDArray, directory: str | Path
+) -> None:
     """
     Writes the absorption coefficient in cm^-1.
     """
@@ -134,7 +141,7 @@ def print_absorption_file(data, energies, directory: Path):
     )
 
 
-def generate_absorption(optics_directory):
+def generate_absorption(optics_directory: str | Path) -> None:
     """
     Generates and writes the real part of the refractive index from a VASP optics calculation.
 
@@ -153,7 +160,7 @@ def generate_absorption(optics_directory):
     print_absorption_file(data, energies, optics_directory)
 
 
-def generate_n_real(optics_directory):
+def generate_n_real(optics_directory: str | Path) -> None:
     """
     Generates and writes the real part of the refractive index from a VASP optics calculation.
 
@@ -172,7 +179,9 @@ def generate_n_real(optics_directory):
     print_n_real_file(data, energies, optics_directory)
 
 
-def plot_absorption(optics_directory, xmax=4, xmin=0, save=False):
+def plot_absorption(
+        optics_directory: str | Path, xmax: float = 4, xmin: float = 0, save: bool = False
+) -> None:
     """
     Plots the optical absorption spectrum from a VASP optics calculation.
 
@@ -232,7 +241,7 @@ def plot_absorption(optics_directory, xmax=4, xmin=0, save=False):
     plt.show()
 
 
-def _spectrum_select(spectrum_type):
+def _spectrum_select(spectrum_type: str) -> tuple[NDArray, NDArray, bool]:
     """
     Selects and loads a solar or illuminant spectrum.
 
@@ -265,7 +274,7 @@ def _spectrum_select(spectrum_type):
     return sol_wl, sol_irr, use_slme
 
 
-def _convert_spec(sol_wl, sol_irr):
+def _convert_spec(sol_wl: NDArray, sol_irr: NDArray) -> tuple[NDArray, NDArray]:
     """
     Converts a spectral irradiance distribution into photon flux.
 
@@ -286,7 +295,7 @@ def _convert_spec(sol_wl, sol_irr):
     return sol_wl_m, sol_phot_flux
 
 
-def _calc_incident_power(sol_irr, sol_wl):
+def _calc_incident_power(sol_irr: NDArray, sol_wl: NDArray) -> float:
     """
     Calculates the total incident power from a spectral irradiance distribution.
 
@@ -306,7 +315,7 @@ def _calc_incident_power(sol_irr, sol_wl):
     return power_in
 
 
-def _bb_per_eV(E_eV):
+def _bb_per_eV(E_eV: NDArray) -> NDArray:
     """
     Computes the blackbody photon flux spectrum in energy space.
 
@@ -328,7 +337,7 @@ def _bb_per_eV(E_eV):
     return (2 * E_J ** 2) / (_h ** 3 * _c ** 2) / (np.exp(exp) - 1.0 + 1e-300) * _e
 
 
-def _bb_per_wl(sol_wl_m):
+def _bb_per_wl(sol_wl_m: NDArray) -> NDArray:
     """
     Computes the blackbody photon flux spectrum in wavelength space.
 
@@ -350,7 +359,9 @@ def _bb_per_wl(sol_wl_m):
     return bb_phot_wl
 
 
-def _n_real_abs_fit(abs_file, n_real_file):
+def _n_real_abs_fit(
+        abs_file: str | Path, n_real_file: str | Path
+) -> tuple[NDArray, NDArray, NDArray, NDArray]:
     """
     Loads absorption data and interpolates the real refractive index onto the same energy grid.
 
@@ -382,7 +393,9 @@ def _n_real_abs_fit(abs_file, n_real_file):
     return energy_abs, alpha_cm, alpha_m, n_real
 
 
-def _interpolate_a(energy_abs, alpha_m, direct_gap, sol_wl):
+def _interpolate_a(
+        energy_abs: NDArray, alpha_m: NDArray, direct_gap: float, sol_wl: NDArray
+) -> NDArray:
     """
     Interpolates the absorption coefficient onto a solar wavelength grid,
     with a cutoff below the direct band gap.
@@ -419,8 +432,16 @@ def _interpolate_a(energy_abs, alpha_m, direct_gap, sol_wl):
     return alpha_on_sol
 
 
-def make_blank_plot(optics_directory, direct_gap, indirect_gap,
-                    spectrum_type="AM1.5", Qi=1.0, n=3.5, thickness_range=None, save=False):
+def make_blank_plot(
+        optics_directory: str | Path,
+        direct_gap: float,
+        indirect_gap: float,
+        spectrum_type: str = "AM1.5",
+        Qi: float = 1.0,
+        n: float = 3.5,
+        thickness_range: NDArray | None = None,
+        save: bool = False,
+) -> None:
     """
     Generates a blank efficiency plot for optical absorption analysis as a function of thickness.
 
@@ -469,7 +490,9 @@ def make_blank_plot(optics_directory, direct_gap, indirect_gap,
     plot_blank(use_slme, thickness_range, eff_slme, eff_lam, eff_flat, linestyle, save)
 
 
-def power_efficiency(A_E, energy_abs, n_real, alpha_m, d):
+def power_efficiency(
+        A_E: NDArray, energy_abs: NDArray, n_real: NDArray, alpha_m: NDArray, d: float
+) -> float:
     """
     Computes the power conversion efficiency using a spectral absorption model.
 
@@ -501,7 +524,20 @@ def power_efficiency(A_E, energy_abs, n_real, alpha_m, d):
     return pe
 
 
-def _eta_d(d, A_sol, A_E, energy_abs, n_real, alpha_m, bb_phot_wl, sol_wl_m, sol_phot_flux, sol_wl, Qi, power_in):
+def _eta_d(
+        d: float,
+        A_sol: NDArray,
+        A_E: NDArray,
+        energy_abs: NDArray,
+        n_real: NDArray,
+        alpha_m: NDArray,
+        bb_phot_wl: NDArray,
+        sol_wl_m: NDArray,
+        sol_phot_flux: NDArray,
+        sol_wl: NDArray,
+        Qi: float,
+        power_in: float,
+) -> float:
     """
     Calculates the power conversion efficiency for a given thickness using detailed-balance optics.
 
@@ -540,10 +576,10 @@ def _eta_d(d, A_sol, A_E, energy_abs, n_real, alpha_m, bb_phot_wl, sol_wl_m, sol
     if J0 <= 0 or Jsc <= 0:
         return 0.0
 
-    def Jfn(V):
+    def Jfn(V: float) -> float:
         return Jsc - J0 * (np.exp(_e * V / (_k * _T)) - 1.0)
 
-    def Pfn(V):
+    def Pfn(V: float) -> float:
         return Jfn(V) * V
 
     tv = 0.0;
@@ -553,8 +589,23 @@ def _eta_d(d, A_sol, A_E, energy_abs, n_real, alpha_m, bb_phot_wl, sol_wl_m, sol
     return Pfn(tv) / power_in * 100.0
 
 
-def _thickness_calc(thickness_range, alpha_m, use_slme, n, energy_abs, alpha_cm, direct_gap, indirect_gap, n_real,
-                    bb_phot_wl, sol_wl_m, sol_phot_flux, sol_wl, Qi, power_in):
+def _thickness_calc(
+        thickness_range: NDArray | None,
+        alpha_m: NDArray,
+        use_slme: bool,
+        n: float,
+        energy_abs: NDArray,
+        alpha_cm: NDArray,
+        direct_gap: float,
+        indirect_gap: float,
+        n_real: NDArray,
+        bb_phot_wl: NDArray,
+        sol_wl_m: NDArray,
+        sol_phot_flux: NDArray,
+        sol_wl: NDArray,
+        Qi: float,
+        power_in: float,
+) -> tuple[list[float], list[float], list[float], NDArray]:
     """
 Computes thickness-dependent power conversion efficiencies using different optical models.
 
@@ -618,7 +669,15 @@ Returns:
     return eff_flat, eff_lam, eff_slme, thickness_range
 
 
-def plot_blank(use_slme, thickness_range, eff_slme, eff_lam, eff_flat, linestyle, save):
+def plot_blank(
+        use_slme: bool,
+        thickness_range: NDArray,
+        eff_slme: list[float],
+        eff_lam: list[float],
+        eff_flat: list[float],
+        linestyle: str,
+        save: bool,
+) -> None:
     """
     Plots thickness-dependent maximum photovoltaic efficiency for different optical models.
 
@@ -647,7 +706,7 @@ def plot_blank(use_slme, thickness_range, eff_slme, eff_lam, eff_flat, linestyle
     ax.set_xscale("log")
     ax.set_xlabel("Film Thickness / m", labelpad=5)
     ax.set_ylabel(r"Max PV Efficiency $(\eta_\mathrm{Max})$ / %")
-    ax.set_ylim([0, 35])
+    ax.set_ylim((0, 35))
     ax.margins(x=0)
     ax.legend()
     plt.tight_layout()
