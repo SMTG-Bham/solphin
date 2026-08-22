@@ -5,17 +5,20 @@ so it is tested unconditionally. Only the final write_input call needs POTCARs,
 which are licensed and machine-local, so that one test is gated.
 """
 
+from pathlib import Path
+
 import pytest
 from conftest import requires_potcars
 from pymatgen.core import Structure
 
 import solphin.vasp_inputs as vasp_inputs
+from solphin.vasp_inputs import RecipeConfig
 
 FUNCTIONALS = ["LDA", "PBEsol", "PBE", "HSE06", "PBE0", "R2SCAN"]
 
 
 @pytest.fixture
-def config():
+def config() -> RecipeConfig:
     """A fresh config per test - _prepare_incar mutates what it is given."""
     return vasp_inputs._load_config("base_recipes.json")
 
@@ -23,13 +26,13 @@ def config():
 # --- the packaged recipe file ---------------------------------------------
 
 
-def test_load_config_structure(config):
+def test_load_config_structure(config: RecipeConfig) -> None:
     assert set(config) == {"INCAR", "PATCHES", "POTCAR", "POTCAR_FUNCTIONAL"}
     assert set(FUNCTIONALS) <= set(config["INCAR"])
     assert config["POTCAR_FUNCTIONAL"] == "PBE_64"
 
 
-def test_load_config_resolves_through_package_resources(config):
+def test_load_config_resolves_through_package_resources(config: RecipeConfig) -> None:
     """It must work from an installed wheel, not just a source checkout.
 
     _load_config goes through importlib.resources, and pyproject declares the
@@ -39,24 +42,24 @@ def test_load_config_resolves_through_package_resources(config):
 
 
 @pytest.mark.parametrize("patch", ["relax_cell", "tight_relax", "optics", "eff_mass"])
-def test_patches_used_by_the_tutorial_exist(config, patch):
+def test_patches_used_by_the_tutorial_exist(config: RecipeConfig, patch: str) -> None:
     assert patch in config["PATCHES"]
 
 
 # --- POTCAR functional selection ------------------------------------------
 
 
-def test_determine_potcar_functional_prefers_explicit_argument(config):
+def test_determine_potcar_functional_prefers_explicit_argument(config: RecipeConfig) -> None:
     chosen = vasp_inputs._determine_potcar_functional("HSE06", "PBE_52", config)
 
     assert chosen == "PBE_52"
 
 
-def test_determine_potcar_functional_lda_special_case(config):
+def test_determine_potcar_functional_lda_special_case(config: RecipeConfig) -> None:
     assert vasp_inputs._determine_potcar_functional("LDA", None, config) == "LDA_64"
 
 
-def test_determine_potcar_functional_falls_back_to_config(config):
+def test_determine_potcar_functional_falls_back_to_config(config: RecipeConfig) -> None:
     chosen = vasp_inputs._determine_potcar_functional("HSE06", None, config)
 
     assert chosen == config["POTCAR_FUNCTIONAL"]
@@ -65,7 +68,7 @@ def test_determine_potcar_functional_falls_back_to_config(config):
 # --- INCAR assembly --------------------------------------------------------
 
 
-def test_prepare_incar_applies_patches(config):
+def test_prepare_incar_applies_patches(config: RecipeConfig) -> None:
     incar = vasp_inputs._prepare_incar("PBE", ["optics"], config)
 
     assert incar["LOPTICS"] is True
@@ -74,11 +77,11 @@ def test_prepare_incar_applies_patches(config):
 
 
 @pytest.mark.parametrize("recipe", ["HSE06", "PBE0"])
-def test_prepare_incar_hybrid_adds_ncore(config, recipe):
+def test_prepare_incar_hybrid_adds_ncore(config: RecipeConfig, recipe: str) -> None:
     assert vasp_inputs._prepare_incar(recipe, [], config)["NCORE"] == 4
 
 
-def test_prepare_incar_defect_patch_expands(config):
+def test_prepare_incar_defect_patch_expands(config: RecipeConfig) -> None:
     """'defect' is not a patch in the json - it stands for two that are."""
     incar = vasp_inputs._prepare_incar("PBE", ["defect"], config)
 
@@ -88,7 +91,7 @@ def test_prepare_incar_defect_patch_expands(config):
         assert incar[key] == value
 
 
-def test_prepare_incar_gamma_only_is_not_an_incar_patch(config):
+def test_prepare_incar_gamma_only_is_not_an_incar_patch(config: RecipeConfig) -> None:
     """gamma_only changes k-points, not the INCAR, so it is skipped here."""
     plain = dict(vasp_inputs._prepare_incar("PBE", [], config))
     fresh = vasp_inputs._load_config("base_recipes.json")
@@ -111,13 +114,13 @@ def test_prepare_incar_gamma_only_is_not_an_incar_patch(config):
         ("vdw_d4", "HSE06", 13),
     ],
 )
-def test_prepare_vdw_tags_per_scheme(patch, recipe, expected_ivdw):
+def test_prepare_vdw_tags_per_scheme(patch: str, recipe: str, expected_ivdw: int) -> None:
     tags = vasp_inputs._prepare_vdw_tags(recipe, [patch])
 
     assert tags["IVDW"] == expected_ivdw
 
 
-def test_prepare_vdw_tags_hse06_carries_refitted_parameters():
+def test_prepare_vdw_tags_hse06_carries_refitted_parameters() -> None:
     """HSE06 needs its own damping parameters; PBE uses the VASP defaults."""
     hse = vasp_inputs._prepare_vdw_tags("HSE06", ["vdw_d3_bj"])
     pbe = vasp_inputs._prepare_vdw_tags("PBE", ["vdw_d3_bj"])
@@ -126,12 +129,12 @@ def test_prepare_vdw_tags_hse06_carries_refitted_parameters():
     assert set(pbe) == {"IVDW"}
 
 
-def test_prepare_vdw_tags_rvv10_only_for_r2scan():
+def test_prepare_vdw_tags_rvv10_only_for_r2scan() -> None:
     assert vasp_inputs._prepare_vdw_tags("R2SCAN", ["rvv10"])["LUSE_VDW"] is True
     assert vasp_inputs._prepare_vdw_tags("PBE", ["rvv10"]) == {}
 
 
-def test_prepare_vdw_tags_empty_without_patch():
+def test_prepare_vdw_tags_empty_without_patch() -> None:
     assert vasp_inputs._prepare_vdw_tags("HSE06", ["optics"]) == {}
 
 
@@ -139,7 +142,7 @@ def test_prepare_vdw_tags_empty_without_patch():
 
 
 @pytest.mark.parametrize("filename", ["POSCAR", "CONTCAR"])
-def test_read_structure_pmg(relax_dir, filename):
+def test_read_structure_pmg(relax_dir: Path, filename: str) -> None:
     structure = vasp_inputs.read_structure_pmg(relax_dir / filename)
 
     assert isinstance(structure, Structure)
@@ -150,7 +153,7 @@ def test_read_structure_pmg(relax_dir, filename):
 # --- the write path --------------------------------------------------------
 
 
-def test_relax_cell_scales_encut(relax_dir, config):
+def test_relax_cell_scales_encut(relax_dir: Path, config: RecipeConfig) -> None:
     """relax_cell raises ENCUT by 30 %, which is how the committed INCAR got 585.
 
     Checked against tutorial/Cu2GeS3/Relax/INCAR, which the tutorial produced
@@ -172,7 +175,7 @@ def test_relax_cell_scales_encut(relax_dir, config):
 
 
 @requires_potcars
-def test_write_vasp_calculation_writes_inputs(relax_dir, tmp_path):
+def test_write_vasp_calculation_writes_inputs(relax_dir: Path, tmp_path: Path) -> None:
     structure = vasp_inputs.read_structure_pmg(relax_dir / "POSCAR")
 
     vasp_inputs.write_vasp_calculation(
@@ -204,7 +207,7 @@ def test_write_vasp_calculation_writes_inputs(relax_dir, tmp_path):
         "only because write_vasp_calculation re-reads the json every time"
     ),
 )
-def test_prepare_incar_does_not_mutate_config(config):
+def test_prepare_incar_does_not_mutate_config(config: RecipeConfig) -> None:
     vasp_inputs._prepare_incar("PBE", ["optics"], config)
 
     unpatched = vasp_inputs._prepare_incar("PBE", [], config)
@@ -220,7 +223,9 @@ def test_prepare_incar_does_not_mutate_config(config):
         "_prepare_vdw_tags returns {} when no vdW patch was asked for"
     ),
 )
-def test_vdw_branch_skipped_without_vdw_patch(relax_dir, config, monkeypatch):
+def test_vdw_branch_skipped_without_vdw_patch(
+        relax_dir: Path, config: RecipeConfig, monkeypatch: pytest.MonkeyPatch
+) -> None:
     structure = vasp_inputs.read_structure_pmg(relax_dir / "POSCAR")
     incar = vasp_inputs._prepare_incar("HSE06", ["optics"], config)
     vasp_set = vasp_inputs._create_vasp_set(
