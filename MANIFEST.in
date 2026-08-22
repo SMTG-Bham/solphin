@@ -7,6 +7,9 @@ include environment.yml
 
 recursive-include solphin/resources *.csv *.json
 
+# PEP 561 marker; package-data covers the wheel, this covers the sdist.
+include solphin/py.typed
+
 # tutorial/ is 134 MB of tracked VASP vasprun.xml against PyPI's 100 MB
 # per-file limit. Today's sdist happens to exclude it because setuptools only
 # walks the packages it was told about, but that is incidental -- a stray graft
