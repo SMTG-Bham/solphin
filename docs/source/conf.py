@@ -80,5 +80,8 @@ autosummary_generate = True
 html_theme = "sphinx_wagtail_theme"
 html_static_path = ['_static']
 html_js_files = [
-    "theme-toggle.js",
+    # Must match the filename in _static/ exactly: Sphinx emits the <script>
+    # tag for whatever is named here without checking that the file exists, so
+    # a typo is a silent 404 rather than a build error.
+    "theme_toggle.js",
 ]
