@@ -1,13 +1,32 @@
 import json
 from importlib.resources import files
 from pathlib import Path
+from typing import Any, TypeAlias, TypedDict, cast
 
 from pymatgen.core.structure import Structure
 from pymatgen.io.vasp import Kpoints
 from pymatgen.io.vasp.sets import VaspInputSet
 
+# A VASP INCAR tag value. Tags are scalars, except MAGMOM, which the recipes
+# carry as a per-element mapping.
+IncarValue: TypeAlias = str | int | float | bool | dict[str, float]
 
-def read_structure_pmg(filename):
+
+class RecipeConfig(TypedDict):
+    """Shape of solphin/resources/base_recipes.json.
+
+    The top level is genuinely heterogeneous -- POTCAR_FUNCTIONAL is a bare
+    string while its siblings are mappings -- which is why the previous
+    dict[str, dict[str, str | dict[str, str]]] could not describe it.
+    """
+
+    INCAR: dict[str, dict[str, IncarValue]]
+    POTCAR_FUNCTIONAL: str
+    POTCAR: dict[str, str]
+    PATCHES: dict[str, dict[str, IncarValue]]
+
+
+def read_structure_pmg(filename: str | Path) -> Structure:
     """
     Reads a crystal structure file using pymatgen.
 
@@ -26,7 +45,7 @@ def read_structure_pmg(filename):
     return structure
 
 
-def _load_config(fname: str) -> dict[str, dict[str, str | dict[str, str]]]:
+def _load_config(fname: str) -> RecipeConfig:
     """
     Loads a JSON configuration file from packaged package resources.
 
@@ -50,7 +69,7 @@ def _load_config(fname: str) -> dict[str, dict[str, str | dict[str, str]]]:
 def _determine_potcar_functional(
         recipe: str,
         potcar_functional: str | None,
-        config: dict[str, dict[str, str | dict[str, str]]],
+        config: RecipeConfig,
 ) -> str:
     """
     Determines the appropriate POTCAR functional for a VASP calculation.
@@ -85,8 +104,8 @@ def _determine_potcar_functional(
 def _prepare_incar(
         recipe: str,
         patches: list[str],
-        config: dict[str, dict[str, str | dict[str, str]]],
-) -> dict[str, str | int | float]:
+        config: RecipeConfig,
+) -> dict[str, IncarValue]:
     """
     Prepares an INCAR dictionary for a VASP calculation based on a recipe and optional patches.
 
@@ -122,10 +141,10 @@ def _prepare_incar(
 
 def _create_vasp_set(
         structure: Structure,
-        incar: dict[str, str | int | float],
+        incar: dict[str, IncarValue],
         potcar_functional: str,
-        config: dict[str, dict[str, str | dict[str, str]]],
-        **calc_kwargs,
+        config: RecipeConfig,
+        **calc_kwargs: Any,
 ) -> VaspInputSet:
     """
     Creates a VASP input set from a structure and prepared calculation parameters.
@@ -159,7 +178,7 @@ def _create_vasp_set(
     )
 
 
-def _prepare_vdw_tags(recipe: str, patches: list[str]) -> dict[str, int | float]:
+def _prepare_vdw_tags(recipe: str, patches: list[str]) -> dict[str, int | float | bool]:
     """
     Generates VASP INCAR tags for van der Waals (vdW) corrections.
 
@@ -210,7 +229,7 @@ def _apply_patches(
         vasp_set: VaspInputSet,
         patches: list[str],
         recipe: str,
-        incar: dict[str, str | int | float],
+        incar: dict[str, IncarValue],
 ) -> None:
     """
     Applies optional calculation patches to a VASP input set.
@@ -237,11 +256,16 @@ def _apply_patches(
     """
 
     if "relax_cell" in patches:
-        encut = vasp_set.user_incar_settings.get("ENCUT", incar["ENCUT"]) * 1.3
+        # ENCUT is numeric in every recipe; IncarValue is wide only because
+        # MAGMOM is a mapping and ALGO/PREC are strings.
+        encut = cast(float, vasp_set.user_incar_settings.get("ENCUT", incar["ENCUT"])) * 1.3
         vasp_set.user_incar_settings["ENCUT"] = encut
 
     if "gamma_only" in patches:
-        vasp_set.user_kpoints_settings = Kpoints(kpts=((1, 1, 1)))
+        # VaspInputSet documents this field as "dict or Kpoints" (sets.py:153)
+        # but annotates it as plain dict (sets.py:227), so the Kpoints form it
+        # explicitly supports does not type-check.
+        vasp_set.user_kpoints_settings = Kpoints(kpts=((1, 1, 1)))  # type: ignore[assignment]
 
     if "vdw_d3_bj" in patches or "vdw_d3" in patches or "vdw_d4":
         vdw_tags = _prepare_vdw_tags(recipe, patches)
@@ -257,8 +281,8 @@ def write_vasp_calculation(
         out_dir: str | Path,
         patches: list[str] | None = None,
         potcar_functional: str | None = None,
-        **calc_kwargs,
-) -> dict[str, int] | None:
+        **calc_kwargs: Any,
+) -> None:
     """
     Generates and writes a complete VASP calculation input set to disk.
 
@@ -286,9 +310,7 @@ def write_vasp_calculation(
             constructor (e.g. k-points, metadata).
 
     Returns:
-        None or dict:
-            Typically returns None; may return metadata depending on VASP input
-            set implementation.
+        None
     """
 
     patches = patches or []
