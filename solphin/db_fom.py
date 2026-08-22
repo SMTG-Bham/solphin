@@ -1,8 +1,10 @@
 import logging
 from importlib.resources import files
+from typing import overload
 
 import numpy as np
 import scipy.constants as sc
+from numpy.typing import NDArray
 
 logging.basicConfig(level=logging.INFO)
 
@@ -16,7 +18,7 @@ q = sc.e  # Elementary charge (Coulombs)
 
 # Convert the spectrum to the useful units - taken from https://github.com/kaklin/sq-limit?tab=readme-ov-file
 
-def load_spectrum(spectrum_type):
+def load_spectrum(spectrum_type: str) -> NDArray:
     """
     Loads a predefined spectral irradiance dataset from bundled resource files.
 
@@ -25,7 +27,7 @@ def load_spectrum(spectrum_type):
     CSV file from package resources, and returns it as a numerical array.
 
     Parameters:
-        spectrum_type(string): identifier for the desired spectrum.
+        spectrum_type(str): identifier for the desired spectrum.
             Supported options:
             - "AM1.5"
             - "Fluorescent"
@@ -39,7 +41,7 @@ def load_spectrum(spectrum_type):
             If an unrecognised value is provided, the function defaults to "AM1.5".
 
     Returns:
-        spectrum(np.array): 2D array where:
+        spectrum(np.ndarray): 2D array where:
             - column 0 is wavelength (nm)
             - column 1 is spectral irradiance
     """
@@ -83,7 +85,7 @@ def load_spectrum(spectrum_type):
     return spectrum
 
 
-def convert_spectrum(spectrum):
+def convert_spectrum(spectrum: NDArray) -> NDArray:
     """
     Converts the input spectrum from standard format to the required units for this code. 
 
@@ -112,7 +114,7 @@ def convert_spectrum(spectrum):
     return converted
 
 
-def _photons_above_bandgap(E_gap, photon_spectrum):
+def _photons_above_bandgap(E_gap: float, photon_spectrum: NDArray) -> float:
     """Counts number of photons above given bandgap.
     
     Parameters:
@@ -128,7 +130,7 @@ def _photons_above_bandgap(E_gap, photon_spectrum):
     return np.trapezoid(y[::-1], x[::-1])
 
 
-def _rr0(E_gap, photon_spectrum, Tcell):
+def _rr0(E_gap: float, photon_spectrum: NDArray, Tcell: float) -> float:
     """
     Calculates the radiative recombination rate at 0 Quasi-Fermi Level splitting. 
 
@@ -158,7 +160,7 @@ def _rr0(E_gap, photon_spectrum, Tcell):
     return result[0]
 
 
-def recomb_rate(E_gap, photon_spectrum, voltage, Tcell):
+def recomb_rate(E_gap: float, photon_spectrum: NDArray, voltage: float, Tcell: float) -> float:
     """
     Calculates the radiative recombination rate. 
 
@@ -177,7 +179,17 @@ def recomb_rate(E_gap, photon_spectrum, voltage, Tcell):
     return q * _rr0(E_gap, photon_spectrum) * np.exp(q * voltage / (k * Tcell))
 
 
-def current_density(E_gap, photon_spectrum, voltage, Tcell):
+@overload
+def current_density(
+        E_gap: float, photon_spectrum: NDArray, voltage: float, Tcell: float
+) -> float: ...
+@overload
+def current_density(
+        E_gap: float, photon_spectrum: NDArray, voltage: NDArray, Tcell: float
+) -> NDArray: ...
+def current_density(
+        E_gap: float, photon_spectrum: NDArray, voltage: float | NDArray, Tcell: float
+) -> float | NDArray:
     """
     Calculates the current density. 
 
@@ -196,13 +208,14 @@ def current_density(E_gap, photon_spectrum, voltage, Tcell):
         q * voltage / (k * Tcell)) - 1)
 
 
-def jsc(E_gap, photon_spectrum, Tcell):
+def jsc(E_gap: float, photon_spectrum: NDArray, Tcell: float) -> float:
     """
     Calculates the current density. 
 
     Parameters: 
         E_gap(float):  Optical Band Gap in eV  
         photon_spectrum(numpy.ndarray): Output spectrum as numpy ndarray.
+        Tcell(float): Operating temperature of the cell in K
 
     Returns:
         Short circuit current density (float):  Current that flows across a cross sectional area at 0 applied voltage in C cm⁻³s⁻¹.  
@@ -212,7 +225,7 @@ def jsc(E_gap, photon_spectrum, Tcell):
     return current_density(E_gap, photon_spectrum, 0, Tcell)
 
 
-def voc(E_gap, photon_spectrum, Tcell):
+def voc(E_gap: float, photon_spectrum: NDArray, Tcell: float) -> float:
     """
     Calculates the open circuit voltage.
 
@@ -232,7 +245,7 @@ def voc(E_gap, photon_spectrum, Tcell):
     return (k * Tcell / q) * np.log(Jph / J0 + 1)
 
 
-def v_at_mpp(E_gap, photon_spectrum):
+def v_at_mpp(E_gap: float, photon_spectrum: NDArray) -> float:
     """
     Calculates the voltage at maximum power point (mpp) of a solar cell.
 
@@ -253,7 +266,7 @@ def v_at_mpp(E_gap, photon_spectrum):
     return v[index][0]
 
 
-def j_at_mpp(E_gap, photon_spectrum):
+def j_at_mpp(E_gap: float, photon_spectrum: NDArray) -> float:
     """
     Calculates the current at maximum power point (mpp) of a solar cell.
 
@@ -269,7 +282,7 @@ def j_at_mpp(E_gap, photon_spectrum):
     return max_power(E_gap, photon_spectrum) / v_at_mpp(E_gap, photon_spectrum)
 
 
-def max_power(E_gap, photon_spectrum, Tcell):
+def max_power(E_gap: float, photon_spectrum: NDArray, Tcell: float) -> float:
     """
     Calculates the maximum power of a solar cell.
 
@@ -290,7 +303,7 @@ def max_power(E_gap, photon_spectrum, Tcell):
     return max(v * current_density(E_gap, photon_spectrum, v, Tcell))
 
 
-def max_eff(E_gap, photon_spectrum, Tcell):
+def max_eff(E_gap: float, photon_spectrum: NDArray, Tcell: float) -> float:
     """
     Calculates the maximum efficiency of a solar cell.
 
@@ -310,7 +323,7 @@ def max_eff(E_gap, photon_spectrum, Tcell):
     return max_power(E_gap, photon_spectrum, Tcell) / irradiance
 
 
-def fill_factor(E_gap, photon_spectrum, Tcell):
+def fill_factor(E_gap: float, photon_spectrum: NDArray, Tcell: float) -> float:
     """
     Calculates the fill factor of a solar cell.
 
