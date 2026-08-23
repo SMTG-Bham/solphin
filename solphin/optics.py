@@ -155,36 +155,50 @@ def print_absorption_file(
     )
 
 
-def generate_absorption(optics_directory: str | Path) -> None:
+def generate_absorption(
+        optics_directory: str | Path, out_directory: str | Path | None = None
+) -> None:
     """Generate and write the absorption coefficient from a VASP optics calculation.
 
     Parameters
     ----------
     optics_directory : str or Path
-        Directory containing the ``vasprun.xml`` file, and where the output
-        file is written.
+        Directory containing the ``vasprun.xml`` file.
+    out_directory : str or Path or None, optional
+        Directory the ``absorption.dat`` file is written into. Default is
+        None, which writes it beside the ``vasprun.xml`` it was derived from.
     """
+    if out_directory is None:
+        out_directory = optics_directory
+
     filename = f'{optics_directory}/vasprun.xml'
 
     _, _, eps_full, _, energies = calc_dielectric(filename)
     data = calc_absorption(eps_full, energies)
-    print_absorption_file(data, energies, optics_directory)
+    print_absorption_file(data, energies, out_directory)
 
 
-def generate_n_real(optics_directory: str | Path) -> None:
+def generate_n_real(
+        optics_directory: str | Path, out_directory: str | Path | None = None
+) -> None:
     """Generate and write the real refractive index from a VASP optics calculation.
 
     Parameters
     ----------
     optics_directory : str or Path
-        Directory containing the ``vasprun.xml`` file, and where the output
-        file is written.
+        Directory containing the ``vasprun.xml`` file.
+    out_directory : str or Path or None, optional
+        Directory the ``n_real.dat`` file is written into. Default is None,
+        which writes it beside the ``vasprun.xml`` it was derived from.
     """
+    if out_directory is None:
+        out_directory = optics_directory
+
     filename = f'{optics_directory}/vasprun.xml'
 
     _, _, eps_full, _, energies = calc_dielectric(filename)
     data = calc_absorption(eps_full, energies)
-    print_n_real_file(data, energies, optics_directory)
+    print_n_real_file(data, energies, out_directory)
 
 
 def plot_absorption(

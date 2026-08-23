@@ -1,8 +1,9 @@
 """High-symmetry paths and band-structure assembly.
 
-The k-point count is deliberately never asserted: the notebook records 179 for
-its path while a fresh run against the committed CONTCAR gives 239, so the
-count depends on inputs that have drifted and is not a stable contract.
+The k-point count is deliberately never asserted. The notebook and a fresh run
+against the committed CONTCAR agree on 239, but the number is a function of the
+``density`` argument and of sumo's path definition, neither of which this
+package pins, so it is not a stable contract.
 """
 
 from pathlib import Path

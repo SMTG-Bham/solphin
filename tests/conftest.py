@@ -7,9 +7,9 @@ of its files.
 
 Two rules the fixtures exist to enforce:
 
-* Nothing writes into ``tutorial/``. The tutorial's own cells overwrite files
-  that are tracked in git; tests that exercise a write path get a ``tmp_path``
-  copy instead.
+* Nothing writes into ``tutorial/Cu2GeS3/``. That tree is committed reference
+  data; the notebook writes everything it generates into ``tutorial/workdir/``
+  instead, and tests that exercise a write path get a ``tmp_path`` copy.
 * Parsing is cached at session scope. Each parse is fast on its own, but
   ``compute_dos`` re-reads its vasprun up to ten times internally whenever the
   fit-quality check trips, which it does on the tutorial data.
@@ -125,8 +125,14 @@ def dos_result(dos_vasprun: Path) -> DOSResult:
 
 @pytest.fixture(scope="session")
 def band_structure_obj(band_dir: Path) -> BandStructureSymmLine:
-    """Recombined BandStructureSymmLine across the committed splits."""
-    return band_structure.get_band_structure(str(band_dir), 5)
+    """Recombined BandStructureSymmLine across the committed splits.
+
+    Seven is the number of ``split-NN`` folders actually committed, and is what
+    the notebook passes. The value is ignored today - see the
+    ``test_splits_argument_is_honoured`` xfail - but if that defect is ever
+    fixed, 7 is the number that keeps this fixture reading all of them.
+    """
+    return band_structure.get_band_structure(str(band_dir), 7)
 
 
 # --- writable copies -------------------------------------------------------
