@@ -10,8 +10,11 @@ pytest
 The suite needs no network access and no VASP. It reads the committed
 `tutorial/Cu2GeS3` calculation set and never writes to it — every test that
 exercises a write path gets a `tmp_path` copy from the `tmp_opt_dir` fixture.
+The notebook holds to the same rule: it writes everything it generates into
+`tutorial/workdir/`, which is gitignored, and
+`test_generation_half_does_not_touch_tracked_data` enforces that.
 
-Two tests need VASP pseudopotentials (`PMG_VASP_PSP_DIR`) and skip themselves
+Three tests need VASP pseudopotentials (`PMG_VASP_PSP_DIR`) and skip themselves
 when those are unavailable, which is the normal case away from a machine that
 has a licensed POTCAR directory.
 

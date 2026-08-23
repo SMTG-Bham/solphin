@@ -8,10 +8,13 @@ tutorial's printed output wrong.
 """
 
 import hashlib
+import json
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import pytest
+from conftest import REPO_ROOT, requires_potcars
 from numpy.typing import NDArray
 from pymatgen.electronic_structure.bandstructure import BandStructureSymmLine
 
@@ -21,6 +24,7 @@ import solphin.dos as dos
 import solphin.final_results as final_results
 import solphin.optics as optics
 import solphin.spectral as spectral
+import solphin.vasp_inputs as vasp_inputs
 from solphin.dos import DOSResult
 
 # tutorial cell 41: "Set default values from Crovetto et al."
@@ -28,6 +32,31 @@ TAU = 1e-6  # s
 DOPING_DENSITY = 1e10  # cm^-3
 MU = 1e6  # cm^2 V^-1 s^-1
 TCELL = 300  # K
+
+# Every solphin entry point that writes to a caller-supplied directory. Used by
+# the static notebook check below.
+_WRITERS = (
+    "write_vasp_calculation",
+    "write_band_structure_calculation",
+    "write_eff_mass",
+    "generate_n_real",
+    "generate_absorption",
+)
+
+
+def _tree_digest(root: Path) -> str:
+    """Fingerprint every file under `root` by name, size and mtime.
+
+    Size and mtime rather than content, so that a file rewritten with byte-identical
+    contents still trips the guard - the point is that nothing was written at all.
+    """
+    h = hashlib.sha256()
+    for path in sorted(root.rglob("*")):
+        if path.is_file():
+            h.update(path.relative_to(root).as_posix().encode())
+            h.update(str(path.stat().st_size).encode())
+            h.update(str(path.stat().st_mtime_ns).encode())
+    return h.hexdigest()
 
 
 def test_full_workflow_reproduces_tutorial(
@@ -43,7 +72,7 @@ def test_full_workflow_reproduces_tutorial(
     eps_inf, _, _, _, _ = optics.calc_dielectric(filename=str(opt_dir / "vasprun.xml"))
 
     # cell 27 - direct gap from the recombined band structure
-    bs = band_structure.get_band_structure(str(band_dir), 5)
+    bs = band_structure.get_band_structure(str(band_dir), 7)
     E_gap_direct = bs.get_direct_band_gap()
 
     # cells 29 and 34 - the illumination spectrum, raw and converted
@@ -101,10 +130,11 @@ def test_workflow_argument_order(photon_spectrum: NDArray) -> None:
 
 
 def test_spectral_chain_requires_generated_dat(tmp_opt_dir: Path, am15: NDArray) -> None:
-    """generate_spectral_parameters reads absorption.dat off disk, so cell 30 must run first.
+    """generate_spectral_parameters reads absorption.dat off disk rather than taking an array.
 
-    The chain is mediated by the filesystem rather than by passing arrays, which
-    makes the cell ordering load-bearing and easy to get wrong.
+    The notebook satisfies this with the committed absorption.dat, so cell 30
+    writing its regenerated copy into the workdir does not break the chain. For
+    any other directory, the .dat has to be generated before this is called.
     """
     assert not (tmp_opt_dir / "absorption.dat").exists()
 
@@ -125,20 +155,79 @@ def test_workflow_does_not_touch_tracked_data(
         tutorial_data: Path, opt_dir: Path, dos_vasprun: Path, am15: NDArray
 ) -> None:
     """Nothing in the analysis half may write into the committed fixture tree."""
-
-    def digest() -> str:
-        h = hashlib.sha256()
-        for path in sorted(tutorial_data.rglob("*")):
-            if path.is_file():
-                h.update(path.relative_to(tutorial_data).as_posix().encode())
-                h.update(str(path.stat().st_size).encode())
-                h.update(str(path.stat().st_mtime_ns).encode())
-        return h.hexdigest()
-
-    before = digest()
+    before = _tree_digest(tutorial_data)
 
     optics.calc_dielectric(filename=str(opt_dir / "vasprun.xml"))
     spectral.generate_spectral_parameters(str(opt_dir), am15, E_gap=1.3901)
     dos.compute_dos(dos_vasprun=str(dos_vasprun), energy_window=0.1)
 
-    assert digest() == before
+    assert _tree_digest(tutorial_data) == before
+
+
+@requires_potcars
+def test_generation_half_does_not_touch_tracked_data(
+        tutorial_data: Path, relax_dir: Path, opt_dir: Path, tmp_path: Path
+) -> None:
+    """Cells 7, 12, 17 and 20 write only into the directory they are handed.
+
+    Every one of them used to default into `tutorial/Cu2GeS3`, overwriting the
+    committed inputs the analysis half then reads - cell 7 clobbered the very
+    POSCAR cell 6 had just read. They now take a workdir path instead.
+
+    Kept separate from the analysis-half guard above rather than merged into it,
+    because this one needs POTCARs and would otherwise take that guard out of CI.
+    """
+    before = _tree_digest(tutorial_data)
+    structure = vasp_inputs.read_structure_pmg(relax_dir / "CONTCAR")
+
+    # cell 7
+    vasp_inputs.write_vasp_calculation(
+        structure=structure, recipe="HSE06", out_dir=tmp_path / "Relax",
+        patches=["relax_cell", "tight_relax"],
+        user_incar_settings={"KSPACING": 0.2, "ENCUT": 450},
+    )
+    # cell 12
+    vasp_inputs.write_vasp_calculation(
+        structure=structure, recipe="HSE06", out_dir=tmp_path / "OPT_hybrid",
+        patches=["optics"], user_incar_settings={"KSPACING": 0.2, "ENCUT": 450},
+    )
+    # cells 14 and 17. Two splits, not the notebook's five: this is a test of
+    # where the files land, and each split costs a POTCAR build.
+    canonical, kpath = band_structure.generate_band_structure_path(
+        structure=structure, definition="bradcrack"
+    )
+    band_structure.write_band_structure_calculation(
+        structure=canonical, kpath=kpath, band_directory=tmp_path / "BAND_SP_HDFT",
+        functional="HSE06", splits=2, scf_charge=None,
+        scf_kpoints=str(opt_dir / "IBZKPT"), user_incar_settings={"ENCUT": 450},
+    )
+    # cell 20
+    dos.write_eff_mass(
+        k0_frac=np.array([0.0, 0.0, 0.0]), structure=structure,
+        functional="HSE06", encut=450, folder=str(tmp_path / "eff_mass"),
+    )
+
+    assert _tree_digest(tutorial_data) == before
+    for name in ("Relax", "OPT_hybrid", "BAND_SP_HDFT", "eff_mass"):
+        assert (tmp_path / name).is_dir(), f"{name} was not written to tmp_path"
+
+
+def test_notebook_generation_cells_target_the_workdir() -> None:
+    """Every notebook cell that writes names a workdir path, not the tracked tree.
+
+    A string check on the committed JSON, because it is the only form of this
+    guard that runs in CI - the real thing needs POTCARs. Extend `_WRITERS` when
+    a new writing entry point is added.
+    """
+    notebook = json.loads(
+        (REPO_ROOT / "tutorial" / "full_workflow_tutorial.ipynb").read_text()
+    )
+
+    for i, cell in enumerate(notebook["cells"]):
+        if cell["cell_type"] != "code":
+            continue
+        source = "".join(cell["source"])
+        if any(name in source for name in _WRITERS):
+            assert "workdir" in source or "_out" in source, (
+                f"cell {i} writes but names no workdir destination"
+            )
