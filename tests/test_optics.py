@@ -265,3 +265,33 @@ def test_plot_absorption_smoke(tmp_opt_dir: Path) -> None:
     optics.plot_absorption(optics_directory=str(tmp_opt_dir))
 
     assert plt.get_fignums()
+
+
+def test_plot_absorption_saves_into_out_directory(tmp_opt_dir: Path, tmp_path: Path) -> None:
+    """save=True writes absorption.png into out_directory rather than the cwd."""
+    optics.generate_absorption(str(tmp_opt_dir))
+    figures = tmp_path / "figures"
+    figures.mkdir()
+
+    optics.plot_absorption(optics_directory=str(tmp_opt_dir), save=True, out_directory=figures)
+
+    assert (figures / "absorption.png").is_file()
+
+
+def test_make_blank_plot_passes_out_directory_through(tmp_opt_dir: Path, tmp_path: Path) -> None:
+    """out_directory reaches plot_blank, which is what actually writes slme.png."""
+    optics.generate_absorption(str(tmp_opt_dir))
+    optics.generate_n_real(str(tmp_opt_dir))
+    figures = tmp_path / "figures"
+    figures.mkdir()
+
+    optics.make_blank_plot(
+        str(tmp_opt_dir),
+        direct_gap=1.3901,
+        indirect_gap=1.3901,
+        thickness_range=np.array([1e-7, 1e-6, 1e-5]),
+        save=True,
+        out_directory=figures,
+    )
+
+    assert (figures / "slme.png").is_file()

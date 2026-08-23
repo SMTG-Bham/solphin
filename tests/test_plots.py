@@ -99,6 +99,13 @@ def test_plot_dos_smoke(opt_dir: Path) -> None:
     assert plt.get_fignums()
 
 
+def test_plot_dos_saves_into_out_directory(opt_dir: Path, tmp_path: Path) -> None:
+    """save=True writes dos.png into out_directory rather than the cwd."""
+    dos.plot_dos(filename=str(opt_dir / "vasprun.xml"), save=True, out_directory=tmp_path)
+
+    assert (tmp_path / "dos.png").is_file()
+
+
 # --- final_results ---------------------------------------------------------
 
 

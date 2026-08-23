@@ -202,7 +202,8 @@ def generate_n_real(
 
 
 def plot_absorption(
-        optics_directory: str | Path, xmax: float = 4, xmin: float = 0, save: bool = False
+        optics_directory: str | Path, xmax: float = 4, xmin: float = 0, save: bool = False,
+        out_directory: str | Path = "."
 ) -> None:
     """Plot the optical absorption spectrum from a VASP optics calculation.
 
@@ -215,8 +216,10 @@ def plot_absorption(
     xmin : float, optional
         Minimum energy in eV shown on the x-axis. Default is ``0``.
     save : bool, optional
-        Save the figure as ``absorption.png`` in the current directory.
-        Default is ``False``.
+        Save the figure as ``absorption.png``. Default is ``False``.
+    out_directory : str or Path, optional
+        Directory the figure is written into when ``save`` is ``True``.
+        Default is ``"."``, the current working directory.
     """
     filename = f'{optics_directory}/vasprun.xml'
     eps_inf, eps_inf_tensor, eps_full, eps_imag, energies = calc_dielectric(filename)
@@ -255,7 +258,7 @@ def plot_absorption(
     plt.xlim(xmin, xmax)
 
     if save:
-        plt.savefig("absorption.png", dpi=700)
+        plt.savefig(Path(out_directory) / "absorption.png", dpi=700)
 
     plt.show()
 
@@ -465,6 +468,7 @@ def make_blank_plot(
         n: float = 3.5,
         thickness_range: NDArray | None = None,
         save: bool = False,
+        out_directory: str | Path = ".",
 ) -> None:
     """Generate the efficiency-versus-thickness plot for the Blank and SLME models.
 
@@ -491,8 +495,10 @@ def make_blank_plot(
         Thickness values in m to evaluate. Default is None, which uses a
         logarithmic range.
     save : bool, optional
-        Save the figure as ``slme.png`` in the current directory.
-        Default is ``False``.
+        Save the figure as ``slme.png``. Default is ``False``.
+    out_directory : str or Path, optional
+        Directory the figure is written into when ``save`` is ``True``.
+        Default is ``"."``, the current working directory.
     """
     abs_file = f'{optics_directory}/absorption.dat'
     n_real_file = f'{optics_directory}/n_real.dat'
@@ -516,7 +522,7 @@ def make_blank_plot(
 
     linestyle = "--" if np.isclose(direct_gap, indirect_gap) else "-"
 
-    plot_blank(use_slme, thickness_range, eff_slme, eff_lam, eff_flat, linestyle, save)
+    plot_blank(use_slme, thickness_range, eff_slme, eff_lam, eff_flat, linestyle, save, out_directory)
 
 
 def power_efficiency(
@@ -743,6 +749,7 @@ def plot_blank(
         eff_flat: list[float],
         linestyle: str,
         save: bool,
+        out_directory: str | Path = ".",
 ) -> None:
     """Plot the thickness-dependent maximum efficiency for each optical model.
 
@@ -764,7 +771,10 @@ def plot_blank(
     linestyle : str
         Matplotlib line style for the flat-model curve.
     save : bool
-        Save the figure as ``slme.png`` in the current directory.
+        Save the figure as ``slme.png``.
+    out_directory : str or Path, optional
+        Directory the figure is written into when ``save`` is ``True``.
+        Default is ``"."``, the current working directory.
     """
     fig, ax = plt.subplots(figsize=(8, 4))
 
@@ -780,5 +790,5 @@ def plot_blank(
     ax.legend()
     plt.tight_layout()
     if save:
-        plt.savefig("slme.png", dpi=700)
+        plt.savefig(Path(out_directory) / "slme.png", dpi=700)
     plt.show()
