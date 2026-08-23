@@ -30,6 +30,7 @@ def plot_dos(
         xmax: float = 3,
         gaussian: float = 0.05,
         save: bool = False,
+        out_directory: str | Path = ".",
 ) -> None:
     """Plot the electronic density of states from a calculation output file.
 
@@ -46,12 +47,15 @@ def plot_dos(
         Default is ``0.05``.
     save : bool, optional
         Save the figure as ``dos.png``. Default is ``False``.
+    out_directory : str or Path, optional
+        Directory the figure is written into when ``save`` is ``True``.
+        Default is ``"."``, the current working directory.
     """
     fig, ax = plt.subplots(figsize=(5, 3), dpi=150)
     dosplot(filename=filename, xmin=xmin, xmax=xmax, gaussian=gaussian, plt=plt)
 
     if save:
-        plt.savefig("dos.png")
+        plt.savefig(Path(out_directory) / "dos.png")
 
     plt.show()
     return
