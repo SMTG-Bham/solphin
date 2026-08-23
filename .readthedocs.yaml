@@ -44,4 +44,5 @@ python:
 # is a git-tracked symlink to tutorial/full_workflow_tutorial.ipynb, so any
 # sparse or partial clone would break the tutorials page. The notebook is
 # rendered from its stored outputs, never re-executed (nb_execution_mode =
-# "off" in conf.py), so the tutorial's VASP files are not read at build time.
+# "off" in conf.py), so the VASP data under tests/data/ is not read at build
+# time.

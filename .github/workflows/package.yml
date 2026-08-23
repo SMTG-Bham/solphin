@@ -110,10 +110,10 @@ jobs:
             grep -qxF -- "$f" "$work/sdist-members.txt" || { echo "::error::$f is missing from the sdist"; rc=1; }
           done < "$work/expected.txt"
 
-          # MANIFEST.in prunes these. tutorial/ alone is ~134 MB against PyPI's
-          # 100 MB per-file limit, so this is not a tidiness check. Comparing
-          # whole first path components rather than a "^tutorial/" regex keeps
-          # the .github entry exact.
+          # MANIFEST.in prunes these. tests/ alone is ~134 MB of reference
+          # data against PyPI's 100 MB per-file limit, so this is not a
+          # tidiness check. Comparing whole first path components rather than
+          # a "^tests/" regex keeps the .github entry exact.
           cut -d/ -f1 "$work/sdist-members.txt" | sort -u > "$work/sdist-top.txt"
           for d in tutorial docs tests .github; do
             ! grep -qxF -- "$d" "$work/sdist-top.txt" || { echo "::error::$d/ is in the sdist; MANIFEST.in prunes it"; rc=1; }

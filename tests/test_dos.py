@@ -92,8 +92,8 @@ def test_clean_dos_values_requires_three_points() -> None:
 # --- against the committed DOS calculation --------------------------------
 
 
-def test_compute_dos_tutorial_value(dos_result: DOSResult) -> None:
-    """The effective mass the tutorial feeds into the figure of merit."""
+def test_compute_dos_reference_value(dos_result: DOSResult) -> None:
+    """The DOS effective mass of the reference data."""
     assert dos_result.final_result == pytest.approx(0.0727540, rel=1e-6)
     assert dos_result.cbm == pytest.approx(1.40177392, rel=1e-6)
     assert dos_result.cell_volume_m3 == pytest.approx(2.2340578e-28, rel=1e-6)
@@ -101,7 +101,7 @@ def test_compute_dos_tutorial_value(dos_result: DOSResult) -> None:
 
 
 def test_compute_dos_poor_fit_is_visible(dos_result: DOSResult) -> None:
-    """The tutorial's own DOS is too coarse to resolve the mass, and says so.
+    """The reference DOS is too coarse to resolve the mass, and says so.
 
     R^2 = 0.671 against a 0.80 threshold, on 7 points against a 10-point
     threshold. This is a property of the shipped data, and it must stay visible

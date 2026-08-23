@@ -7,30 +7,29 @@ describes:
 pytest
 ```
 
-The suite needs no network access and no VASP. It reads the committed
-`tutorial/Cu2GeS3` calculation set and never writes to it — every test that
-exercises a write path gets a `tmp_path` copy from the `tmp_opt_dir` fixture.
-The notebook holds to the same rule: it writes everything it generates into
-`tutorial/workdir/`, which is gitignored, and
-`test_generation_half_does_not_touch_tracked_data` enforces that.
+The suite needs no network access, no VASP, and nothing outside `tests/` and
+the installed package: its data is the `Cu2GeS3` reference calculation set
+committed at `tests/data/Cu2GeS3` (once produced by the tutorial workflow, but
+owned by the tests — deleting `tutorial/` does not change a single result).
 
-Three tests need VASP pseudopotentials (`PMG_VASP_PSP_DIR`) and skip themselves
+The tracked data is never worked on in place: `conftest.py` copies the files
+the suite reads — the `_DATA_MANIFEST` list — into pytest's temp area once per
+session and strips their write bits, so every fixture hands out a path into a
+read-only copy and a stray write fails with `PermissionError` at the point of
+the bug (`test_fixture_copy_is_write_protected` in `test_optics.py` pins this).
+A test that exercises a write path gets a writable `tmp_path` copy on top of
+that, from the `tmp_opt_dir` fixture.
+
+Two tests need VASP pseudopotentials (`PMG_VASP_PSP_DIR`) and skip themselves
 when those are unavailable, which is the normal case away from a machine that
 has a licensed POTCAR directory.
 
 ## What is being checked
 
-The tutorial notebook is the spine. Its recorded output —
-
-```
-SQ limit 33.51 %   FOM relative to SQ 80.28 %   FOM total efficiency 26.90 %
-```
-
-— is reproduced end to end in `test_tutorial_workflow.py`, so the notebook and
-the code stay pinned to each other in both directions.
-
-Everywhere else the preference is for analytic limits and published values over
-pinned output, as `CONTRIBUTING.md` asks. The main anchors:
+Each module is tested on its own, against analytic limits and published values
+where one exists — as `CONTRIBUTING.md` asks — and against the committed
+reference data where the property is "this input produces this number". The
+main anchors:
 
 | Anchor | Where |
 |---|---|
@@ -77,16 +76,18 @@ to drop the marker — the register cannot silently rot.
 | `test_vdw_branch_skipped_without_vdw_patch` | `test_vasp_inputs.py` | `vasp_inputs.py:246` — `or "vdw_d4"` is always truthy |
 | `test_mobility_plot_draws_one_line_per_lifetime` | `test_plots.py` | `final_results.py:439` appends a 3-tuple instead of one element |
 
-The first four are public API that appears in the Sphinx docs but is unreachable
-from the tutorial, which is why nothing has ever exercised it.
+The first four are public API that appears in the Sphinx docs but is not
+reachable from the reference workflow, which is why nothing has ever exercised
+it.
 
 ## Not covered, and why
 
-* **Executing the notebook.** No longer blocked on syntax — cell 27's PEP 701
-  nested-quote f-string was rewritten to use inner single quotes, so the
-  notebook parses on the pinned 3.11. Executing it end to end is still not
-  wired into the suite; `test_tutorial_workflow.py` reproduces its recorded
-  numbers through the library instead.
+* **The tutorial notebook.** It is documentation, deliberately outside the
+  suite: nothing here executes it, reads it, or pins its recorded numbers, so
+  the full-pipeline composition of the library calls is exercised only by the
+  notebook itself. The reverse dependency does exist — the notebook's analysis
+  half reads `tests/data/Cu2GeS3` — so the data stays put when the notebook
+  moves or goes.
 * **The `*_interactive` functions.** `plot_db_combined_interactive` and
   `plot_final_result_interactive` set `fig.canvas.header_visible`, an
   ipympl-only attribute. ipympl is now declared — `pyproject.toml`'s

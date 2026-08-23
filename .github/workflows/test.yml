@@ -9,10 +9,10 @@ on:
 permissions:
   contents: read
 
-# tutorial/ checks out to 134 MB of VASP reference data that the test suite
-# reads, but checkout@v4's default fetch-depth of 1 keeps the transfer to
-# ~11 MB -- .git is large because of history, not HEAD. Superseded runs are
-# still not worth paying for.
+# tests/data/ checks out to 134 MB of VASP reference data that the test
+# suite reads, but checkout@v4's default fetch-depth of 1 keeps the transfer
+# to ~11 MB -- .git is large because of history, not HEAD. Superseded runs
+# are still not worth paying for.
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
   cancel-in-progress: true

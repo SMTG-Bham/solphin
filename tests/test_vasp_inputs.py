@@ -43,8 +43,8 @@ def test_load_config_resolves_through_package_resources(config: RecipeConfig) ->
 
 
 @pytest.mark.parametrize("patch", ["relax_cell", "tight_relax", "optics", "eff_mass"])
-def test_patches_used_by_the_tutorial_exist(config: RecipeConfig, patch: str) -> None:
-    """Every patch name the tutorial uses exists in the packaged recipes."""
+def test_recipe_patches_exist(config: RecipeConfig, patch: str) -> None:
+    """Every patch name the reference workflow uses exists in the packaged recipes."""
     assert patch in config["PATCHES"]
 
 
@@ -167,8 +167,8 @@ def test_read_structure_pmg(relax_dir: Path, filename: str) -> None:
 def test_relax_cell_scales_encut(relax_dir: Path, config: RecipeConfig) -> None:
     """relax_cell raises ENCUT by 30 %, which is how the committed INCAR got 585.
 
-    Checked against tutorial/Cu2GeS3/Relax/INCAR, which the tutorial produced
-    from ENCUT = 450 with this patch applied.
+    Checked against tests/data/Cu2GeS3/Relax/INCAR, which the reference
+    workflow produced from ENCUT = 450 with this patch applied.
     """
     structure = vasp_inputs.read_structure_pmg(relax_dir / "POSCAR")
     incar = vasp_inputs._prepare_incar("HSE06", ["relax_cell"], config)

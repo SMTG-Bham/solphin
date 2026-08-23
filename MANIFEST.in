@@ -10,17 +10,18 @@ recursive-include solphin/resources *.csv *.json
 # PEP 561 marker; package-data covers the wheel, this covers the sdist.
 include solphin/py.typed
 
-# tutorial/ is 134 MB of tracked VASP vasprun.xml against PyPI's 100 MB
+# tests/data/ is 134 MB of tracked VASP vasprun.xml against PyPI's 100 MB
 # per-file limit. Today's sdist happens to exclude it because setuptools only
 # walks the packages it was told about, but that is incidental -- a stray graft
 # or a future move to setuptools-scm (which sweeps in every git-tracked file)
-# would produce an sdist that cannot be uploaded. Prune it explicitly.
-prune tutorial
-
-# docs/ carries a symlink into tutorial/; tests/ read REPO_ROOT/"tutorial" in
-# conftest.py and so cannot run from an sdist at all.
-prune docs
+# would produce an sdist that cannot be uploaded. Prune explicitly; tests/
+# cannot run from an sdist without their data in any case.
 prune tests
+
+# docs/ carries a symlink into tutorial/, and tutorial/ is a notebook that
+# reads the data shipped under tests/.
+prune tutorial
+prune docs
 prune .github
 
 global-exclude *.py[cod]
