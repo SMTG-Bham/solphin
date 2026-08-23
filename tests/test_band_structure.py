@@ -60,7 +60,7 @@ def test_get_band_structure_returns_symmline(band_structure_obj: BandStructureSy
     assert len(band_structure_obj.branches) > 0
 
 
-def test_get_band_structure_tutorial_gap(band_structure_obj: BandStructureSymmLine) -> None:
+def test_get_band_structure_reference_gap(band_structure_obj: BandStructureSymmLine) -> None:
     """Cu2GeS3 has a 1.39 eV direct gap at Gamma in the committed calculation."""
     gap = band_structure_obj.get_band_gap()
 

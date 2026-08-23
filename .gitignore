@@ -178,6 +178,6 @@ vaspout.h5
 
 # Tutorial scratch space
 #  tutorial/full_workflow_tutorial.ipynb writes every input set it generates
-#  into tutorial/workdir/, which keeps the tracked Cu2GeS3/ reference data
-#  read-only. Disposable; re-created on the next run.
+#  into tutorial/workdir/, so the tracked reference data it reads from
+#  tests/data/Cu2GeS3/ stays untouched. Disposable; re-created on the next run.
 tutorial/workdir/

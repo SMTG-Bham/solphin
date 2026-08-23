@@ -26,8 +26,8 @@ jobs:
       # docs/source/full_workflow_tutorial.ipynb is a tracked symlink (mode
       # 120000) into tutorial/, and tutorials.rst is its only toctree entry, so a
       # sparse clone would break that page. The notebook renders from its stored
-      # outputs (nb_execution_mode = "off" in conf.py), so none of tutorial/'s
-      # 134 MB of VASP data is read here.
+      # outputs (nb_execution_mode = "off" in conf.py), so none of the 134 MB
+      # of VASP data under tests/data/ is read here.
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:

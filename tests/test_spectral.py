@@ -16,8 +16,8 @@ import solphin.spectral as spectral
 
 HC_EV_NM = sc.h * sc.c / sc.e * 1e9
 
-# The direct gap the tutorial derives from the committed band structure.
-TUTORIAL_E_GAP = 1.3900999999999994
+# The direct gap of the committed band structure in tests/data.
+REFERENCE_E_GAP = 1.3900999999999994
 
 
 # --- unit conversions and integration limits -------------------------------
@@ -180,10 +180,10 @@ def test_load_absorption_drops_the_zero_energy_row(opt_dir: Path) -> None:
     assert np.all(energies_eV > 0)
 
 
-def test_generate_spectral_parameters_tutorial(opt_dir: Path, am15: NDArray) -> None:
-    """The descriptors the tutorial feeds into the figure of merit."""
+def test_generate_spectral_parameters_reference(opt_dir: Path, am15: NDArray) -> None:
+    """The absorption descriptors of the reference data."""
     average, dispersion = spectral.generate_spectral_parameters(
-        str(opt_dir), am15, E_gap=TUTORIAL_E_GAP
+        str(opt_dir), am15, E_gap=REFERENCE_E_GAP
     )
 
     assert average == pytest.approx(128846.05, rel=1e-6)
@@ -203,5 +203,5 @@ def test_generate_spectral_parameters_rejects_converted_spectrum(
     """
     with pytest.raises(ValueError, match="empty sequence"):
         spectral.generate_spectral_parameters(
-            str(opt_dir), photon_spectrum, E_gap=TUTORIAL_E_GAP
+            str(opt_dir), photon_spectrum, E_gap=REFERENCE_E_GAP
         )

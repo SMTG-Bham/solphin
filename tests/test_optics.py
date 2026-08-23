@@ -32,7 +32,7 @@ def test_calc_dielectric_returns_five_tuple(
     assert len(energies) == len(eps_full) == len(eps_imag)
 
 
-def test_calc_dielectric_tutorial_values(
+def test_calc_dielectric_reference_values(
         dielectric: tuple[float, NDArray, NDArray, NDArray, NDArray]
 ) -> None:
     """High-frequency dielectric constant of Cu2GeS3 from the committed run."""
@@ -161,6 +161,17 @@ def test_convert_spec_photon_flux() -> None:
 
 
 # --- writing the .dat files ------------------------------------------------
+
+
+def test_fixture_copy_is_write_protected(opt_dir: Path) -> None:
+    """The fixture data is read-only, so a stray write fails where the bug is.
+
+    Pinned because the protection lives in one `chmod` in conftest.py, and
+    losing it - a `copyfile` quietly becoming a `copy2`, say - would show up
+    nowhere else until a test corrupted an input another test was relying on.
+    """
+    with pytest.raises(PermissionError):
+        (opt_dir / "vasprun.xml").open("a")
 
 
 def test_generate_absorption_reproduces_committed_file(tmp_opt_dir: Path, opt_dir: Path) -> None:

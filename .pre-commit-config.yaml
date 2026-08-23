@@ -20,9 +20,9 @@ repos:
       - id: check-symlinks
       - id: destroyed-symlinks
       - id: check-added-large-files
-        # tutorial/ already carries ~134 MB of VASP reference data. This only
-        # inspects newly added files, so that history is unaffected -- the
-        # point is to stop the next vasprun.xml going in unnoticed.
+        # tests/data/ already carries ~134 MB of VASP reference data. This
+        # only inspects newly added files, so that history is unaffected --
+        # the point is to stop the next vasprun.xml going in unnoticed.
         args: [--maxkb=1024]
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
