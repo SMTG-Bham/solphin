@@ -173,7 +173,7 @@ def recomb_rate(E_gap: float, photon_spectrum: NDArray, voltage: float, Tcell: f
         Radiative recombination rate in cm⁻³ s⁻¹.
     """
     print('recomb rate')
-    return q * _rr0(E_gap, photon_spectrum) * np.exp(q * voltage / (k * Tcell))
+    return q * _rr0(E_gap, photon_spectrum, Tcell) * np.exp(q * voltage / (k * Tcell))
 
 
 @overload
@@ -253,7 +253,10 @@ def voc(E_gap: float, photon_spectrum: NDArray, Tcell: float) -> float:
     return (k * Tcell / q) * np.log(Jph / J0 + 1)
 
 
-def v_at_mpp(E_gap: float, photon_spectrum: NDArray) -> float:
+# Tcell is optional on v_at_mpp and j_at_mpp only: both are documented and
+# called as two-argument functions, and 300 K is the standard-condition
+# temperature the rest of this module's anchors (SQ limit, Voc tests) assume.
+def v_at_mpp(E_gap: float, photon_spectrum: NDArray, Tcell: float = 300.0) -> float:
     """Calculate the voltage at the maximum power point.
 
     Parameters
@@ -262,21 +265,24 @@ def v_at_mpp(E_gap: float, photon_spectrum: NDArray) -> float:
         Optical band gap in eV.
     photon_spectrum : numpy.ndarray
         Converted photon flux spectrum from ``convert_spectrum``.
+    Tcell : float, optional
+        Operating temperature of the cell in K. Default is ``300.0``.
 
     Returns
     -------
     float
         Voltage at the maximum power point in V.
     """
-    v_open = voc(E_gap, photon_spectrum)
+    v_open = voc(E_gap, photon_spectrum, Tcell)
     # print v_open
     v = np.linspace(0, v_open)
     index = np.where(
-        v * current_density(E_gap, photon_spectrum, v) == max(v * current_density(E_gap, photon_spectrum, v)))
+        v * current_density(E_gap, photon_spectrum, v, Tcell)
+        == max(v * current_density(E_gap, photon_spectrum, v, Tcell)))
     return v[index][0]
 
 
-def j_at_mpp(E_gap: float, photon_spectrum: NDArray) -> float:
+def j_at_mpp(E_gap: float, photon_spectrum: NDArray, Tcell: float = 300.0) -> float:
     """Calculate the current density at the maximum power point.
 
     Parameters
@@ -285,13 +291,15 @@ def j_at_mpp(E_gap: float, photon_spectrum: NDArray) -> float:
         Optical band gap in eV.
     photon_spectrum : numpy.ndarray
         Converted photon flux spectrum from ``convert_spectrum``.
+    Tcell : float, optional
+        Operating temperature of the cell in K. Default is ``300.0``.
 
     Returns
     -------
     float
         Current density at the maximum power point in C cm⁻³ s⁻¹.
     """
-    return max_power(E_gap, photon_spectrum) / v_at_mpp(E_gap, photon_spectrum)
+    return max_power(E_gap, photon_spectrum, Tcell) / v_at_mpp(E_gap, photon_spectrum, Tcell)
 
 
 def max_power(E_gap: float, photon_spectrum: NDArray, Tcell: float) -> float:
@@ -360,11 +368,11 @@ def fill_factor(E_gap: float, photon_spectrum: NDArray, Tcell: float) -> float:
     float
         Fill factor of the cell, dimensionless.
     """
-    j_sc = jsc(E_gap, photon_spectrum)
+    j_sc = jsc(E_gap, photon_spectrum, Tcell)
     v_oc = voc(E_gap, photon_spectrum, Tcell)
-    v_mpp = v_at_mpp(E_gap, photon_spectrum)
-    j_mpp = j_at_mpp(E_gap, photon_spectrum)
+    v_mpp = v_at_mpp(E_gap, photon_spectrum, Tcell)
+    j_mpp = j_at_mpp(E_gap, photon_spectrum, Tcell)
 
-    fill_factor = (j_mpp * v_mpp) / (j_sc, v_oc)
+    fill_factor = (j_mpp * v_mpp) / (j_sc * v_oc)
 
     return fill_factor
