@@ -23,8 +23,8 @@ jobs:
       # Default depth-1. Nothing reads history, and the expected-file list below
       # comes from the index via `git ls-files`, which a shallow clone carries in
       # full.
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           # One version, not test.yml's matrix. The wheel is py3-none-any and
           # test.yml already installs the package on supported Pythons 3.11
