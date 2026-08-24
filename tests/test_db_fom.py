@@ -218,18 +218,9 @@ def test_max_power_between_zero_and_jsc_voc(photon_spectrum: NDArray) -> None:
     assert 0 < p_max < j_sc * v_oc
 
 
-# --- entry points that have never been reachable from the tutorial ---------
-#
-# These four are public API and appear in the Sphinx docs, but nothing calls
-# them, so their stale call signatures have gone unnoticed. Each test states the
-# behaviour the function is documented to have; strict xfail means fixing the
-# source turns the test green and reports the marker as obsolete.
+# --- public entry points outside the tutorial workflow ----------------------
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="db_fom.py:179 calls _rr0(E_gap, photon_spectrum) without Tcell -> TypeError",
-)
 def test_recomb_rate_returns_finite_float(photon_spectrum: NDArray) -> None:
     """recomb_rate should return a finite positive rate."""
     rate = db_fom.recomb_rate(1.34, photon_spectrum, 0.5, 300.0)
@@ -238,10 +229,6 @@ def test_recomb_rate_returns_finite_float(photon_spectrum: NDArray) -> None:
     assert rate > 0
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="db_fom.py:274 calls voc(E_gap, photon_spectrum) without Tcell -> TypeError",
-)
 def test_v_at_mpp_between_zero_and_voc(photon_spectrum: NDArray) -> None:
     """The maximum-power voltage should sit between zero and Voc."""
     v_mpp = db_fom.v_at_mpp(1.34, photon_spectrum)
@@ -250,10 +237,6 @@ def test_v_at_mpp_between_zero_and_voc(photon_spectrum: NDArray) -> None:
     assert 0 < v_mpp < v_oc
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="db_fom.py:297 calls max_power(E_gap, photon_spectrum) without Tcell -> TypeError",
-)
 def test_j_at_mpp_below_jsc(photon_spectrum: NDArray) -> None:
     """The maximum-power current should sit between zero and Jsc."""
     j_mpp = db_fom.j_at_mpp(1.34, photon_spectrum)
@@ -262,13 +245,6 @@ def test_j_at_mpp_below_jsc(photon_spectrum: NDArray) -> None:
     assert 0 < j_mpp < j_sc
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "db_fom.py:366 calls jsc() without Tcell, and db_fom.py:371 then divides "
-        "by the tuple (j_sc, v_oc) - two bugs, the second hidden behind the first"
-    ),
-)
 def test_fill_factor_between_zero_and_one(photon_spectrum: NDArray) -> None:
     """A well-behaved single-junction cell near the SQ limit has FF around 0.8-0.9."""
     ff = db_fom.fill_factor(1.34, photon_spectrum, 300.0)

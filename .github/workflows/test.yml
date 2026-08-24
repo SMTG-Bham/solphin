@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 # tests/data/ checks out to 134 MB of VASP reference data that the test
-# suite reads, but checkout@v4's default fetch-depth of 1 keeps the transfer
+# suite reads, but checkout's default fetch-depth of 1 keeps the transfer
 # to ~11 MB -- .git is large because of history, not HEAD. Superseded runs
 # are still not worth paying for.
 concurrency:
@@ -22,8 +22,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       # Pinned so a new ruff release cannot turn the branch red on its own.
@@ -34,16 +34,15 @@ jobs:
   types:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    # Non-blocking on purpose. Six of the ten defects in the xfail register in
-    # tests/README.md are type errors -- the four db_fom arity bugs, the len()
-    # on a Kpoints in dos.py, and the tuple append in final_results.py -- so
-    # mypy reports them by design. Fixing them is a separate change per
-    # tests/README.md, and turning this job red until then would train people
-    # to ignore it. Drop continue-on-error once that register is empty.
+    # Non-blocking on purpose. The xfail register in tests/README.md still
+    # includes type-visible defects such as treating a Kpoints as an array, and
+    # mypy also reports optional-value contracts that have not yet been fixed.
+    # Turning this job red until that debt is cleared would train people to
+    # ignore it. Drop continue-on-error once mypy passes.
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           # Deliberately the oldest supported Python, matching python_version
           # in [tool.mypy]: installing on the target version resolves deps to
@@ -70,10 +69,10 @@ jobs:
       fail-fast: false
       matrix:
         # Mirrors requires-python and the classifiers in pyproject.toml.
-        python-version: ["3.11", "3.12", "3.13"]
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
@@ -85,13 +84,13 @@ jobs:
       #
       # Two tests skip here by design: requires_potcars keys on
       # PMG_VASP_PSP_DIR, and VASP pseudopotentials are licensed and cannot be
-      # put in CI. Ten more are strict xfails standing in for known defects --
+      # put in CI. Six more are strict xfails standing in for known defects --
       # see tests/README.md. Either turning into a failure is a real signal.
       - run: pytest --cov --cov-report=xml
-      # Every matrix job uploads and Codecov merges the reports under the
-      # commit. There is no version-gated code in solphin/, so the three are
-      # identical today, but the flags keep them separable if that changes and
-      # the merge means a coverage report survives one job being skipped.
+      # Every successful matrix job uploads and Codecov merges the reports
+      # under the commit. There is no version-gated code in solphin/, so the
+      # reports should be identical, but the flags keep them separable if that
+      # changes and the merge means a report survives one job being skipped.
       # Deliberately not `if: always()` -- a failed run's partial coverage
       # would read as a drop rather than as the test failure it is.
       - uses: codecov/codecov-action@v7
