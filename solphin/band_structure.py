@@ -204,7 +204,6 @@ def _write_kpoint_files(
 
     if make_folders:
         for i, kpt_file in enumerate(kpt_files):
-
             folder = f"split-{str(i + 1).zfill(pad)}"
             folders.append(folder)
 

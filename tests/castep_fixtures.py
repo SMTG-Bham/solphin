@@ -88,8 +88,8 @@ def _cumulative_states(energy_ev: float, mass_rel: float) -> float:
         Cumulative number of states per unit cell, both spins included.
     """
     e_j = energy_ev * EV
-    k_sq = 2.0 * mass_rel * M_E * e_j / HBAR**2
-    return VOLUME_M3 / (3.0 * math.pi**2) * k_sq**1.5
+    k_sq = 2.0 * mass_rel * M_E * e_j / HBAR ** 2
+    return VOLUME_M3 / (3.0 * math.pi ** 2) * k_sq ** 1.5
 
 
 def _bands_header(n_kpoints: int, n_electrons: float, n_bands: int, e_fermi_ev: float) -> str:
@@ -182,8 +182,8 @@ def dos_bands_text() -> str:
     for j in range(DOS_N_STEPS):
         low, high = j * DOS_STEP_EV, (j + 1) * DOS_STEP_EV
         weight = (
-            _cumulative_states(high, DOS_M_HOLE) - _cumulative_states(low, DOS_M_HOLE)
-        ) / 2.0
+                         _cumulative_states(high, DOS_M_HOLE) - _cumulative_states(low, DOS_M_HOLE)
+                 ) / 2.0
         valence = -(j + 0.5) * DOS_STEP_EV
         sentinel = 4.0 + 2.0 * j / DOS_N_STEPS
         text.append(kpoint_entry(j + 1, weight, valence, sentinel))
@@ -191,9 +191,9 @@ def dos_bands_text() -> str:
     for j in range(DOS_N_STEPS):
         low, high = j * DOS_STEP_EV, (j + 1) * DOS_STEP_EV
         weight = (
-            _cumulative_states(high, DOS_M_ELECTRON)
-            - _cumulative_states(low, DOS_M_ELECTRON)
-        ) / 2.0
+                         _cumulative_states(high, DOS_M_ELECTRON)
+                         - _cumulative_states(low, DOS_M_ELECTRON)
+                 ) / 2.0
         conduction = DOS_GAP_EV + (j + 0.5) * DOS_STEP_EV
         sentinel = -(4.0 + 2.0 * j / DOS_N_STEPS)
         text.append(kpoint_entry(DOS_N_STEPS + j + 1, weight, sentinel, conduction))
@@ -316,9 +316,9 @@ def lorentz_epsilon(energy_ev: float) -> complex:
     complex
         The model dielectric function at that energy.
     """
-    numerator = LORENTZ_S * LORENTZ_E0_EV**2
+    numerator = LORENTZ_S * LORENTZ_E0_EV ** 2
     denominator = complex(
-        LORENTZ_E0_EV**2 - energy_ev**2, -LORENTZ_GAMMA_EV * energy_ev
+        LORENTZ_E0_EV ** 2 - energy_ev ** 2, -LORENTZ_GAMMA_EV * energy_ev
     )
     return 1.0 + numerator / denominator
 

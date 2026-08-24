@@ -308,7 +308,7 @@ def _load_dos_castep(
 
     header = read_bands_header(bands_file)
     lattice_bohr = np.asarray(header["lattice_vectors"], dtype=float)
-    volume_m3 = float(abs(np.linalg.det(lattice_bohr))) * BOHR_M**3
+    volume_m3 = float(abs(np.linalg.det(lattice_bohr))) * BOHR_M ** 3
 
     return dos_obj, energies, densities, volume_m3
 

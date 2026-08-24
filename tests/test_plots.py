@@ -23,8 +23,13 @@ TCELL = 300.0
 E_GAP = 1.34
 
 # Crovetto's defaults, as set in tutorial cell 41.
-FOM_ARGS = dict(alpha=1.3e5, tau=1e-6, sigma=1.5, dos_mass=0.073, dop_density=1e10,
-                epsilon=6.11, mu=1e6)
+FOM_ARGS = dict(alpha=1.3e5,
+                tau=1e-6,
+                sigma=1.5,
+                dos_mass=0.073,
+                dop_density=1e10,
+                epsilon=6.11,
+                mu=1e6)
 
 
 # --- db_plots --------------------------------------------------------------
@@ -167,10 +172,10 @@ def test_plot_fom_three_panels(photon_spectrum: NDArray) -> None:
 @pytest.mark.xfail(
     strict=True,
     reason=(
-        "final_results.py:506 appends the whole (SQ, SQ_relative, FOM_efficiency) "
-        "tuple instead of indexing one element the way plot_FOM does, so "
-        "matplotlib unpacks each row into three lines and the axis labelled "
-        "'PV efficiency' carries the SQ limit and the SQ-relative ratio too"
+            "final_results.py:506 appends the whole (SQ, SQ_relative, FOM_efficiency) "
+            "tuple instead of indexing one element the way plot_FOM does, so "
+            "matplotlib unpacks each row into three lines and the axis labelled "
+            "'PV efficiency' carries the SQ limit and the SQ-relative ratio too"
     ),
 )
 def test_mobility_plot_draws_one_line_per_lifetime(photon_spectrum: NDArray) -> None:

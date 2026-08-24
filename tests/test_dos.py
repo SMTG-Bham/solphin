@@ -12,17 +12,15 @@ reached through the module instead.
 
 from pathlib import Path
 
-import castep_fixtures
 import numpy as np
 import pytest
-from conftest import requires_potcars
 from pymatgen.core import Lattice, Structure
 
+import castep_fixtures
 import solphin.dos as dos
 import solphin.vasp_inputs as vasp_inputs
+from conftest import requires_potcars
 from solphin.dos import DOSResult
-
-# --- the fit ---------------------------------------------------------------
 
 
 def test_check_fit_perfect_and_null() -> None:
@@ -41,7 +39,7 @@ def test_calculate_dos_recovers_known_mass(target_mass: float) -> None:
     coefficient A that _calculate_DOS should recover.
     """
     mass_si = target_mass * dos.M_E
-    coefficient = (2 * mass_si / dos.HBAR**2) ** 1.5 / (2 * np.pi**2)
+    coefficient = (2 * mass_si / dos.HBAR ** 2) ** 1.5 / (2 * np.pi ** 2)
     delta_E_J = np.linspace(1e-23, 1e-20, 50)
     dos_si = coefficient * np.sqrt(delta_E_J)
 
@@ -89,9 +87,6 @@ def test_clean_dos_values_requires_three_points() -> None:
 
     with pytest.raises(ValueError, match="usable DOS points"):
         dos._clean_dos_values(delta_E_ev, density, 0.0, 0.1)
-
-
-# --- against the committed DOS calculation --------------------------------
 
 
 def test_compute_dos_reference_value(dos_result: DOSResult) -> None:
@@ -170,9 +165,6 @@ def test_dos_result_str_contains_mass(dos_result: DOSResult) -> None:
     assert "electrons" in rendered.lower()
 
 
-# --- input generation ------------------------------------------------------
-
-
 def test_generate_local_kpoints_mesh_size() -> None:
     """A 3x3x3 local mesh around Gamma is 27 points, all within delta of the centre."""
     kpoints = dos._generate_local_kpoints(np.array([0.0, 0.0, 0.0]), (3, 3, 3), 0.01)
@@ -196,9 +188,6 @@ def test_write_eff_mass_creates_inputs(relax_dir: Path, tmp_path: Path) -> None:
 
     written = {p.name for p in (tmp_path / "eff_mass").iterdir()}
     assert {"INCAR", "POSCAR", "KPOINTS", "POTCAR"} <= written
-
-
-# --- CASTEP ----------------------------------------------------------------
 
 
 def test_castep_dos_fixture_regenerates_byte_identically(castep_dos_bands: Path) -> None:
@@ -322,14 +311,11 @@ def test_write_eff_mass_unknown_code_raises(tmp_path: Path) -> None:
         )
 
 
-# --- defects ---------------------------------------------------------------
-
-
 @pytest.mark.xfail(
     strict=True,
     reason=(
-        "dos.py:1453 calls len() and .tolist() on the pymatgen Kpoints object "
-        "returned by _generate_local_kpoints; Kpoints has neither -> TypeError"
+            "dos.py:1453 calls len() and .tolist() on the pymatgen Kpoints object "
+            "returned by _generate_local_kpoints; Kpoints has neither -> TypeError"
     ),
 )
 def test_write_local_kpoints_writes_file(tmp_path: Path) -> None:
