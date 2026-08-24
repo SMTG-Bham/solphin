@@ -9,13 +9,13 @@ package pins, so it is not a stable contract.
 import shutil
 from pathlib import Path
 
-import castep_fixtures
 import numpy as np
 import pytest
 from pymatgen.core.lattice import Lattice
 from pymatgen.core.structure import Structure
 from pymatgen.electronic_structure.bandstructure import BandStructureSymmLine
 
+import castep_fixtures
 import solphin.band_structure as band_structure
 import solphin.castep_inputs as castep_inputs
 import solphin.vasp_inputs as vasp_inputs
@@ -315,8 +315,8 @@ def test_castep_plot_band_structure_scissor_rejected(
 @pytest.mark.xfail(
     strict=True,
     reason=(
-        "band_structure.py:276 prints 'ERROR: ...' and returns None when the "
-        "hybrid path is missing scf_kpoints, so a caller cannot detect the failure"
+            "band_structure.py:276 prints 'ERROR: ...' and returns None when the "
+            "hybrid path is missing scf_kpoints, so a caller cannot detect the failure"
     ),
 )
 def test_write_band_structure_missing_scf_raises(
@@ -342,8 +342,8 @@ def test_write_band_structure_missing_scf_raises(
 @pytest.mark.xfail(
     strict=True,
     reason=(
-        "get_band_structure globs every split-*/vasprun.xml whenever splits > 1, "
-        "so the argument's value is ignored - asking for 3 still reads all 7"
+            "get_band_structure globs every split-*/vasprun.xml whenever splits > 1, "
+            "so the argument's value is ignored - asking for 3 still reads all 7"
     ),
 )
 def test_splits_argument_is_honoured(

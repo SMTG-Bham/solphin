@@ -10,14 +10,15 @@ import shutil
 from collections.abc import Callable
 from pathlib import Path
 
-import castep_fixtures
 import numpy as np
 import pytest
 import scipy.constants as sc
 from numpy.typing import NDArray
 from scipy.optimize import brentq
 
+import castep_fixtures
 import solphin.optics as optics
+
 
 # --- the dielectric tensor -------------------------------------------------
 

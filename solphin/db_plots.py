@@ -14,8 +14,12 @@ import solphin.db_fom as db_fom
 
 @overload
 def photons_above_bandgap_plot(spectrum: NDArray, Egap: float, ax: Axes) -> Axes: ...
+
+
 @overload
 def photons_above_bandgap_plot(spectrum: NDArray, Egap: float, ax: None = None) -> None: ...
+
+
 def photons_above_bandgap_plot(
         spectrum: NDArray, Egap: float, ax: Axes | None = None
 ) -> Axes | None:

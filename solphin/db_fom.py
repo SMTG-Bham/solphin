@@ -180,10 +180,14 @@ def recomb_rate(E_gap: float, photon_spectrum: NDArray, voltage: float, Tcell: f
 def current_density(
         E_gap: float, photon_spectrum: NDArray, voltage: float, Tcell: float
 ) -> float: ...
+
+
 @overload
 def current_density(
         E_gap: float, photon_spectrum: NDArray, voltage: NDArray, Tcell: float
 ) -> NDArray: ...
+
+
 def current_density(
         E_gap: float, photon_spectrum: NDArray, voltage: float | NDArray, Tcell: float
 ) -> float | NDArray:

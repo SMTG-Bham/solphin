@@ -13,9 +13,9 @@
 [![documentation](https://readthedocs.org/projects/solphin/badge/?version=latest)](https://solphin.readthedocs.io/en/latest/)
 
 `solphin` is a code developed to assist with the characterisation of novel photovoltaic materials with `VASP` or
-`CASTEP`. It combines detailed balance analysis with other tools such as the photovoltaic figure of merit proposed by
-A. Crovetto, Spectroscopic Limited Maximum Efficiency (SLME), Blank et. al. Maximum Efficiency and optical absorption
-plots to provide a full picture of a material's theoretical photovoltaic efficiency. The code supports the automatic
+`CASTEP`. It combines detailed balance analysis with other tools such as the photovoltaic figure of merit proposed by A.
+Crovetto, Spectroscopic Limited Maximum Efficiency (SLME), Blank et. al. Maximum Efficiency and optical absorption plots
+to provide a full picture of a material's theoretical photovoltaic efficiency. The code supports the automatic
 generation of `VASP` and `CASTEP` input files for the required calculations based on an initial crystal structure.
 
 **Please note that Solphin is still in early stage testing and development**
@@ -42,10 +42,9 @@ pip install -e .
 pip install -e ".[interactive]"
 ```
 
-For a full conda development environment — tutorial, docs and dev tooling
-included — see [environment.yml](environment.yml). Note that `sumo` has to be
-installed from PyPI rather than conda-forge there; the reason is documented at
-the top of that file.
+For a full conda development environment — tutorial, docs and dev tooling included —
+see [environment.yml](environment.yml). Note that `sumo` has to be installed from PyPI rather than conda-forge there;
+the reason is documented at the top of that file.
 
 If using the `VASP` input file generation functionality, please ensure that your `VASP` pseudopotentials are added to
 your path through the use of a `pymatgen` configuration file `$HOME/.pmgrc.yaml`. The file should contain:
@@ -58,11 +57,11 @@ This applies to `VASP` only — `CASTEP` uses on-the-fly pseudopotentials, so no
 
 ## CASTEP
 
-Every reader takes a `code="castep"` keyword (`vasp` is the default), and `solphin.castep_inputs` mirrors the VASP
-input generation with `.cell`/`.param` files. Band structures and densities of states are read from `<seed>.bands`;
-optical data comes from the `<seed>_epsilon.dat` written by [OptaDOS](https://github.com/optados-developers/optados).
-See the ["Using solphin with CASTEP"](https://solphin.readthedocs.io/en/latest/castep.html) documentation page for the
-full workflow.
+Every reader takes a `code="castep"` keyword (`vasp` is the default), and `solphin.castep_inputs` mirrors the VASP input
+generation with `.cell`/`.param` files. Band structures and densities of states are read from `<seed>.bands`; optical
+data comes from the `<seed>_epsilon.dat` written by [OptaDOS](https://github.com/optados-developers/optados). See
+the ["Using solphin with CASTEP"](https://solphin.readthedocs.io/en/latest/castep.html) documentation page for the full
+workflow.
 
 ## Citation
 
