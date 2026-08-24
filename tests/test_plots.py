@@ -106,6 +106,15 @@ def test_plot_dos_saves_into_out_directory(opt_dir: Path, tmp_path: Path) -> Non
     assert (tmp_path / "dos.png").is_file()
 
 
+def test_plot_dos_castep_smoke(castep_band_dir: Path) -> None:
+    """Plotting the DOS from a CASTEP .bands file produces a figure."""
+    dos.plot_dos(
+        filename=str(castep_band_dir / "toy.bands"), xmin=-3, xmax=4, code="castep"
+    )
+
+    assert plt.get_fignums()
+
+
 # --- final_results ---------------------------------------------------------
 
 

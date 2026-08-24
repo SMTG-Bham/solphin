@@ -12,9 +12,11 @@ reached through the module instead.
 
 from pathlib import Path
 
+import castep_fixtures
 import numpy as np
 import pytest
 from conftest import requires_potcars
+from pymatgen.core import Lattice, Structure
 
 import solphin.dos as dos
 import solphin.vasp_inputs as vasp_inputs
@@ -196,10 +198,137 @@ def test_write_eff_mass_creates_inputs(relax_dir: Path, tmp_path: Path) -> None:
     assert {"INCAR", "POSCAR", "KPOINTS", "POTCAR"} <= written
 
 
+# --- CASTEP ----------------------------------------------------------------
+
+
+def test_castep_dos_fixture_regenerates_byte_identically(castep_dos_bands: Path) -> None:
+    """The committed toy.bands is exactly what tests/castep_fixtures.py emits."""
+    assert castep_dos_bands.read_text() == castep_fixtures.dos_bands_text()
+
+
+def test_castep_dos_recovers_electron_mass(castep_dos_bands: Path) -> None:
+    """The parabolic fixture returns the electron mass it encodes.
+
+    The tolerance budgets the ~bin_width offset of the histogram band edge;
+    a wrong bin-width division or missing spin factor moves the mass by
+    0.01^(2/3) or 2^(2/3), far outside it.
+    """
+    result = dos.get_dos_effective_mass(
+        dos_vasprun=str(castep_dos_bands),
+        carrier="electrons",
+        energy_window=0.25,
+        code="castep",
+    )
+
+    assert result.m_eff_rel == pytest.approx(castep_fixtures.DOS_M_ELECTRON, rel=0.05)
+    # The histogram band-edge offset costs a little R^2; 0.95 still rules out
+    # any of the unit mistakes above, which drive it negative.
+    assert result.fit_quality > 0.95
+
+
+def test_castep_dos_recovers_hole_mass(castep_dos_bands: Path) -> None:
+    """The parabolic fixture returns the hole mass it encodes."""
+    result = dos.get_dos_effective_mass(
+        dos_vasprun=str(castep_dos_bands),
+        carrier="holes",
+        energy_window=0.25,
+        code="castep",
+    )
+
+    assert result.m_eff_rel == pytest.approx(castep_fixtures.DOS_M_HOLE, rel=0.05)
+    assert result.fit_quality > 0.95
+
+
+def test_castep_compute_dos_summary(castep_dos_bands: Path) -> None:
+    """compute_dos reads gap, volume and both masses from the .bands file."""
+    result = dos.compute_dos(
+        dos_vasprun=str(castep_dos_bands),
+        carrier="electrons",
+        energy_window=0.25,
+        code="castep",
+    )
+
+    assert result.cbm == pytest.approx(castep_fixtures.DOS_GAP_EV, abs=0.03)
+    assert result.vbm == 0.0
+    assert result.cell_volume_m3 == pytest.approx(castep_fixtures.VOLUME_M3, rel=1e-6)
+    assert result.final_result == pytest.approx(castep_fixtures.DOS_M_ELECTRON, rel=0.05)
+    assert result.em_holes is not None
+    assert result.em_holes.m_eff_rel == pytest.approx(castep_fixtures.DOS_M_HOLE, rel=0.05)
+
+
+def test_castep_compute_dos_m_eff_override(castep_dos_bands: Path) -> None:
+    """The explicit-mass escape hatch works on the CASTEP path too."""
+    result = dos.compute_dos(
+        dos_vasprun=str(castep_dos_bands), m_eff=0.25, code="castep"
+    )
+
+    assert result.final_result == pytest.approx(0.25, rel=1e-12)
+
+
+def test_castep_dos_mass_windows_sweep(castep_dos_bands: Path) -> None:
+    """The window sweep threads code= through to each fit."""
+    rows = dos.test_dos_mass_windows(
+        str(castep_dos_bands), carrier="electrons", windows=(0.1, 0.2), code="castep"
+    )
+
+    assert len(rows) == 2
+
+
+def test_castep_dos_unknown_code_raises(castep_dos_bands: Path) -> None:
+    """An unsupported code name raises instead of falling back to VASP."""
+    with pytest.raises(ValueError, match="banana"):
+        dos.get_dos_effective_mass(dos_vasprun=str(castep_dos_bands), code="banana")
+
+
+def test_castep_write_eff_mass_writes_inputs(tmp_path: Path) -> None:
+    """write_eff_mass(code="castep") writes the spectral local-mesh inputs."""
+    structure = Structure(Lattice.cubic(5.43), ["Si"], [[0.0, 0.0, 0.0]])
+
+    dos.write_eff_mass(
+        k0_frac=np.array([0.0, 0.0, 0.0]),
+        structure=structure,
+        functional="PBE",
+        encut=450,
+        folder=str(tmp_path / "eff_mass"),
+        mesh=(5, 5, 5),
+        delta=0.01,
+        code="castep",
+    )
+
+    cell_text = (tmp_path / "eff_mass" / "Si.cell").read_text()
+    param_text = (tmp_path / "eff_mass" / "Si.param").read_text()
+
+    assert "%block spectral_kpoint_list" in cell_text
+    # A 5x5x5 mesh is 125 k-point rows inside the block.
+    block = cell_text.split("%block spectral_kpoint_list")[1]
+    assert len(block.split("%endblock")[0].strip().splitlines()) == 125
+    assert "Spectral" in param_text
+    assert "BandStructure" in param_text
+    assert "450" in param_text
+
+
+def test_write_eff_mass_unknown_code_raises(tmp_path: Path) -> None:
+    """An unsupported code raises before anything is written."""
+    structure = Structure(Lattice.cubic(5.43), ["Si"], [[0.0, 0.0, 0.0]])
+
+    with pytest.raises(ValueError, match="banana"):
+        dos.write_eff_mass(
+            k0_frac=np.array([0.0, 0.0, 0.0]),
+            structure=structure,
+            functional="PBE",
+            encut=450,
+            folder=str(tmp_path),
+            code="banana",
+        )
+
+
+# --- defects ---------------------------------------------------------------
+
+
 @pytest.mark.xfail(
     strict=True,
     reason=(
-        "dos.py:1273 calls len() and .tolist() on the pymatgen Kpoints object "
+        "dos.py:1453 calls len() and .tolist() on the pymatgen Kpoints object "
         "returned by _generate_local_kpoints; Kpoints has neither -> TypeError"
     ),
 )

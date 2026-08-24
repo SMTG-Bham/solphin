@@ -54,3 +54,16 @@ pseudopotentials discoverable through a ``pymatgen`` configuration file at
 .. code-block:: yaml
 
    PMG_VASP_PSP_DIR: <Path to VASP pseudopotential top directory>
+
+This applies to VASP only — CASTEP generates on-the-fly pseudopotentials, so
+its input generation needs no local pseudopotential library.
+
+CASTEP support
+--------------
+
+CASTEP support needs no extra installation for pip users: the ``.bands`` and
+``.cell`` readers come with ``sumo`` and its ``castepxbin`` dependency, both
+installed with ``solphin``. Optics parsing consumes the ``<seed>_epsilon.dat``
+written by `OptaDOS <https://github.com/optados-developers/optados>`_, which
+is a Fortran post-processing tool from the CASTEP ecosystem rather than a
+Python dependency — see :doc:`castep` for the workflow.

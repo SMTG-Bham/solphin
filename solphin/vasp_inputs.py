@@ -8,6 +8,7 @@ from typing import Any, TypeAlias, TypedDict, cast
 from pymatgen.core.structure import Structure
 from pymatgen.io.vasp import Kpoints
 from pymatgen.io.vasp.sets import VaspInputSet
+from sumo.io.castep import CastepCell
 
 # A VASP INCAR tag value. Tags are scalars, except MAGMOM, which the recipes
 # carry as a per-element mapping.
@@ -29,10 +30,11 @@ class RecipeConfig(TypedDict):
 
 
 def read_structure_pmg(filename: str | Path) -> Structure:
-    """Read a crystal structure file using pymatgen.
+    """Read a crystal structure file into a pymatgen Structure.
 
     Supported formats include POSCAR, CIF and other pymatgen-compatible
-    structure files.
+    structure files, plus CASTEP ``.cell`` files, which pymatgen cannot
+    read itself and are routed through sumo instead.
 
     Parameters
     ----------
@@ -44,6 +46,9 @@ def read_structure_pmg(filename: str | Path) -> Structure:
     Structure
         Pymatgen Structure object representing the crystal structure.
     """
+    if Path(filename).suffix.lower() == ".cell":
+        cell_structure: Structure = CastepCell.from_file(str(filename)).structure
+        return cell_structure
     structure = Structure.from_file(filename)
     return structure
 

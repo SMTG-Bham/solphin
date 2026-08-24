@@ -14,7 +14,9 @@
 # castepxbin 0.3.1 accepts `numpy>=1,<3`, so the pip route is numpy-2 clean.
 # --no-deps is safe because every other sumo dependency -- spglib, h5py,
 # phonopy, seekpath, colormath, matplotlib, numpy, scipy, pymatgen -- is
-# resolved by conda below.
+# resolved by conda below. castepxbin in that pip line also satisfies
+# solphin's own declared dependency on it, which backs the CASTEP readers --
+# it stays out of the conda list below for the same numpy-2 reason.
 #
 # The editable install is likewise separate: conda's `pip:` block is passed to
 # pip as a requirements file, which accepts neither --no-deps nor an opt-out of

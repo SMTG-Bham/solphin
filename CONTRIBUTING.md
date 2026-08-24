@@ -20,9 +20,10 @@ A useful report includes:
 * the smallest snippet that reproduces the problem;
 * your `solphin` version (`python -c "import solphin; print(solphin.__version__)"`),
   Python version and OS;
-* for problems with parsing or plotting `VASP` output, the relevant input and
-  output files (`vasprun.xml`, `INCAR`, `POSCAR`, ...), or a description of the
-  calculation if the files are too large to attach.
+* for problems with parsing or plotting `VASP` or `CASTEP` output, the relevant
+  input and output files (`vasprun.xml`, `INCAR`, `POSCAR`, `.cell`, `.param`,
+  `.bands`, `_epsilon.dat`, ...), or a description of the calculation if the
+  files are too large to attach.
 
 ### Suggesting a feature
 

@@ -12,6 +12,7 @@ from conftest import requires_potcars
 from pymatgen.core import Structure
 
 import solphin.vasp_inputs as vasp_inputs
+from solphin.castep_inputs import write_castep_calculation
 from solphin.vasp_inputs import RecipeConfig
 
 FUNCTIONALS = ["LDA", "PBEsol", "PBE", "HSE06", "PBE0", "R2SCAN"]
@@ -161,6 +162,22 @@ def test_read_structure_pmg(relax_dir: Path, filename: str) -> None:
     assert len(structure) == 12
 
 
+def test_read_structure_pmg_reads_castep_cell(relax_dir: Path, tmp_path: Path) -> None:
+    """A .cell written by write_castep_calculation reads back as the same structure.
+
+    pymatgen's Structure.from_file cannot sniff the CASTEP format, so this
+    pins the .cell extension routing through sumo.
+    """
+    structure = vasp_inputs.read_structure_pmg(relax_dir / "POSCAR")
+    cell_file = write_castep_calculation(structure, "PBE", tmp_path)
+
+    read_back = vasp_inputs.read_structure_pmg(cell_file)
+
+    assert isinstance(read_back, Structure)
+    assert read_back.composition.reduced_formula == "Cu2GeS3"
+    assert len(read_back) == len(structure)
+
+
 # --- the write path --------------------------------------------------------
 
 
@@ -231,7 +248,7 @@ def test_prepare_incar_does_not_mutate_config(config: RecipeConfig) -> None:
 @pytest.mark.xfail(
     strict=True,
     reason=(
-        'vasp_inputs.py:266 reads `... or "vdw_d4"`, a bare truthy string, so '
+        'vasp_inputs.py:271 reads `... or "vdw_d4"`, a bare truthy string, so '
         "the vdW branch runs for every calculation; latent because "
         "_prepare_vdw_tags returns {} when no vdW patch was asked for"
     ),
