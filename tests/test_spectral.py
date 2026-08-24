@@ -201,7 +201,9 @@ def test_generate_spectral_parameters_rejects_converted_spectrum(
     does fail rather than returning a plausible wrong number, which is what
     matters - but the error names neither the argument nor the units.
     """
-    with pytest.raises(ValueError, match="empty sequence"):
+    # The wording is CPython's, and 3.12 changed it: "min() arg is an empty
+    # sequence" became "min() iterable argument is empty".
+    with pytest.raises(ValueError, match="empty sequence|iterable argument is empty"):
         spectral.generate_spectral_parameters(
             str(opt_dir), photon_spectrum, E_gap=REFERENCE_E_GAP
         )

@@ -45,7 +45,14 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          # Deliberately the oldest supported Python, matching python_version
+          # in [tool.mypy]: installing on the target version resolves deps to
+          # the releases a 3.11 user actually gets. On 3.12, pip pulls numpy
+          # 2.5+ (3.12-only), whose stubs use PEP 695 `type` statements that
+          # mypy rejects as a syntax error under a 3.11 target -- killing the
+          # whole run before it checks anything. Bump together with
+          # requires-python.
+          python-version: "3.11"
           cache: pip
           cache-dependency-path: pyproject.toml
       # Pinned for the same reason ruff is: a new mypy release must not change
