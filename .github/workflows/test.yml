@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 # tests/data/ checks out to 134 MB of VASP reference data that the test
-# suite reads, but checkout@v4's default fetch-depth of 1 keeps the transfer
+# suite reads, but checkout's default fetch-depth of 1 keeps the transfer
 # to ~11 MB -- .git is large because of history, not HEAD. Superseded runs
 # are still not worth paying for.
 concurrency:
@@ -22,8 +22,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       # Pinned so a new ruff release cannot turn the branch red on its own.
@@ -41,8 +41,8 @@ jobs:
     # ignore it. Drop continue-on-error once mypy passes.
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           # Deliberately the oldest supported Python, matching python_version
           # in [tool.mypy]: installing on the target version resolves deps to
@@ -71,8 +71,8 @@ jobs:
         # Mirrors requires-python and the classifiers in pyproject.toml.
         python-version: ["3.11", "3.12", "3.13", "3.14"]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
