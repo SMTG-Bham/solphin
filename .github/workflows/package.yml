@@ -23,14 +23,15 @@ jobs:
       # Default depth-1. Nothing reads history, and the expected-file list below
       # comes from the index via `git ls-files`, which a shallow clone carries in
       # full.
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           # One version, not test.yml's matrix. The wheel is py3-none-any and
-          # test.yml already installs the package on 3.11, 3.12 and 3.13; what
+          # test.yml already installs the package on supported Pythons 3.11
+          # through 3.14; future-python.yml also probes the 3.15 preview. What
           # this job adds -- whether the declared data files reach the artefacts
-          # -- does not vary with the interpreter. 3.12 keeps it in step with the
-          # lint and types jobs.
+          # -- does not vary with the interpreter. 3.12 keeps it in step with
+          # the lint job.
           python-version: "3.12"
           cache: pip
           cache-dependency-path: pyproject.toml

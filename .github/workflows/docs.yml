@@ -28,12 +28,12 @@ jobs:
       # sparse clone would break that page. The notebook renders from its stored
       # outputs (nb_execution_mode = "off" in conf.py), so none of the 134 MB
       # of VASP data under tests/data/ is read here.
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
-          # 3.11 to match .readthedocs.yaml, not the 3.12 the lint and types jobs
-          # use. This job only earns its place by failing before Read the Docs
-          # does, and it can only do that if it resolves what RTD resolves.
+          # 3.11 to match .readthedocs.yaml and the oldest supported runtime.
+          # This job only earns its place by failing before Read the Docs does,
+          # and it can only do that if it resolves what RTD resolves.
           python-version: "3.11"
           cache: pip
           cache-dependency-path: pyproject.toml

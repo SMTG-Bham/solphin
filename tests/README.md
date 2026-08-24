@@ -57,7 +57,7 @@ the property is unobservable either way.
 
 ## Known defects (`xfail`)
 
-Ten tests state behaviour the code does not yet have. They are all
+Six tests state behaviour the code does not yet have. They are all
 `xfail(strict=True)`, so **fixing the source turns the suite red** and tells you
 to drop the marker — the register cannot silently rot.
 
@@ -65,20 +65,12 @@ to drop the marker — the register cannot silently rot.
 
 | Test | File | Defect |
 |---|---|---|
-| `test_recomb_rate_returns_finite_float` | `test_db_fom.py` | `db_fom.py:177` calls `_rr0` without `Tcell` |
-| `test_v_at_mpp_between_zero_and_voc` | `test_db_fom.py` | `db_fom.py:248` calls `voc` without `Tcell` |
-| `test_j_at_mpp_below_jsc` | `test_db_fom.py` | `db_fom.py:269` calls `max_power` without `Tcell` |
-| `test_fill_factor_between_zero_and_one` | `test_db_fom.py` | `db_fom.py:326` missing `Tcell`, and `:331` divides by the tuple `(j_sc, v_oc)` |
 | `test_write_local_kpoints_writes_file` | `test_dos.py` | `dos.py:1283` calls `len()`/`.tolist()` on a pymatgen `Kpoints` |
 | `test_write_band_structure_missing_scf_raises` | `test_band_structure.py` | `band_structure.py:212` prints an error and returns `None` instead of raising |
 | `test_splits_argument_is_honoured` | `test_band_structure.py` | `get_band_structure` globs every split, ignoring the `splits` value |
 | `test_prepare_incar_does_not_mutate_config` | `test_vasp_inputs.py` | `_prepare_incar` mutates the config dict it is handed |
 | `test_vdw_branch_skipped_without_vdw_patch` | `test_vasp_inputs.py` | `vasp_inputs.py:246` — `or "vdw_d4"` is always truthy |
 | `test_mobility_plot_draws_one_line_per_lifetime` | `test_plots.py` | `final_results.py:439` appends a 3-tuple instead of one element |
-
-The first four are public API that appears in the Sphinx docs but is not
-reachable from the reference workflow, which is why nothing has ever exercised
-it.
 
 ## Not covered, and why
 
