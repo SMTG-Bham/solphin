@@ -10,6 +10,7 @@
 [![docs](https://github.com/SMTG-Bham/solphin/actions/workflows/docs.yml/badge.svg)](https://github.com/SMTG-Bham/solphin/actions/workflows/docs.yml)
 [![package](https://github.com/SMTG-Bham/solphin/actions/workflows/package.yml/badge.svg)](https://github.com/SMTG-Bham/solphin/actions/workflows/package.yml)
 [![codecov](https://codecov.io/gh/SMTG-Bham/solphin/branch/main/graph/badge.svg)](https://codecov.io/gh/SMTG-Bham/solphin)
+[![documentation](https://readthedocs.org/projects/solphin/badge/?version=latest)](https://solphin.readthedocs.io/en/latest/)
 
 `solphin` is a code developed to assist with the characterisation of novel photovoltaic materials with `VASP`. It
 combines detailed balance analysis with other tools such as the photovoltaic figure of merit proposed by A. Crovetto,
@@ -18,6 +19,9 @@ provide a full picture of a material's theoretical photovoltaic efficiency. The 
 of `VASP` input files for the required calculations based on an initial crystal structure.
 
 **Please note that Solphin is still in early stage testing and development**
+
+Documentation, including a full workflow tutorial and the Python API reference, lives at
+[solphin.readthedocs.io](https://solphin.readthedocs.io/en/latest/).
 
 <img width="1076" height="596" alt="solphin_1 drawio" src="https://github.com/user-attachments/assets/0f981e7a-fcf3-4ec0-a2ef-01980a3f56ee" />
 

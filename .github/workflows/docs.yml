@@ -58,9 +58,10 @@ jobs:
       # default and dropped it from --help, and a plain -W build already reports
       # every warning before it exits.
       - run: make -C docs html SPHINXOPTS="-W"
-      # The project is not on readthedocs.org yet, so this artifact is the only
-      # way to look at rendered docs for a pull request. ~8 MB per push, hence 14
-      # days rather than the default 90.
+      # Read the Docs publishes main at solphin.readthedocs.io, but this
+      # artifact is still the way to look at rendered docs for a pull request
+      # (unless PR builds get enabled on the RTD project). ~8 MB per push, hence
+      # 14 days rather than the default 90.
       - uses: actions/upload-artifact@v7
         with:
           name: docs-html
