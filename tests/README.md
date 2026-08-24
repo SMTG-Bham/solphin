@@ -7,10 +7,19 @@ describes:
 pytest
 ```
 
-The suite needs no network access, no VASP, and nothing outside `tests/` and
-the installed package: its data is the `Cu2GeS3` reference calculation set
-committed at `tests/data/Cu2GeS3` (once produced by the tutorial workflow, but
-owned by the tests — deleting `tutorial/` does not change a single result).
+The suite needs no network access, no VASP, no CASTEP, no OptaDOS, and nothing
+outside `tests/` and the installed package. Its data has two families under
+`tests/data`:
+
+* `Cu2GeS3` — the VASP reference calculation set (once produced by the
+  tutorial workflow, but owned by the tests — deleting `tutorial/` does not
+  change a single result).
+* `castep_toy` — a synthetic CASTEP set: small hand-built `.bands`, `.cell`
+  and OptaDOS `_epsilon.dat` files whose physics is closed-form, so every
+  CASTEP reader anchors to an analytic expectation. `tests/castep_fixtures.py`
+  documents each file's construction and regenerates it byte-identically;
+  per-file regeneration tests pin that, the same discipline as the `.dat`
+  regeneration below.
 
 The tracked data is never worked on in place: `conftest.py` copies the files
 the suite reads — the `_DATA_MANIFEST` list — into pytest's temp area once per
@@ -41,6 +50,11 @@ main anchors:
 | A lossless dielectric has `n = √ε` and zero absorption | `test_optics.py` |
 | The parabolic-band DOS relation, run backwards to recover a chosen mass | `test_dos.py` |
 | `absorption.dat` / `n_real.dat` regenerate from `vasprun.xml` | `test_optics.py` |
+| A Lorentz-oscillator `_epsilon.dat` parses back to the analytic ε(E), with ε(0) = 6 | `test_optics.py` |
+| The OptaDOS tensor geometry gives `n = √ε` per axis and zero absorption end to end | `test_optics.py` |
+| A parabolic-DOS `.bands` file returns the electron and hole masses it encodes | `test_dos.py` |
+| The cosine-band `.bands` fixture has a 1.5 eV direct gap at Γ | `test_band_structure.py` |
+| Every `castep_toy` file regenerates byte-identically from `castep_fixtures.py` | per consumer file |
 
 The two `.dat` regeneration tests are worth calling out: the committed files are
 reproducible from the committed `vasprun.xml`, which makes them verified
@@ -65,11 +79,11 @@ to drop the marker — the register cannot silently rot.
 
 | Test | File | Defect |
 |---|---|---|
-| `test_write_local_kpoints_writes_file` | `test_dos.py` | `dos.py:1283` calls `len()`/`.tolist()` on a pymatgen `Kpoints` |
-| `test_write_band_structure_missing_scf_raises` | `test_band_structure.py` | `band_structure.py:212` prints an error and returns `None` instead of raising |
-| `test_splits_argument_is_honoured` | `test_band_structure.py` | `get_band_structure` globs every split, ignoring the `splits` value |
-| `test_prepare_incar_does_not_mutate_config` | `test_vasp_inputs.py` | `_prepare_incar` mutates the config dict it is handed |
-| `test_vdw_branch_skipped_without_vdw_patch` | `test_vasp_inputs.py` | `vasp_inputs.py:246` — `or "vdw_d4"` is always truthy |
+| `test_write_local_kpoints_writes_file` | `test_dos.py` | `dos.py:1453` calls `len()`/`.tolist()` on a pymatgen `Kpoints` |
+| `test_write_band_structure_missing_scf_raises` | `test_band_structure.py` | `band_structure.py:276` prints an error and returns `None` instead of raising |
+| `test_splits_argument_is_honoured` | `test_band_structure.py` | `get_band_structure` globs every split, ignoring the `splits` value (the CASTEP branch deliberately mirrors this, so one fix covers both) |
+| `test_prepare_incar_does_not_mutate_config` | `test_vasp_inputs.py` | `_prepare_incar` mutates the config dict it is handed (the CASTEP `_prepare_param` deep-copies; its non-mutation test is green) |
+| `test_vdw_branch_skipped_without_vdw_patch` | `test_vasp_inputs.py` | `vasp_inputs.py:271` — `or "vdw_d4"` is always truthy |
 | `test_mobility_plot_draws_one_line_per_lifetime` | `test_plots.py` | `final_results.py:439` appends a 3-tuple instead of one element |
 
 ## Not covered, and why

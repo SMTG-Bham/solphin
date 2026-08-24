@@ -8,6 +8,7 @@ Modules
    :maxdepth: 1
 
    solphin.vasp_inputs
+   solphin.castep_inputs
    solphin.dos
    solphin.optics
    solphin.band_structure
@@ -15,4 +16,3 @@ Modules
    solphin.db_plots
    solphin.spectral
    solphin.final_results
-

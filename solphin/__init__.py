@@ -1,9 +1,10 @@
-"""Figures of merit for photovoltaic absorbers from first-principles (VASP) data."""
+"""Figures of merit for photovoltaic absorbers from first-principles (VASP or CASTEP) data."""
 
 from importlib.metadata import PackageNotFoundError, version
 
 from solphin import (
     band_structure,
+    castep_inputs,
     db_fom,
     db_plots,
     dos,
@@ -22,6 +23,7 @@ except PackageNotFoundError:  # running from a source tree that was never instal
 __all__ = [
     "__version__",
     "band_structure",
+    "castep_inputs",
     "db_fom",
     "db_plots",
     "dos",

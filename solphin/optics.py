@@ -1,5 +1,13 @@
-"""Optical properties from VASP dielectric data: absorption, refractive index and SLME."""
+"""Optical properties from VASP or CASTEP dielectric data: absorption, refractive index and SLME.
 
+VASP supplies the frequency-dependent dielectric tensor directly in
+``vasprun.xml``. CASTEP does not write one itself: its spectral task produces
+optical matrix elements that OptaDOS turns into a ``<seed>_epsilon.dat``
+file, which is what the ``code="castep"`` paths here parse - in either the
+default polycrystalline geometry or the full ``optics_geom : tensor`` form.
+"""
+
+import re
 from pathlib import Path
 
 import numpy as np
@@ -25,15 +33,224 @@ _e = sc.e
 _T = 293.15
 
 
-def calc_dielectric(
-        filename: str | Path
-) -> tuple[float, NDArray, NDArray, NDArray, NDArray]:
-    """Calculate the dielectric constants from a vasprun.xml file.
+def _read_optados_epsilon(filename: str | Path) -> tuple[NDArray, NDArray]:
+    """Parse an OptaDOS ``<seed>_epsilon.dat`` file into a dielectric tensor.
+
+    The parser is structure-driven rather than header-driven, since OptaDOS
+    header wording varies between versions: comment lines (blank, ``#`` or
+    ``!``) separate blocks of numeric rows, each row being energy in eV, then
+    the real and imaginary dielectric components. One data block is the
+    polycrystalline geometry, expanded onto an isotropic tensor; six blocks
+    are the ``optics_geom : tensor`` components in OptaDOS order (xx, yy,
+    zz, xy, xz, yz), filled in symmetrically. Explicit ``Component: i j``
+    comments, when present before every block, override the positional
+    order.
 
     Parameters
     ----------
     filename : str or Path
-        Path of the vasprun file, typically ``vasprun.xml``.
+        Path of the OptaDOS epsilon output file.
+
+    Returns
+    -------
+    energies : numpy.ndarray
+        Energies of the incident radiation in eV, shape (N,).
+    eps_full : numpy.ndarray
+        Complex frequency-dependent dielectric tensor, shape (N, 3, 3).
+
+    Raises
+    ------
+    ValueError
+        If a data line cannot be parsed, the tensor blocks disagree on the
+        energy grid, or the block count is neither 1 nor 6.
+    """
+    path = Path(filename)
+
+    blocks: list[NDArray] = []
+    block_comments: list[str] = []
+    current_rows: list[list[float]] = []
+    pending_comments: list[str] = []
+
+    for raw in path.read_text(encoding="utf-8").splitlines():
+        stripped = raw.strip()
+        if not stripped or stripped[0] in "#!":
+            if current_rows:
+                blocks.append(np.array(current_rows))
+                block_comments.append(" ".join(pending_comments))
+                current_rows = []
+                pending_comments = []
+            if stripped:
+                pending_comments.append(stripped)
+            continue
+
+        tokens = stripped.split()
+        try:
+            row = [float(token) for token in tokens[:3]]
+        except ValueError as exc:
+            raise ValueError(f"Unparseable line in {path}: {raw!r}") from exc
+        if len(tokens) < 3:
+            raise ValueError(
+                f"Expected at least 3 columns (energy, real, imag) in {path},"
+                f" got {raw!r}"
+            )
+        current_rows.append(row)
+
+    if current_rows:
+        blocks.append(np.array(current_rows))
+        block_comments.append(" ".join(pending_comments))
+
+    if len(blocks) == 1:
+        data = blocks[0]
+        energies = data[:, 0]
+        eps_scalar = data[:, 1] + 1j * data[:, 2]
+        eps_full = eps_scalar[:, None, None] * np.eye(3)
+        return energies, eps_full
+
+    if len(blocks) == 6:
+        energies = blocks[0][:, 0]
+        for block in blocks[1:]:
+            if not np.allclose(block[:, 0], energies):
+                raise ValueError(
+                    f"Tensor blocks in {path} disagree on the energy grid."
+                )
+
+        order = [(0, 0), (1, 1), (2, 2), (0, 1), (0, 2), (1, 2)]
+        component_re = re.compile(r"component\s*:?\s*(\d)\s+(\d)", re.IGNORECASE)
+        matches = [component_re.search(comment) for comment in block_comments]
+        if all(matches):
+            order = [
+                (int(match.group(1)) - 1, int(match.group(2)) - 1)
+                for match in matches
+                if match is not None
+            ]
+
+        eps_full = np.zeros((len(energies), 3, 3), dtype=complex)
+        for (i, j), block in zip(order, blocks):
+            component = block[:, 1] + 1j * block[:, 2]
+            eps_full[:, i, j] = component
+            eps_full[:, j, i] = component
+        return energies, eps_full
+
+    raise ValueError(
+        f"Expected 1 (polycrystalline) or 6 (tensor) data blocks in {path},"
+        f" found {len(blocks)}."
+    )
+
+
+def _calc_dielectric_castep(
+        filename: str | Path
+) -> tuple[float, NDArray, NDArray, NDArray, NDArray]:
+    """Calculate the dielectric constants from an OptaDOS epsilon file.
+
+    Parameters
+    ----------
+    filename : str or Path
+        Path of the OptaDOS ``<seed>_epsilon.dat`` output file.
+
+    Returns
+    -------
+    tuple
+        The same five values as ``calc_dielectric``: the static dielectric
+        constant is taken from the lowest-energy row, matching the row-0
+        convention of the VASP path.
+    """
+    energies, eps_full = _read_optados_epsilon(filename)
+
+    eps_inf_tensor = np.real(eps_full[0])
+    eps_inf = float(np.mean(eps_inf_tensor.diagonal()))
+    eps_imag = np.imag(eps_full)
+
+    return eps_inf, eps_inf_tensor, eps_full, eps_imag, energies
+
+
+def _find_epsilon_file(optics_directory: str | Path, seedname: str | None) -> Path:
+    """Locate the OptaDOS epsilon file inside a CASTEP optics directory.
+
+    Parameters
+    ----------
+    optics_directory : str or Path
+        Directory containing the OptaDOS output.
+    seedname : str or None
+        CASTEP seed. If given, ``<seedname>_epsilon.dat`` is required; if
+        None, the directory must hold exactly one ``*_epsilon.dat`` file.
+
+    Returns
+    -------
+    Path
+        Path of the epsilon file.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the named or globbed epsilon file does not exist.
+    ValueError
+        If no seedname was given and several epsilon files match.
+    """
+    directory = Path(optics_directory)
+
+    if seedname is not None:
+        path = directory / f"{seedname}_epsilon.dat"
+        if not path.is_file():
+            raise FileNotFoundError(f"No OptaDOS epsilon file at {path}")
+        return path
+
+    candidates = sorted(directory.glob("*_epsilon.dat"))
+    if not candidates:
+        raise FileNotFoundError(f"No *_epsilon.dat file found in {directory}")
+    if len(candidates) > 1:
+        names = ", ".join(candidate.name for candidate in candidates)
+        raise ValueError(
+            f"Several OptaDOS epsilon files in {directory}: {names};"
+            " pass seedname to choose one."
+        )
+    return candidates[0]
+
+
+def _resolve_optics_file(
+        optics_directory: str | Path, code: str, seedname: str | None
+) -> str | Path:
+    """Resolve the dielectric data file for a directory-based optics function.
+
+    Parameters
+    ----------
+    optics_directory : str or Path
+        Directory containing the optics calculation output.
+    code : str
+        Which first-principles code produced the data, ``"vasp"`` or
+        ``"castep"``.
+    seedname : str or None
+        CASTEP seed used to disambiguate the epsilon file; ignored for VASP.
+
+    Returns
+    -------
+    str or Path
+        Path of the file ``calc_dielectric`` should parse.
+
+    Raises
+    ------
+    ValueError
+        If ``code`` is not ``"vasp"`` or ``"castep"``.
+    """
+    if code == "vasp":
+        return f"{optics_directory}/vasprun.xml"
+    if code == "castep":
+        return _find_epsilon_file(optics_directory, seedname)
+    raise ValueError(f"Unsupported code {code!r}; expected 'vasp' or 'castep'.")
+
+
+def calc_dielectric(
+        filename: str | Path, code: str = "vasp"
+) -> tuple[float, NDArray, NDArray, NDArray, NDArray]:
+    """Calculate the dielectric constants from a first-principles output file.
+
+    Parameters
+    ----------
+    filename : str or Path
+        Path of the dielectric data file: ``vasprun.xml`` for VASP, or the
+        OptaDOS ``<seed>_epsilon.dat`` for CASTEP.
+    code : str, optional
+        Which code produced the file, ``"vasp"`` or ``"castep"``. Default is
+        ``"vasp"``.
 
     Returns
     -------
@@ -47,7 +264,17 @@ def calc_dielectric(
         Imaginary part of the dielectric tensor, shape (N, 3, 3).
     energies : numpy.ndarray
         Energies of the incident radiation in eV.
+
+    Raises
+    ------
+    ValueError
+        If ``code`` is not ``"vasp"`` or ``"castep"``.
     """
+    if code == "castep":
+        return _calc_dielectric_castep(filename)
+    if code != "vasp":
+        raise ValueError(f"Unsupported code {code!r}; expected 'vasp' or 'castep'.")
+
     load_vasprun = Vasprun(filename)
     dielectric = load_vasprun.dielectric
 
@@ -156,61 +383,82 @@ def print_absorption_file(
 
 
 def generate_absorption(
-        optics_directory: str | Path, out_directory: str | Path | None = None
+        optics_directory: str | Path,
+        out_directory: str | Path | None = None,
+        code: str = "vasp",
+        seedname: str | None = None,
 ) -> None:
-    """Generate and write the absorption coefficient from a VASP optics calculation.
+    """Generate and write the absorption coefficient from an optics calculation.
 
     Parameters
     ----------
     optics_directory : str or Path
-        Directory containing the ``vasprun.xml`` file.
+        Directory containing the dielectric data: ``vasprun.xml`` for VASP,
+        an OptaDOS ``<seed>_epsilon.dat`` for CASTEP.
     out_directory : str or Path or None, optional
         Directory the ``absorption.dat`` file is written into. Default is
-        None, which writes it beside the ``vasprun.xml`` it was derived from.
+        None, which writes it beside the file it was derived from.
+    code : str, optional
+        Which code produced the data, ``"vasp"`` or ``"castep"``. Default is
+        ``"vasp"``.
+    seedname : str or None, optional
+        CASTEP seed naming the epsilon file. Default is None, which globs
+        for a single ``*_epsilon.dat``. Ignored for VASP.
     """
     if out_directory is None:
         out_directory = optics_directory
 
-    filename = f'{optics_directory}/vasprun.xml'
+    filename = _resolve_optics_file(optics_directory, code, seedname)
 
-    _, _, eps_full, _, energies = calc_dielectric(filename)
+    _, _, eps_full, _, energies = calc_dielectric(filename, code=code)
     data = calc_absorption(eps_full, energies)
     print_absorption_file(data, energies, out_directory)
 
 
 def generate_n_real(
-        optics_directory: str | Path, out_directory: str | Path | None = None
+        optics_directory: str | Path,
+        out_directory: str | Path | None = None,
+        code: str = "vasp",
+        seedname: str | None = None,
 ) -> None:
-    """Generate and write the real refractive index from a VASP optics calculation.
+    """Generate and write the real refractive index from an optics calculation.
 
     Parameters
     ----------
     optics_directory : str or Path
-        Directory containing the ``vasprun.xml`` file.
+        Directory containing the dielectric data: ``vasprun.xml`` for VASP,
+        an OptaDOS ``<seed>_epsilon.dat`` for CASTEP.
     out_directory : str or Path or None, optional
         Directory the ``n_real.dat`` file is written into. Default is None,
-        which writes it beside the ``vasprun.xml`` it was derived from.
+        which writes it beside the file it was derived from.
+    code : str, optional
+        Which code produced the data, ``"vasp"`` or ``"castep"``. Default is
+        ``"vasp"``.
+    seedname : str or None, optional
+        CASTEP seed naming the epsilon file. Default is None, which globs
+        for a single ``*_epsilon.dat``. Ignored for VASP.
     """
     if out_directory is None:
         out_directory = optics_directory
 
-    filename = f'{optics_directory}/vasprun.xml'
+    filename = _resolve_optics_file(optics_directory, code, seedname)
 
-    _, _, eps_full, _, energies = calc_dielectric(filename)
+    _, _, eps_full, _, energies = calc_dielectric(filename, code=code)
     data = calc_absorption(eps_full, energies)
     print_n_real_file(data, energies, out_directory)
 
 
 def plot_absorption(
         optics_directory: str | Path, xmax: float = 4, xmin: float = 0, save: bool = False,
-        out_directory: str | Path = "."
+        out_directory: str | Path = ".", code: str = "vasp", seedname: str | None = None
 ) -> None:
-    """Plot the optical absorption spectrum from a VASP optics calculation.
+    """Plot the optical absorption spectrum from an optics calculation.
 
     Parameters
     ----------
     optics_directory : str or Path
-        Directory containing the ``vasprun.xml`` file.
+        Directory containing the dielectric data: ``vasprun.xml`` for VASP,
+        an OptaDOS ``<seed>_epsilon.dat`` for CASTEP.
     xmax : float, optional
         Maximum energy in eV shown on the x-axis. Default is ``4``.
     xmin : float, optional
@@ -220,9 +468,15 @@ def plot_absorption(
     out_directory : str or Path, optional
         Directory the figure is written into when ``save`` is ``True``.
         Default is ``"."``, the current working directory.
+    code : str, optional
+        Which code produced the data, ``"vasp"`` or ``"castep"``. Default is
+        ``"vasp"``.
+    seedname : str or None, optional
+        CASTEP seed naming the epsilon file. Default is None, which globs
+        for a single ``*_epsilon.dat``. Ignored for VASP.
     """
-    filename = f'{optics_directory}/vasprun.xml'
-    eps_inf, eps_inf_tensor, eps_full, eps_imag, energies = calc_dielectric(filename)
+    filename = _resolve_optics_file(optics_directory, code, seedname)
+    eps_inf, eps_inf_tensor, eps_full, eps_imag, energies = calc_dielectric(filename, code=code)
     data = calc_absorption(eps_full, energies)
 
     plt.figure(figsize=(3, 5))

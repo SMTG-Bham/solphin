@@ -25,6 +25,8 @@ keywords = [
     "photovoltaics",
     "solar",
     "VASP",
+    "CASTEP",
+    "OptaDOS",
     "DFT",
     "detailed-balance",
     "SLME"
@@ -53,6 +55,11 @@ dependencies = [
     "matplotlib>=3.9.4",
     "pymatgen>=2024.8.9",
     "sumo",
+    # Imported at package-import time through sumo.io.castep, which the CASTEP
+    # readers use first-party. sumo pins it anyway, but the import is now ours.
+    # Do NOT add this to environment.yml's conda list - conda-forge's build
+    # pins numpy<2; the pip install step there already covers it.
+    "castepxbin",
     "ipywidgets"
 ]
 
