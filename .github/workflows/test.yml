@@ -69,7 +69,7 @@ jobs:
       fail-fast: false
       matrix:
         # Mirrors requires-python and the classifiers in pyproject.toml.
-        python-version: ["3.11", "3.12", "3.13"]
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -87,10 +87,10 @@ jobs:
       # put in CI. Six more are strict xfails standing in for known defects --
       # see tests/README.md. Either turning into a failure is a real signal.
       - run: pytest --cov --cov-report=xml
-      # Every matrix job uploads and Codecov merges the reports under the
-      # commit. There is no version-gated code in solphin/, so the three are
-      # identical today, but the flags keep them separable if that changes and
-      # the merge means a coverage report survives one job being skipped.
+      # Every successful matrix job uploads and Codecov merges the reports
+      # under the commit. There is no version-gated code in solphin/, so the
+      # reports should be identical, but the flags keep them separable if that
+      # changes and the merge means a report survives one job being skipped.
       # Deliberately not `if: always()` -- a failed run's partial coverage
       # would read as a drop rather than as the test failure it is.
       - uses: codecov/codecov-action@v7
