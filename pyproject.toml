@@ -1,37 +1,159 @@
 [build-system]
-requires = ["setuptools>=61"]
+# 77 is the floor for PEP 639: the SPDX `license` string and `license-files`
+# below are both errors on older setuptools.
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "solphin"
-version = "0.0.0"
+version = "1.0.0"
 description = "Figure of Merit for Photovoltaics"
-license = { text = "MIT" }
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+# 3.11 is set by the dependencies, not by our own syntax: the current releases
+# of pymatgen, numpy, scipy and matplotlib all declare Requires-Python >=3.11,
+# so a 3.10 resolve silently lands on years-old versions of all four. (Our own
+# floor would be 3.10 -- band_structure.py and the dos.py dataclasses use PEP
+# 604 unions in annotations that are evaluated at runtime.)
+requires-python = ">=3.11"
 authors = [
-  { name = "Philippa U Cox", email = "puc369@student.bham.ac.uk" },
-  { name = "Peter P Russell", email = "ppr466@student.bham.ac.uk" }
+    { name = "Philippa U Cox", email = "puc369@student.bham.ac.uk" },
+    { name = "Peter P Russell", email = "ppr466@student.bham.ac.uk" }
+]
+keywords = [
+    "photovoltaics",
+    "solar",
+    "VASP",
+    "DFT",
+    "detailed-balance",
+    "SLME"
 ]
 classifiers = [
-  "Development Status :: 1 - Planning",
-  "Intended Audience :: Science/Research",
-  "License :: OSI Approved :: MIT License",
-  "Operating System :: POSIX :: Linux",
-  "Programming Language :: Python :: 3.9"
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Chemistry",
+    "Topic :: Scientific/Engineering :: Physics"
 ]
+
+# Every entry below is imported at package-import time by solphin/__init__.py or
+# one of the modules it pulls in. Add new runtime deps to *both* this list and
+# environment.yml.
 dependencies = [
-  "numpy",
-  "scipy",
-  "matplotlib>=3.9.4",
-  "pymatgen>=2024.8.9",
-  "mpmath",
-  "pathlib",
-  "typing_extensions",
-  "monty",
-  "ipywidgets"
+    # db_fom.py integrates with np.trapezoid, which replaced the np.trapz alias
+    # (deprecated in NumPy 2.0, removed in 2.4) and only exists from 2.0 on.
+    "numpy>=2.0",
+    "scipy",
+    "matplotlib>=3.9.4",
+    "pymatgen>=2024.8.9",
+    "sumo",
+    "ipywidgets"
 ]
+
+[project.optional-dependencies]
+docs = ["sphinx", "sphinx-wagtail-theme", "myst-nb"]
+tutorial = ["jupyterlab", "ipykernel", "nbformat", "ipympl"]
+# db_plots.plot_db_combined_interactive and final_results.plot_final_result_interactive
+# set fig.canvas.header_visible, which only the ipympl backend (%matplotlib
+# widget) provides. Everything else in the package works without it, so this is
+# an extra rather than a runtime dependency.
+interactive = ["ipympl"]
+dev = ["pytest", "pytest-cov", "ruff", "mypy", "pre-commit", "build", "twine"]
 
 [project.urls]
-Homepage = "https://github.com/SMTG-Bham/PV-FoM"
+# Still no Documentation entry: .readthedocs.yaml now configures the build, but
+# the project has not been imported on readthedocs.org yet, so there is no URL
+# to point at. Add `Documentation = "https://solphin.readthedocs.io"` (or
+# whatever slug the import claims) once the first build is live.
+Homepage = "https://github.com/SMTG-Bham/solphin"
+Repository = "https://github.com/SMTG-Bham/solphin"
+Issues = "https://github.com/SMTG-Bham/solphin/issues"
 
-[tool.setuptools]
-packages = ["solphin"]
+[tool.setuptools.packages.find]
+include = ["solphin*"]
+
+# db_fom.load_spectrum and vasp_inputs.load_recipe resolve these through
+# importlib.resources at runtime, so they must ship inside the wheel.
+[tool.setuptools.package-data]
+# PEP 561: without this marker a type checker ignores solphin's annotations
+# entirely when it is installed as a dependency, however complete they are.
+"solphin" = ["py.typed"]
+"solphin.resources" = ["*.csv", "*.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# -rx prints the strict-xfail register on every run; tests/README.md explains
+# what each entry means and why fixing the source is expected to turn it red.
+addopts = "-rx"
+xfail_strict = true
+# Note: the default "prepend" import mode is load-bearing. test_dos.py and
+# test_vasp_inputs.py do `from conftest import requires_potcars`, which only
+# resolves because tests/ has no __init__.py and lands on sys.path.
+
+[tool.coverage.run]
+source = ["solphin"]
+# Without this, coverage.xml records <source> as the absolute path of the
+# package directory and every filename relative to it ("dos.py"), which is the
+# shape Codecov cannot map back onto the repo tree. Relative paths make them
+# "solphin/dos.py" and the line hits land on the right files.
+relative_files = true
+
+[tool.ruff]
+target-version = "py311"
+# 100 rather than ruff's default 88: 163 existing lines exceed 88 and only 76
+# exceed 100, so this keeps the pending `ruff format` sweep (#34) proportionate.
+line-length = 100
+# docs/source/full_workflow_tutorial.ipynb is a git-tracked symlink to the file
+# in tutorial/. Without this, ruff lints the notebook twice and reports every
+# finding in it twice -- and a `--fix` reaching it through the docs/ path would
+# write the result back atomically, replacing the symlink with a real copy.
+extend-exclude = ["docs/source/full_workflow_tutorial.ipynb"]
+
+[tool.ruff.lint]
+# Import hygiene plus docstring conventions; widen further once the outstanding
+# F841/UP032 findings in db_plots.py and final_results.py are dealt with.
+# The numpy convention below disables two rules the house style requires, so
+# they are named explicitly (exact-code selection overrides the convention):
+# D212 pins the summary to the opening-quote line; D417 requires every
+# argument to appear under Parameters.
+select = ["E402", "F401", "F811", "I", "D", "D212", "D417"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+
+[tool.ruff.lint.per-file-ignores]
+# Test docstrings are declarative statements of the property under test.
+"tests/*" = ["D401"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["solphin"]
+
+# Deliberately not `strict`. The point of this config is to catch annotations
+# that contradict the code -- three of the sixteen that predate it were wrong,
+# including one silenced by a bare `# type: ignore` -- not to demand annotations
+# everywhere. `disallow_untyped_defs` stays off for the same reason ruff's rules
+# are narrowed: a contributor adding an unannotated helper should get a nudge in
+# review, not a wall of errors.
+[tool.mypy]
+python_version = "3.11"
+files = ["solphin", "tests"]
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_unreachable = true
+# mypy only checks the bodies of annotated functions by default, so without this
+# a newly added unannotated helper drops out of coverage silently.
+check_untyped_defs = true
+disallow_untyped_defs = false
+
+# sumo and ipywidgets ship neither annotations nor stubs, and scipy has no
+# py.typed in the pinned build (scipy-stubs is on PyPI but is not a declared
+# dependency). Everything crossing these boundaries is Any either way, so the
+# missing-import error is noise rather than signal.
+[[tool.mypy.overrides]]
+module = ["sumo.*", "ipywidgets.*", "ipympl.*", "scipy.*"]
+ignore_missing_imports = true

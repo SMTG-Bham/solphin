@@ -140,6 +140,9 @@ venv.bak/
 # mkdocs documentation
 /site
 
+# ruff
+.ruff_cache/
+
 # mypy
 .mypy_cache/
 .dmypy.json
@@ -172,3 +175,9 @@ PROCAR
 POTCAR
 XDATCAR
 vaspout.h5
+
+# Tutorial scratch space
+#  tutorial/full_workflow_tutorial.ipynb writes every input set it generates
+#  into tutorial/workdir/, so the tracked reference data it reads from
+#  tests/data/Cu2GeS3/ stays untouched. Disposable; re-created on the next run.
+tutorial/workdir/

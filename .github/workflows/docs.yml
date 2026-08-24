@@ -1,0 +1,71 @@
+name: docs
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  html:
+    runs-on: ubuntu-latest
+    # The Sphinx build itself is ~4 s. The budget is for pip resolving pymatgen,
+    # sumo, matplotlib and scipy, which is what this job actually spends on.
+    timeout-minutes: 15
+    steps:
+      # Default depth-1, and deliberately no sparse or partial checkout. There is
+      # no history to read -- the version is hard-coded in pyproject.toml, not
+      # derived by setuptools-scm -- but the shape of the tree matters:
+      # docs/source/full_workflow_tutorial.ipynb is a tracked symlink (mode
+      # 120000) into tutorial/, and tutorials.rst is its only toctree entry, so a
+      # sparse clone would break that page. The notebook renders from its stored
+      # outputs (nb_execution_mode = "off" in conf.py), so none of the 134 MB
+      # of VASP data under tests/data/ is read here.
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          # 3.11 to match .readthedocs.yaml, not the 3.12 the lint and types jobs
+          # use. This job only earns its place by failing before Read the Docs
+          # does, and it can only do that if it resolves what RTD resolves.
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      # The package itself, not just the extra, mirroring .readthedocs.yaml:
+      # docs/source/conf.py does `import solphin` at module level for __version__
+      # and solphin/__init__.py imports all nine submodules, so numpy, scipy,
+      # matplotlib, pymatgen, sumo and ipywidgets must all be importable before
+      # Sphinx starts.
+      #
+      # Deliberately no `sphinx==` pin, unlike ruff and mypy in test.yml. Those
+      # are pinned because their output *is* the check. Sphinx here stands in for
+      # a floating external environment, and a pin would let this job go green on
+      # a Sphinx that Read the Docs is not using -- the one failure it exists to
+      # prevent. If a Sphinx release ever costs more than it catches, the bound
+      # belongs in [project.optional-dependencies] docs, which moves CI and RTD
+      # together; a pin here would move only one of them.
+      - run: pip install ".[docs]"
+      # Warnings are errors. A clean build is warning-free today. Run through the
+      # Makefile, whose catch-all target passes SPHINXOPTS straight to
+      # sphinx-build, so this is exactly the command CONTRIBUTING.md gives
+      # contributors plus the one flag. No --keep-going: Sphinx 9 made it the
+      # default and dropped it from --help, and a plain -W build already reports
+      # every warning before it exits.
+      - run: make -C docs html SPHINXOPTS="-W"
+      # The project is not on readthedocs.org yet, so this artifact is the only
+      # way to look at rendered docs for a pull request. ~8 MB per push, hence 14
+      # days rather than the default 90.
+      - uses: actions/upload-artifact@v7
+        with:
+          name: docs-html
+          path: docs/build/html
+          retention-days: 14
+          # A successful build cannot fail to produce these, so an empty upload
+          # means the path is wrong, not that there is nothing to say.
+          if-no-files-found: error
