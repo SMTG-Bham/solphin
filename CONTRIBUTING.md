@@ -35,7 +35,7 @@ rework a finished pull request.
 
 Questions about using the code are also welcome as issues. Please check the
 [tutorial notebook](tutorial/full_workflow_tutorial.ipynb) and the
-documentation first.
+[documentation](https://solphin.readthedocs.io/en/latest/) first.
 
 ## Development setup
 
@@ -186,7 +186,9 @@ directory and the `coverage.xml` CI uploads are already gitignored.
 
 ### Documentation
 
-Documentation is built with Sphinx from `docs/source`:
+Documentation is published at
+[solphin.readthedocs.io](https://solphin.readthedocs.io/en/latest/), which
+rebuilds from `main` on every push. It is built with Sphinx from `docs/source`:
 
 ```bash
 make -C docs html

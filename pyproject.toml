@@ -66,11 +66,8 @@ interactive = ["ipympl"]
 dev = ["pytest", "pytest-cov", "ruff", "mypy", "pre-commit", "build", "twine"]
 
 [project.urls]
-# Still no Documentation entry: .readthedocs.yaml now configures the build, but
-# the project has not been imported on readthedocs.org yet, so there is no URL
-# to point at. Add `Documentation = "https://solphin.readthedocs.io"` (or
-# whatever slug the import claims) once the first build is live.
 Homepage = "https://github.com/SMTG-Bham/solphin"
+Documentation = "https://solphin.readthedocs.io"
 Repository = "https://github.com/SMTG-Bham/solphin"
 Issues = "https://github.com/SMTG-Bham/solphin/issues"
 

@@ -22,7 +22,15 @@ Solphin
 Citation
 --------
 
+If you use ``solphin`` in your work, please cite the following:
 
+* Cox, P. U., Russell, P. P., Crovetto, A., Squires, A. G., & Scanlon, D. O.
+  Solphin [Computer software]. https://github.com/SMTG-Bham/solphin
+* Crovetto, A., 2024. A phenomenological figure of merit for photovoltaic
+  materials. Journal of Physics: Energy, 6 (2), p.025009.
+* Alex M. Ganose, Adam J. Jackson, David O. Scanlon. sumo: Command-line tools
+  for plotting and analysis of periodic ab initio calculations. Journal of Open
+  Source Software, 2018 3 (28), 717, doi:10.21105/joss.00717.
 
 Contents
 ---------
