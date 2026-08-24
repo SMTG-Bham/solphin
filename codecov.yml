@@ -1,0 +1,31 @@
+# Codecov configuration -- https://docs.codecov.com/docs/codecovyml-reference
+#
+# Uploaded from .github/workflows/test.yml, one report per Python version in
+# the test matrix, merged by Codecov under the commit.
+
+coverage:
+  status:
+    project:
+      default:
+        # `auto` compares against the base commit rather than a fixed number,
+        # so the check tracks whatever the suite currently reaches (85% at the
+        # time of writing) instead of needing to be edited as it climbs. The
+        # threshold absorbs the sub-percent noise of a refactor moving lines
+        # around without letting a real regression through.
+        target: auto
+        threshold: 1%
+    patch:
+      default:
+        # Held above the project figure on purpose: the point of the check is
+        # that new code arrives tested, so that 85% goes up rather than down.
+        # Ten of the tests are strict xfails standing in for known defects
+        # (tests/README.md), and those still execute the lines they cover, so
+        # a bug fix that drops its marker does not move this number.
+        target: 80%
+        threshold: 0%
+
+comment:
+  layout: "condensed_header, diff, flags, files"
+  # No comment on pull requests that do not touch coverage at all -- docs and
+  # packaging changes are a large share of the traffic here.
+  require_changes: true

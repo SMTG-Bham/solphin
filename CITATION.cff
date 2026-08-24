@@ -25,10 +25,11 @@ authors:
     family-names: Squires
     affiliation: University of Birmingham
     orcid: 'https://orcid.org/0000-0001-6967-3690'
-  - given-names: 'David O '
+  - given-names: David O
     family-names: Scanlon
     email: d.o.scanlon@bham.ac.uk
     affiliation: University of Birmingham
     orcid: 'https://orcid.org/0000-0001-9174-8601'
+version: 1.0.0
 repository-code: 'https://github.com/SMTG-Bham/solphin'
 license: MIT

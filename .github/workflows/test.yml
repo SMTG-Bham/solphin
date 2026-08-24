@@ -1,0 +1,104 @@
+name: test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# tests/data/ checks out to 134 MB of VASP reference data that the test
+# suite reads, but checkout@v4's default fetch-depth of 1 keeps the transfer
+# to ~11 MB -- .git is large because of history, not HEAD. Superseded runs
+# are still not worth paying for.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      # Pinned so a new ruff release cannot turn the branch red on its own.
+      # Keep in step with the rev in .pre-commit-config.yaml.
+      - run: pip install ruff==0.16.4
+      - run: ruff check .
+
+  types:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Non-blocking on purpose. Six of the ten defects in the xfail register in
+    # tests/README.md are type errors -- the four db_fom arity bugs, the len()
+    # on a Kpoints in dos.py, and the tuple append in final_results.py -- so
+    # mypy reports them by design. Fixing them is a separate change per
+    # tests/README.md, and turning this job red until then would train people
+    # to ignore it. Drop continue-on-error once that register is empty.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      # Pinned for the same reason ruff is: a new mypy release must not change
+      # this job's output on its own.
+      - run: pip install -e ".[dev]" mypy==2.3.1
+      # Paths, and the rest of the configuration, come from [tool.mypy].
+      - run: mypy
+
+  test:
+    runs-on: ubuntu-latest
+    # The suite parses ~130 MB of vasprun.xml and compute_dos re-reads its
+    # vasprun up to ten times; locally it is ~9 s, but bound it anyway.
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        # Mirrors requires-python and the classifiers in pyproject.toml.
+        python-version: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - run: python -m pip install --upgrade pip
+      - run: pip install -e ".[dev]"
+      # -rx and xfail_strict come from [tool.pytest.ini_options]; bare --cov
+      # picks up source and relative_files from [tool.coverage.run].
+      #
+      # Two tests skip here by design: requires_potcars keys on
+      # PMG_VASP_PSP_DIR, and VASP pseudopotentials are licensed and cannot be
+      # put in CI. Ten more are strict xfails standing in for known defects --
+      # see tests/README.md. Either turning into a failure is a real signal.
+      - run: pytest --cov --cov-report=xml
+      # Every matrix job uploads and Codecov merges the reports under the
+      # commit. There is no version-gated code in solphin/, so the three are
+      # identical today, but the flags keep them separable if that changes and
+      # the merge means a coverage report survives one job being skipped.
+      # Deliberately not `if: always()` -- a failed run's partial coverage
+      # would read as a drop rather than as the test failure it is.
+      - uses: codecov/codecov-action@v7
+        with:
+          # Tokenless upload works on a public repo but is rate-limited and
+          # drops reports under load. Add a CODECOV_TOKEN repository secret and
+          # this picks it up; while it is unset the input is empty and the
+          # action falls back to tokenless.
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: coverage.xml
+          disable_search: true
+          flags: python-${{ matrix.python-version }}
+          name: python-${{ matrix.python-version }}
+          # The action's default, but pinned explicitly for the same reason
+          # ruff is pinned above: a Codecov outage must not turn the branch red
+          # the way a real test failure does.
+          fail_ci_if_error: false
