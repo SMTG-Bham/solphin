@@ -210,8 +210,10 @@ def current_density(
         Current density in A m⁻². Scalar for scalar ``voltage``,
         elementwise array otherwise.
     """
-    return q * (_photons_above_bandgap(E_gap, photon_spectrum) - _rr0(E_gap, photon_spectrum, Tcell) * np.exp(
-        q * voltage / (k * Tcell)) - 1)
+    Jph = _photons_above_bandgap(E_gap, photon_spectrum)
+    J0 = _rr0(E_gap, photon_spectrum, Tcell)
+
+    return q * (Jph - J0 * (np.exp(q * voltage / (k * Tcell)) - 1))
 
 
 def jsc(E_gap: float, photon_spectrum: NDArray, Tcell: float) -> float:
