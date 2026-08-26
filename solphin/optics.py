@@ -23,8 +23,6 @@ from scipy.interpolate import interp1d
 import solphin.spectral as spectral
 from solphin.db_fom import load_spectrum
 
-hc_eV_nm = 1239.84193  # eV nm
-
 _c = sc.c
 _h = sc.h
 _h_e = sc.h / sc.e
@@ -480,7 +478,7 @@ def plot_absorption(
     data = calc_absorption(eps_full, energies)
 
     plt.figure(figsize=(3, 5))
-    absorption = data["absorption"] / 1e7
+    absorption = data["absorption"] * sc.centi / 1e5  # m-1 -> 10^5 cm-1
 
     plt.plot(
         energies,
@@ -568,7 +566,7 @@ def _convert_spec(sol_wl: NDArray, sol_irr: NDArray) -> tuple[NDArray, NDArray]:
     sol_phot_flux : numpy.ndarray
         Photon flux in photons m⁻² s⁻¹ nm⁻¹.
     """
-    sol_wl_m = sol_wl * 1e-9  # Convert wavelength to meters
+    sol_wl_m = sol_wl * sc.nano  # Convert wavelength to meters
     sol_phot_flux = sol_irr * (sol_wl_m / (_h * _c))  # photons m-2 s-1 nm-1
 
     return sol_wl_m, sol_phot_flux
@@ -665,7 +663,7 @@ def _n_real_abs_fit(
     """
     # --- absorption and n_real data (on the same energy grid) ---
     energy_abs, alpha_cm = spectral._load_absorption(abs_file)
-    alpha_m = alpha_cm * 1e2  # cm-1 → m-1
+    alpha_m = alpha_cm / sc.centi  # cm-1 → m-1
 
     nr_dat = np.loadtxt(n_real_file, comments='#')
     n_real = np.interp(energy_abs, nr_dat[:, 0], nr_dat[:, 1])
@@ -699,12 +697,12 @@ def _interpolate_a(
         band-gap cutoff wavelength.
     """
     # --- interpolate alpha onto solar wavelength grid (pymatgen style) ---
-    wl_alpha = ((_c * _h_e) / (energy_abs + 1e-8)) * 1e9  # nm
+    wl_alpha = ((_c * _h_e) / (energy_abs + 1e-8)) / sc.nano  # nm
     alpha_func = interp1d(wl_alpha, alpha_m, kind='cubic',
                           fill_value=(alpha_m[0], alpha_m[-1]),
                           bounds_error=False)
 
-    wl_gap_nm = (_c * _h_e / direct_gap) * 1e9
+    wl_gap_nm = (_c * _h_e / direct_gap) / sc.nano
     alpha_on_sol = np.zeros(len(sol_wl))
     for i, wl in enumerate(sol_wl):
         if wl < wl_gap_nm:

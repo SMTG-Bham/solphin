@@ -87,8 +87,8 @@ def convert_spectrum(spectrum: NDArray) -> NDArray:
         energy in m⁻² s⁻¹ eV⁻¹.
     """
     converted = np.copy(spectrum)
-    converted[:, 0] = converted[:, 0] * 1e-9  # wavelength to m
-    converted[:, 1] = converted[:, 1] / 1e-9  # irradiance to W/m2/m (from W/m2/nm)
+    converted[:, 0] = converted[:, 0] * sc.nano  # wavelength to m
+    converted[:, 1] = converted[:, 1] / sc.nano  # irradiance to W/m2/m (from W/m2/nm)
 
     E = h * c / converted[:, 0]  # Bandgap in J
     d_lambda_d_E = h * c / E ** 2

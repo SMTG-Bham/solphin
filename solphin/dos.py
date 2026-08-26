@@ -347,7 +347,7 @@ def _load_dos_data(
     """
     if code == "vasp":
         vr, cdos, energies, densities = _load_dos(filename)
-        return cdos, energies, densities, vr.final_structure.volume * 1.0e-30
+        return cdos, energies, densities, vr.final_structure.volume * sc.angstrom ** 3
     if code == "castep":
         return _load_dos_castep(filename, bin_width=bin_width)
     raise ValueError(f"Unsupported code {code!r}; expected 'vasp' or 'castep'.")
