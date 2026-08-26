@@ -52,7 +52,7 @@ def _wavelength_conv(abs_energy_eV: NDArray) -> NDArray:
         Corresponding wavelengths in nm.
     """
     wavelength_m = (h * c) / (abs_energy_eV * q)
-    abs_wavelength_nm = wavelength_m * 1e9
+    abs_wavelength_nm = wavelength_m / sc.nano
 
     return abs_wavelength_nm
 
@@ -74,7 +74,7 @@ def _extract_int_limits(E_gap: float) -> tuple[float, float]:
     """
     wavelength_min = 300
 
-    Eg_wavelength = ((h * c) / (E_gap * q)) * 1e9
+    Eg_wavelength = ((h * c) / (E_gap * q)) / sc.nano
 
     return wavelength_min, Eg_wavelength
 
