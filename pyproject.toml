@@ -99,7 +99,10 @@ relative_files = true
 [tool.ruff]
 target-version = "py311"
 line-length = 100
-extend-exclude = ["docs/source/full_workflow_tutorial.ipynb"]
+extend-exclude = [
+    "docs/source/full_workflow_tutorial.ipynb",
+    "docs/source/castep_workflow_tutorial.ipynb",
+]
 
 [tool.ruff.lint]
 select = ["E402", "F401", "F811", "I", "D", "D212", "D417"]
