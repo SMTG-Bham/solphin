@@ -1,4 +1,11 @@
-"""Density-of-states effective masses from VASP output, and DOS calculation setup."""
+"""Density-of-states effective masses from VASP or CASTEP output, and DOS calculation setup.
+
+The VASP paths read ``vasprun.xml``; the ``code="castep"`` paths read a
+``<seed>.bands`` file, histogrammed into a DOS by sumo. The effective-mass
+fit itself is shared, so its parabolic-band assumptions - and the gapped
+material it presumes, since the CASTEP loader references energies to the
+valence band maximum - apply to both codes alike.
+"""
 
 import warnings
 from dataclasses import dataclass
@@ -9,17 +16,22 @@ import scipy.constants as sc
 from matplotlib import pyplot as plt
 from numpy.typing import NDArray
 from pymatgen.core.structure import Structure
-from pymatgen.electronic_structure.dos import CompleteDos
+from pymatgen.electronic_structure.core import Spin
+from pymatgen.electronic_structure.dos import CompleteDos, Dos
 from pymatgen.io.vasp import Vasprun
 from pymatgen.io.vasp.inputs import Kpoints
 from scipy.constants import physical_constants as pc
 from sumo.cli.dosplot import dosplot
+from sumo.io.castep import read_bands_header
+from sumo.io.castep import read_dos as castep_read_dos
 
+from solphin.castep_inputs import write_castep_calculation
 from solphin.vasp_inputs import write_vasp_calculation
 
 HBAR = sc.hbar  # J·s
 M_E = pc["atomic unit of mass"][0]  # kg
 EV = sc.e  # J per eV
+BOHR_M = pc["Bohr radius"][0]  # m
 MIN_DOS_FIT_R2 = 0.80
 MIN_DOS_FIT_POINTS = 10
 
@@ -31,13 +43,16 @@ def plot_dos(
         gaussian: float = 0.05,
         save: bool = False,
         out_directory: str | Path = ".",
+        code: str = "vasp",
 ) -> None:
     """Plot the electronic density of states from a calculation output file.
 
     Parameters
     ----------
     filename : str or Path
-        Path to the DOS data file to plot.
+        Path to the DOS data file to plot: ``vasprun.xml`` for VASP, a
+        ``<seed>.bands`` file for CASTEP (sibling ``.pdos_bin`` and ``.cell``
+        files are picked up automatically when present).
     xmin : float, optional
         Minimum energy in eV shown on the x-axis. Default is ``-3``.
     xmax : float, optional
@@ -50,9 +65,12 @@ def plot_dos(
     out_directory : str or Path, optional
         Directory the figure is written into when ``save`` is ``True``.
         Default is ``"."``, the current working directory.
+    code : str, optional
+        Which code produced the file, ``"vasp"`` or ``"castep"``. Default is
+        ``"vasp"``.
     """
     fig, ax = plt.subplots(figsize=(5, 3), dpi=150)
-    dosplot(filename=filename, xmin=xmin, xmax=xmax, gaussian=gaussian, plt=plt)
+    dosplot(filename=filename, code=code, xmin=xmin, xmax=xmax, gaussian=gaussian, plt=plt)
 
     if save:
         plt.savefig(Path(out_directory) / "dos.png")
@@ -235,8 +253,108 @@ def _load_dos(
     return vr, cdos, energies, densities
 
 
+def _load_dos_castep(
+        bands_file: str, bin_width: float = 0.01
+) -> tuple[Dos, NDArray, NDArray, float]:
+    """Load the electronic density of states from a CASTEP .bands file.
+
+    sumo histograms the eigenvalues into raw state counts per bin with no
+    spin-degeneracy factor, so two unit conversions here are load-bearing:
+    dividing by the bin width turns counts into states per eV, and
+    single-spin data is doubled to match the spin-summed convention of the
+    VASP loader. The cell volume comes from the .bands header lattice, which
+    is in Bohr.
+
+    Parameters
+    ----------
+    bands_file : str
+        Path to the CASTEP ``<seed>.bands`` file with the eigenvalue data.
+    bin_width : float, optional
+        Width of the DOS histogram bins in eV. Default is ``0.01``.
+
+    Returns
+    -------
+    dos_obj : Dos
+        Density of states with the Fermi level referenced to the valence
+        band maximum for gapped systems.
+    energies : numpy.ndarray
+        Energy values corresponding to the DOS in eV.
+    densities : numpy.ndarray
+        Total electronic DOS in states per eV, summed over spin channels
+        and including spin degeneracy.
+    volume_m3 : float
+        Unit-cell volume in m³.
+    """
+    dos_obj, _ = castep_read_dos(
+        bands_file,
+        bin_width=bin_width,
+        efermi_to_vbm=True,
+        total_only=True,
+    )
+
+    energies = np.asarray(dos_obj.energies, dtype=float)
+
+    densities = np.zeros_like(energies, dtype=float)
+    for spin_density in dos_obj.densities.values():
+        densities += np.asarray(spin_density, dtype=float)
+
+    # states per bin -> states per eV
+    densities /= bin_width
+
+    # CASTEP eigenvalues carry no spin degeneracy; VASP's spin-restricted
+    # densities do, and the sqrt(E) fit is calibrated against that convention.
+    if Spin.down not in dos_obj.densities:
+        densities *= 2.0
+
+    header = read_bands_header(bands_file)
+    lattice_bohr = np.asarray(header["lattice_vectors"], dtype=float)
+    volume_m3 = float(abs(np.linalg.det(lattice_bohr))) * BOHR_M ** 3
+
+    return dos_obj, energies, densities, volume_m3
+
+
+def _load_dos_data(
+        filename: str, code: str = "vasp", bin_width: float = 0.01
+) -> tuple[Dos, NDArray, NDArray, float]:
+    """Load DOS data from either supported code onto one common contract.
+
+    Parameters
+    ----------
+    filename : str
+        Path to the DOS data file: ``vasprun.xml`` for VASP, a
+        ``<seed>.bands`` file for CASTEP.
+    code : str, optional
+        Which code produced the file, ``"vasp"`` or ``"castep"``. Default is
+        ``"vasp"``.
+    bin_width : float, optional
+        CASTEP only: histogram bin width in eV. Default is ``0.01``.
+
+    Returns
+    -------
+    dos_obj : Dos
+        Density of states object providing the band edges.
+    energies : numpy.ndarray
+        Energy values corresponding to the DOS in eV.
+    densities : numpy.ndarray
+        Spin-summed total DOS in states per eV.
+    volume_m3 : float
+        Unit-cell volume in m³.
+
+    Raises
+    ------
+    ValueError
+        If ``code`` is not ``"vasp"`` or ``"castep"``.
+    """
+    if code == "vasp":
+        vr, cdos, energies, densities = _load_dos(filename)
+        return cdos, energies, densities, vr.final_structure.volume * sc.angstrom ** 3
+    if code == "castep":
+        return _load_dos_castep(filename, bin_width=bin_width)
+    raise ValueError(f"Unsupported code {code!r}; expected 'vasp' or 'castep'.")
+
+
 def _get_band_edge(
-        cdos: CompleteDos,
+        cdos: Dos,
         carrier: str,
         energies: NDArray,
         energy_window: float,
@@ -249,8 +367,8 @@ def _get_band_edge(
 
     Parameters
     ----------
-    cdos : CompleteDos
-        Complete density of states object with the band edge information.
+    cdos : Dos
+        Density of states object with the band edge information.
     carrier : str
         Charge carrier type; ``"electrons"`` selects the CBM, anything else
         the VBM.
@@ -358,16 +476,18 @@ def _clean_dos_values(
     return delta_E_ev, dos
 
 
-def _convert_dos(vr: Vasprun, delta_E_ev: NDArray, dos: NDArray) -> tuple[NDArray, NDArray]:
-    """Convert density of states data from VASP units to SI units.
+def _convert_dos(
+        volume_m3: float, delta_E_ev: NDArray, dos: NDArray
+) -> tuple[NDArray, NDArray]:
+    """Convert density of states data from eV-and-cell units to SI units.
 
-    Energies go from eV to J, and the DOS is normalised by the final
-    unit-cell volume.
+    Energies go from eV to J, and the DOS is normalised by the unit-cell
+    volume.
 
     Parameters
     ----------
-    vr : Vasprun
-        Parsed VASP calculation output with the final structure.
+    volume_m3 : float
+        Unit-cell volume in m³.
     delta_E_ev : numpy.ndarray
         Energy values relative to the selected band edge in eV.
     dos : numpy.ndarray
@@ -380,11 +500,6 @@ def _convert_dos(vr: Vasprun, delta_E_ev: NDArray, dos: NDArray) -> tuple[NDArra
     dos_si : numpy.ndarray
         Electronic density of states in states J⁻¹ m⁻³.
     """
-    volume_m3 = (
-            vr.final_structure.volume
-            * 1.0e-30
-    )
-
     delta_E_J = (
             delta_E_ev * EV
     )
@@ -519,17 +634,20 @@ def get_dos_effective_mass(
         carrier: str = "electrons",
         energy_window: float = 0.15,
         min_dos: float = 0.0,
+        code: str = "vasp",
+        bin_width: float = 0.01,
 ) -> _DOSEffectiveMassResult:
     """Calculate the density-of-states effective mass for electrons or holes.
 
-    Extracts the DOS near the selected band edge from a VASP ``vasprun.xml``
-    file, converts it to SI units, and fits the square-root energy dependence
-    expected for a three-dimensional parabolic band.
+    Extracts the DOS near the selected band edge from the calculation
+    output, converts it to SI units, and fits the square-root energy
+    dependence expected for a three-dimensional parabolic band.
 
     Parameters
     ----------
     dos_vasprun : str
-        Path to the VASP ``vasprun.xml`` file with density of states data.
+        Path to the DOS data file: ``vasprun.xml`` for VASP, a
+        ``<seed>.bands`` file for CASTEP.
     carrier : str, optional
         Charge carrier to calculate the effective mass for, either
         ``"electrons"`` or ``"holes"``. Default is ``"electrons"``.
@@ -539,6 +657,13 @@ def get_dos_effective_mass(
     min_dos : float, optional
         Minimum DOS value required for a data point to enter the fit.
         Default is ``0.0``.
+    code : str, optional
+        Which code produced the file, ``"vasp"`` or ``"castep"``. Default is
+        ``"vasp"``.
+    bin_width : float, optional
+        CASTEP only: width of the DOS histogram bins in eV, the CASTEP
+        analogue of VASP's NEDOS density. Ignored for VASP. Default is
+        ``0.01``.
 
     Returns
     -------
@@ -558,13 +683,15 @@ def get_dos_effective_mass(
             f"Carrier must be 'electrons' or 'holes' recieved: {carrier!r}"
         )
 
-    vr, cdos, energies, densities = _load_dos(dos_vasprun)
+    dos_obj, energies, densities, volume_m3 = _load_dos_data(
+        dos_vasprun, code=code, bin_width=bin_width
+    )
 
-    E_edge, delta_E_ev, dos = _get_band_edge(cdos, carrier, energies, energy_window, densities)
+    E_edge, delta_E_ev, dos = _get_band_edge(dos_obj, carrier, energies, energy_window, densities)
 
     delta_E_ev, dos = _clean_dos_values(delta_E_ev, dos, min_dos, energy_window)
 
-    delta_E_J, dos_si = _convert_dos(vr, delta_E_ev, dos)
+    delta_E_J, dos_si = _convert_dos(volume_m3, delta_E_ev, dos)
 
     m_eff_rel, m_eff_si, r2, y, A = _calculate_DOS(delta_E_J, dos_si)
 
@@ -589,6 +716,8 @@ def test_dos_mass_windows(
         carrier: str = "electrons",
         windows: tuple[float, ...] = (0.05, 0.10, 0.15, 0.20, 0.30),
         min_dos: float = 0.0,
+        code: str = "vasp",
+        bin_width: float = 0.01,
 ) -> list[_DOSEffectiveMassResult]:
     """Test the sensitivity of the DOS effective mass to the fitting window.
 
@@ -597,7 +726,8 @@ def test_dos_mass_windows(
     Parameters
     ----------
     dos_vasprun : str
-        Path to the VASP ``vasprun.xml`` file with density of states data.
+        Path to the DOS data file: ``vasprun.xml`` for VASP, a
+        ``<seed>.bands`` file for CASTEP.
     carrier : str, optional
         Charge carrier to calculate the effective mass for, either
         ``"electrons"`` or ``"holes"``. Default is ``"electrons"``.
@@ -607,6 +737,12 @@ def test_dos_mass_windows(
     min_dos : float, optional
         Minimum DOS value required for a data point to enter each fit.
         Default is ``0.0``.
+    code : str, optional
+        Which code produced the file, ``"vasp"`` or ``"castep"``. Default is
+        ``"vasp"``.
+    bin_width : float, optional
+        CASTEP only: width of the DOS histogram bins in eV. Ignored for
+        VASP. Default is ``0.01``.
 
     Returns
     -------
@@ -650,6 +786,8 @@ def test_dos_mass_windows(
                 carrier=carrier,
                 energy_window=window,
                 min_dos=min_dos,
+                code=code,
+                bin_width=bin_width,
             )
 
             print(
@@ -861,6 +999,8 @@ def _check_dos_fit_quality(
         dos_vasprun: str,
         windows: tuple[float, ...] = (0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.40),
         min_dos: float = 0.0,
+        code: str = "vasp",
+        bin_width: float = 0.01,
 ) -> bool:
     """Check whether a DOS effective-mass fit is sufficiently well resolved.
 
@@ -873,14 +1013,20 @@ def _check_dos_fit_quality(
         DOS effective-mass result with the fitted mass, fit quality, number
         of fitted points and carrier type.
     dos_vasprun : str
-        Path to the VASP ``vasprun.xml`` file with density of states data,
-        used for the fitting-window test when the fit is poorly resolved.
+        Path to the DOS data file, used for the fitting-window test when the
+        fit is poorly resolved.
     windows : tuple of float, optional
         Energy windows in eV for the sensitivity test of a poorly resolved
         fit. Default is ``(0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.40)``.
     min_dos : float, optional
         Minimum DOS value required for a data point to enter the
         fitting-window tests. Default is ``0.0``.
+    code : str, optional
+        Which code produced the file, ``"vasp"`` or ``"castep"``. Default is
+        ``"vasp"``.
+    bin_width : float, optional
+        CASTEP only: width of the DOS histogram bins in eV. Ignored for
+        VASP. Default is ``0.01``.
 
     Returns
     -------
@@ -966,6 +1112,8 @@ def _check_dos_fit_quality(
         carrier=result.carrier,
         windows=windows,
         min_dos=min_dos,
+        code=code,
+        bin_width=bin_width,
     )
 
     return False
@@ -977,17 +1125,20 @@ def compute_dos(
         carrier: str = "electrons",
         energy_window: float = 0.15,
         min_dos: float = 0.0,
+        code: str = "vasp",
+        bin_width: float = 0.01,
 ) -> DOSResult:
     """Compute density-of-states information and the corresponding effective mass.
 
-    Parses a VASP ``vasprun.xml`` file, extracts the band edges, and fits the
+    Parses the calculation output, extracts the band edges, and fits the
     DOS effective masses for electrons and holes. A user-supplied effective
     mass, when given, is used as the final result instead of fitting.
 
     Parameters
     ----------
     dos_vasprun : str
-        Path to the VASP ``vasprun.xml`` file with density of states data.
+        Path to the DOS data file: ``vasprun.xml`` for VASP, a
+        ``<seed>.bands`` file for CASTEP.
     m_eff : float or None, optional
         User-supplied effective mass relative to the free electron mass.
         If provided, DOS effective-mass fitting is skipped. Default is None.
@@ -1000,6 +1151,13 @@ def compute_dos(
     min_dos : float, optional
         Minimum DOS value required for a data point to enter the fits.
         Default is ``0.0``.
+    code : str, optional
+        Which code produced the file, ``"vasp"`` or ``"castep"``. Default is
+        ``"vasp"``.
+    bin_width : float, optional
+        CASTEP only: width of the DOS histogram bins in eV, the CASTEP
+        analogue of VASP's NEDOS density. Ignored for VASP. Default is
+        ``0.01``.
 
     Returns
     -------
@@ -1029,23 +1187,12 @@ def compute_dos(
             "'electrons' or 'holes'."
         )
 
-    vr = Vasprun(
-        dos_vasprun,
-        parse_dos=True,
-        parse_eigen=False,
-    )
-
-    cdos = (
-        vr.complete_dos
-    )
-
-    vol_m3 = (
-            vr.final_structure.volume
-            * 1.0e-30
+    dos_obj, _, _, vol_m3 = _load_dos_data(
+        dos_vasprun, code=code, bin_width=bin_width
     )
 
     cbm, vbm = (
-        cdos.get_cbm_vbm()
+        dos_obj.get_cbm_vbm()
     )
 
     # Reference energies to VBM = 0
@@ -1076,6 +1223,8 @@ def compute_dos(
                     carrier="electrons",
                     energy_window=energy_window,
                     min_dos=min_dos,
+                    code=code,
+                    bin_width=bin_width,
                 )
             )
 
@@ -1105,6 +1254,8 @@ def compute_dos(
                     carrier="holes",
                     energy_window=energy_window,
                     min_dos=min_dos,
+                    code=code,
+                    bin_width=bin_width,
                 )
             )
 
@@ -1180,12 +1331,57 @@ def compute_dos(
                 result=selected_em,
                 dos_vasprun=dos_vasprun,
                 min_dos=min_dos,
+                code=code,
+                bin_width=bin_width,
             )
 
     return result
 
 
 # --- Density-of-states file generation ---
+
+
+def _local_kpoint_offsets(
+        k0_frac: NDArray,
+        mesh: tuple[int, int, int],
+        delta: float,
+) -> NDArray:
+    """Build a uniform grid of fractional k-points around a band-edge k-point.
+
+    Parameters
+    ----------
+    k0_frac : numpy.ndarray
+        Fractional reciprocal-space coordinates of the central k-point.
+    mesh : tuple of int
+        Number of k-points along each reciprocal direction, as
+        ``(nx, ny, nz)``.
+    delta : float
+        Maximum fractional reciprocal-space displacement from the central
+        k-point along each direction.
+
+    Returns
+    -------
+    numpy.ndarray
+        The grid points in fractional coordinates, shape (nx*ny*nz, 3).
+    """
+    k0_frac = np.asarray(k0_frac, dtype=float)
+
+    nx, ny, nz = mesh
+
+    xs = np.linspace(-delta, delta, nx)
+    ys = np.linspace(-delta, delta, ny)
+    zs = np.linspace(-delta, delta, nz)
+
+    pts = []
+
+    for dx in xs:
+        for dy in ys:
+            for dz in zs:
+                pts.append(
+                    k0_frac + np.array([dx, dy, dz])
+                )
+
+    return np.asarray(pts)
 
 
 def _generate_local_kpoints(
@@ -1214,24 +1410,7 @@ def _generate_local_kpoints(
     Kpoints
         VASP KPOINTS object with the generated local mesh.
     """
-    k0_frac = np.asarray(k0_frac, dtype=float)
-
-    nx, ny, nz = mesh
-
-    xs = np.linspace(-delta, delta, nx)
-    ys = np.linspace(-delta, delta, ny)
-    zs = np.linspace(-delta, delta, nz)
-
-    pts = []
-
-    for dx in xs:
-        for dy in ys:
-            for dz in zs:
-                pts.append(
-                    k0_frac + np.array([dx, dy, dz])
-                )
-
-    pts_grid = np.asarray(pts)
+    pts_grid = _local_kpoint_offsets(k0_frac, mesh, delta)
 
     return Kpoints(
         comment="Local k-mesh around band edge",
@@ -1286,32 +1465,59 @@ def write_eff_mass(
         folder: str = "eff_mass",
         mesh: tuple[int, int, int] = (5, 5, 5),
         delta: float = 0.01,
+        code: str = "vasp",
 ) -> None:
-    """Write a VASP calculation setup for an effective-mass calculation.
+    """Write a calculation setup for an effective-mass calculation.
 
     Generates a dense local k-point mesh around the band-edge k-point and
-    prepares the calculation with effective-mass INCAR settings.
+    prepares the calculation with effective-mass settings: INCAR tags plus a
+    KPOINTS mesh for VASP, or a spectral band-structure task with a
+    ``spectral_kpoint_list`` for CASTEP.
 
     Parameters
     ----------
     k0_frac : numpy.ndarray
         Fractional reciprocal-space coordinates of the band-edge k-point.
     structure : Structure
-        Crystal structure used to generate the VASP input files.
+        Crystal structure used to generate the input files.
     functional : str
-        VASP calculation recipe or exchange-correlation functional.
+        Calculation recipe or exchange-correlation functional.
     encut : int
-        Plane-wave cutoff energy for the VASP calculation in eV.
+        Plane-wave cutoff energy for the calculation in eV.
     folder : str, optional
-        Folder the VASP input files are written into. Default is
-        ``"eff_mass"``.
+        Folder the input files are written into. Default is ``"eff_mass"``.
     mesh : tuple of int, optional
         Number of k-points along each reciprocal direction, as
         ``(nx, ny, nz)``. Default is ``(5, 5, 5)``.
     delta : float, optional
         Maximum fractional reciprocal-space displacement from the central
         k-point along each direction. Default is ``0.01``.
+    code : str, optional
+        Which code to write inputs for, ``"vasp"`` or ``"castep"``. Default
+        is ``"vasp"``.
+
+    Raises
+    ------
+    ValueError
+        If ``code`` is not ``"vasp"`` or ``"castep"``.
     """
+    if code == "castep":
+        rows = [
+            [f"{coordinate:.8f}" for coordinate in point]
+            for point in _local_kpoint_offsets(k0_frac, mesh, delta)
+        ]
+        write_castep_calculation(
+            structure=structure,
+            recipe=functional,
+            out_dir=folder,
+            patches=["eff_mass"],
+            user_param_settings={"cut_off_energy": encut},
+            user_cell_blocks={"spectral_kpoint_list": rows},
+        )
+        return
+    if code != "vasp":
+        raise ValueError(f"Unsupported code {code!r}; expected 'vasp' or 'castep'.")
+
     kp = _generate_local_kpoints(
         k0_frac=k0_frac,
         mesh=mesh,

@@ -12,6 +12,7 @@ from numpy.typing import NDArray
 from solphin.db_fom import max_eff
 from solphin.pv_fom import Final_equation
 
+
 # Calculating equation 33 from the FOM paper
 
 def SQ_relative_FOM_PV_efficiency(

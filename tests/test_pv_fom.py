@@ -59,12 +59,12 @@ def test_final_equation_composition() -> None:
     """Gamma = E_gap^2.5 * (numerator / (D * T * S)) ^ (E_gap^-0.8)."""
     numerator = _call_with(_Final_numerator)
     denominator = (
-        _call_with(_Final_D_denominator)
-        * _call_with(_Final_T_denominator)
-        * _call_with(_Final_S_denominator)
+            _call_with(_Final_D_denominator)
+            * _call_with(_Final_T_denominator)
+            * _call_with(_Final_S_denominator)
     )
     expected = MAPI["E_gap"] ** 2.5 * (numerator / denominator) ** (
-        MAPI["E_gap"] ** -0.8
+            MAPI["E_gap"] ** -0.8
     )
 
     assert _call_with(Final_equation) == pytest.approx(expected, rel=1e-12)
