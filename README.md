@@ -20,7 +20,7 @@ generation of `VASP` and `CASTEP` input files for the required calculations base
 
 **Please note that Solphin is still in early stage testing and development**
 
-Documentation, including a full workflow tutorial and the Python API reference, lives at
+Documentation, including workflow tutorials for both codes and the Python API reference, lives at
 [solphin.readthedocs.io](https://solphin.readthedocs.io/en/latest/).
 
 <img width="1076" height="596" alt="solphin_1 drawio" src="https://github.com/user-attachments/assets/0f981e7a-fcf3-4ec0-a2ef-01980a3f56ee" />
@@ -60,8 +60,9 @@ This applies to `VASP` only — `CASTEP` uses on-the-fly pseudopotentials, so no
 Every reader takes a `code="castep"` keyword (`vasp` is the default), and `solphin.castep_inputs` mirrors the VASP input
 generation with `.cell`/`.param` files. Band structures and densities of states are read from `<seed>.bands`; optical
 data comes from the `<seed>_epsilon.dat` written by [OptaDOS](https://github.com/optados-developers/optados). See
-the ["Using solphin with CASTEP"](https://solphin.readthedocs.io/en/latest/castep.html) documentation page for the full
-workflow.
+the ["Using solphin with CASTEP"](https://solphin.readthedocs.io/en/latest/castep.html) documentation page for the
+reference, and [tutorial/castep_workflow_tutorial.ipynb](tutorial/castep_workflow_tutorial.ipynb) for the workflow
+walked end to end.
 
 ## Citation
 

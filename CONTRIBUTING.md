@@ -29,7 +29,8 @@ finished pull request.
 ### Asking a question
 
 Questions about using the code are also welcome as issues. Please check the
-[tutorial notebook](tutorial/full_workflow_tutorial.ipynb) and the
+tutorial notebooks
+([VASP](tutorial/full_workflow_tutorial.ipynb), [CASTEP](tutorial/castep_workflow_tutorial.ipynb)) and the
 [documentation](https://solphin.readthedocs.io/en/latest/) first.
 
 ## Development setup
@@ -175,7 +176,7 @@ make -C docs html
 ```
 
 The result lands in `docs/build/html`. New public functions should be reachable from the API pages, and anything that
-changes the workflow should be reflected in the tutorial notebook.
+changes the workflow should be reflected in the tutorial notebooks — both of them, where it applies to both codes.
 
 CI builds the same documentation with warnings promoted to errors, so a malformed docstring fails the build rather than
 reaching the published pages. The build is warning-free today; keep it that way by running it the way CI does before you

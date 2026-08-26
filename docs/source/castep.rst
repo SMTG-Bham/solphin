@@ -8,6 +8,10 @@ has a dedicated module, :mod:`solphin.castep_inputs`. The physics between
 those boundaries (detailed balance, the figure of merit, SLME and the
 plotting) is identical for both codes.
 
+This page is the reference for what maps to what. For the workflow walked
+end to end — generating the input sets, running OptaDOS, then reading the
+results back — see the :doc:`CASTEP tutorial <castep_workflow_tutorial>`.
+
 What each function reads
 ------------------------
 
