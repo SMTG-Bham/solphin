@@ -11,7 +11,7 @@ Solphin
    <img id="diagram-light" src="_static/solphin_transparent.png">
    <img id="diagram-dark" src="_static/solphin_white.png" style="display:none;">
 
-``solphin`` is a code developed to assist with the characterisation of novel photovoltaic materials. It combines detailed balance analysis with other tools such as the photovoltaic figure of merit proposed by A. Crovetto, Spectroscopic Limited Maximum Efficiency (SLME), Blank et. al. Maximum Efficiency and optical absorption plots to provide a full picture of a material's theoretical photovoltaic efficiency. The code supports the automatic generation of ``VASP`` input files for the required calculations based on an initial crystal structure.
+``solphin`` is a code developed to assist with the characterisation of novel photovoltaic materials. It combines detailed balance analysis with other tools such as the photovoltaic figure of merit proposed by A. Crovetto, Spectroscopic Limited Maximum Efficiency (SLME), Blank et. al. Maximum Efficiency and optical absorption plots to provide a full picture of a material's theoretical photovoltaic efficiency. The code supports the automatic generation of ``VASP`` and ``CASTEP`` input files for the required calculations based on an initial crystal structure, and reads the results of either code.
 
 **Please note that Solphin is still in early stage testing and development.**
 
@@ -39,6 +39,7 @@ Contents
 
    installation.rst
    tutorials.rst
+   castep.rst
    api.rst
    formalism.rst
    publications.rst

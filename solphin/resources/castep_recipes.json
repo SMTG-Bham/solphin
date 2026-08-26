@@ -1,0 +1,170 @@
+{
+    "PARAM": {
+        "LDA": {
+            "task": "SinglePoint",
+            "xc_functional": "LDA",
+            "cut_off_energy": 500,
+            "elec_energy_tol": 1e-07,
+            "max_scf_cycles": 200,
+            "fix_occupancy": false,
+            "smearing_scheme": "Gaussian",
+            "smearing_width": 0.02,
+            "perc_extra_bands": 50,
+            "write_checkpoint": "All",
+            "opt_strategy": "Speed"
+        },
+        "PBEsol": {
+            "task": "SinglePoint",
+            "xc_functional": "PBESOL",
+            "cut_off_energy": 500,
+            "elec_energy_tol": 1e-07,
+            "max_scf_cycles": 200,
+            "fix_occupancy": false,
+            "smearing_scheme": "Gaussian",
+            "smearing_width": 0.02,
+            "perc_extra_bands": 50,
+            "write_checkpoint": "All",
+            "opt_strategy": "Speed"
+        },
+        "PBE": {
+            "task": "SinglePoint",
+            "xc_functional": "PBE",
+            "cut_off_energy": 500,
+            "elec_energy_tol": 1e-07,
+            "max_scf_cycles": 200,
+            "fix_occupancy": false,
+            "smearing_scheme": "Gaussian",
+            "smearing_width": 0.02,
+            "perc_extra_bands": 50,
+            "write_checkpoint": "All",
+            "opt_strategy": "Speed"
+        },
+        "HSE06": {
+            "task": "SinglePoint",
+            "xc_functional": "HSE06",
+            "cut_off_energy": 500,
+            "elec_energy_tol": 1e-07,
+            "max_scf_cycles": 200,
+            "fix_occupancy": false,
+            "smearing_scheme": "Gaussian",
+            "smearing_width": 0.02,
+            "perc_extra_bands": 50,
+            "write_checkpoint": "All"
+        },
+        "PBE0": {
+            "task": "SinglePoint",
+            "xc_functional": "PBE0",
+            "cut_off_energy": 500,
+            "elec_energy_tol": 1e-07,
+            "max_scf_cycles": 200,
+            "fix_occupancy": false,
+            "smearing_scheme": "Gaussian",
+            "smearing_width": 0.02,
+            "perc_extra_bands": 50,
+            "write_checkpoint": "All"
+        },
+        "R2SCAN": {
+            "task": "SinglePoint",
+            "xc_functional": "RSCAN",
+            "cut_off_energy": 500,
+            "elec_energy_tol": 1e-07,
+            "max_scf_cycles": 200,
+            "fix_occupancy": false,
+            "smearing_scheme": "Gaussian",
+            "smearing_width": 0.02,
+            "perc_extra_bands": 50,
+            "write_checkpoint": "All",
+            "opt_strategy": "Speed"
+        }
+    },
+    "CELL": {
+        "HSE06": {"species_pot": "NCP19"},
+        "PBE0": {"species_pot": "NCP19"}
+    },
+    "CELL_DEFAULTS": {
+        "symmetry_generate": "true",
+        "kpoint_mp_spacing": "0.03"
+    },
+    "SPINS": {
+        "Ce": 5,
+        "Co": 0.6,
+        "Cr": 5,
+        "Eu": 10,
+        "Fe": 5,
+        "Mn": 5,
+        "Mo": 5,
+        "Ni": 5,
+        "V": 5,
+        "W": 5
+    },
+    "PATCHES": {
+        "relax_cell": {
+            "param": {
+                "task": "GeometryOptimization",
+                "geom_force_tol": 0.01,
+                "geom_max_iter": 100
+            }
+        },
+        "relax_atoms": {
+            "param": {
+                "task": "GeometryOptimization",
+                "geom_force_tol": 0.01,
+                "geom_max_iter": 100
+            },
+            "cell": {"fix_all_cell": "true"}
+        },
+        "tight_relax": {
+            "param": {
+                "task": "GeometryOptimization",
+                "elec_energy_tol": 1e-09,
+                "geom_force_tol": 0.0005,
+                "geom_max_iter": 100
+            }
+        },
+        "dfpt": {"param": {"task": "Efield"}},
+        "dos": {
+            "param": {
+                "task": "Spectral",
+                "spectral_task": "DOS",
+                "pdos_calculate_weights": true
+            }
+        },
+        "gaussian_dos": {
+            "param": {
+                "task": "Spectral",
+                "spectral_task": "DOS",
+                "pdos_calculate_weights": true
+            }
+        },
+        "eff_mass": {
+            "param": {
+                "task": "Spectral",
+                "spectral_task": "BandStructure"
+            }
+        },
+        "spin_polarised": {"param": {"spin_polarized": true}},
+        "optics": {
+            "param": {
+                "task": "Spectral",
+                "spectral_task": "Optics"
+            }
+        },
+        "smeared_optics": {
+            "param": {
+                "task": "Spectral",
+                "spectral_task": "Optics"
+            }
+        },
+        "vdw_d4": {"param": {"sedc_apply": true, "sedc_scheme": "D4"}},
+        "vdw_d3_bj": {"param": {"sedc_apply": true, "sedc_scheme": "D3-BJ"}},
+        "vdw_d3": {"param": {"sedc_apply": true, "sedc_scheme": "D3"}},
+        "ncl": {
+            "param": {
+                "spin_treatment": "Vector",
+                "spin_orbit_coupling": true
+            }
+        },
+        "gamma_only": {"cell": {"kpoint_mp_grid": "1 1 1"}},
+        "timings": {}
+    }
+}

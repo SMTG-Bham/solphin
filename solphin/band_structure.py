@@ -1,6 +1,13 @@
-"""Band-structure workflows: k-path generation, VASP inputs, reconstruction and plotting."""
+"""Band-structure workflows: k-path generation, calculation inputs, reconstruction and plotting.
+
+The k-path generation and plotting are code-agnostic. VASP calculations are
+assembled from KPOINTS files and read back from ``vasprun.xml``; CASTEP
+calculations restart from the SCF ``.check`` file with the band path appended
+to a copy of the ``.cell``, and are read back from ``<seed>.bands``.
+"""
 
 import math
+import re
 import shutil
 from pathlib import Path
 from types import ModuleType
@@ -14,11 +21,22 @@ from pymatgen.io.vasp.inputs import Kpoints
 from pymatgen.io.vasp.outputs import BSVasprun
 from sumo.electronic_structure.bandstructure import get_reconstructed_band_structure
 from sumo.electronic_structure.dos import load_dos
+from sumo.io.castep import band_structure as castep_band_structure
+from sumo.io.castep import copy_param
+from sumo.io.castep import read_dos as castep_read_dos
+from sumo.io.castep import write_kpoint_files as castep_write_kpoint_files
 from sumo.plotting.bs_plotter import SBSPlotter
 from sumo.plotting.dos_plotter import SDOSPlotter
 from sumo.symmetry.kpoints import get_path_data
 
 from solphin.vasp_inputs import write_vasp_calculation
+
+# The kpoint path/list block sumo's cell-file label reader requires; a .cell
+# without one makes that reader call sys.exit, so it is checked up front.
+_CASTEP_KPOINT_BLOCK_RE = re.compile(
+    r"^\s*%block\s+(bs|spectral)_kpoint(s)?_(path|list)",
+    re.IGNORECASE | re.MULTILINE,
+)
 
 
 def generate_band_structure_path(
@@ -186,7 +204,6 @@ def _write_kpoint_files(
 
     if make_folders:
         for i, kpt_file in enumerate(kpt_files):
-
             folder = f"split-{str(i + 1).zfill(pad)}"
             folders.append(folder)
 
@@ -316,6 +333,88 @@ def write_band_structure_calculation(
             shutil.copy(src=scf_charge, dst=directory / "CHGCAR")  # type: ignore
 
 
+def write_castep_band_structure_calculation(
+        cell_file: str | Path,
+        kpath: tuple[list[NDArray], list[str]],
+        band_directory: str | Path,
+        splits: int = 1,
+) -> None:
+    """Generate and write a band structure calculation setup for CASTEP.
+
+    Builds on a converged SCF calculation: the band path is appended to a
+    copy of the SCF ``.cell``, the sibling ``.param`` is copied with the
+    task switched to a spectral band structure, and the sibling ``.check``
+    file - when present - is copied with the ``reuse`` tag set, which is
+    CASTEP's equivalent of restarting from a converged charge density.
+
+    Parameters
+    ----------
+    cell_file : str or Path
+        Path to the SCF ``.cell`` file; its sibling ``.param`` is required
+        and a sibling ``.check`` is picked up when present.
+    kpath : tuple of (list of numpy.ndarray, list of str)
+        K-point coordinates along the band path and the high-symmetry
+        labels, as returned by ``generate_band_structure_path``.
+    band_directory : str or Path
+        Output directory for the band structure inputs. Must not already
+        contain ``split-*`` folders.
+    splits : int, optional
+        Number of segments to split the k-point path into separate runs.
+        Default is ``1``, which writes a single ``band.cell`` beside the
+        adjusted ``.param`` and copied ``.check``.
+
+    Raises
+    ------
+    FileNotFoundError
+        If ``cell_file`` or its sibling ``.param`` does not exist.
+    """
+    cell_path = Path(cell_file)
+    if not cell_path.is_file():
+        raise FileNotFoundError(f"No CASTEP cell file at {cell_path}")
+
+    param_path = cell_path.with_suffix(".param")
+    if not param_path.is_file():
+        raise FileNotFoundError(
+            f"No .param file beside {cell_path}; the SCF calculation's .param"
+            " is needed to derive the band structure task."
+        )
+
+    kpoints, labels = kpath
+
+    band_path = Path(band_directory)
+    band_path.mkdir(parents=True, exist_ok=True)
+
+    if splits > 1:
+        # sumo copies the .param (switching the task tags) and any .check
+        # (setting reuse) into each split folder alongside the cell.
+        castep_write_kpoint_files(
+            str(cell_path),
+            kpoints,
+            labels,
+            make_folders=True,
+            kpts_per_split=math.ceil(len(kpoints) / splits),
+            directory=str(band_path),
+        )
+        return
+
+    castep_write_kpoint_files(
+        str(cell_path),
+        kpoints,
+        labels,
+        make_folders=False,
+        directory=str(band_path),
+    )
+
+    # sumo's non-folder mode writes only band.cell, so complete the setup the
+    # way its folder mode would: adjusted .param, plus the .check for reuse.
+    tags = {"task": "Spectral", "spectral_task": "BandStructure"}
+    check_path = cell_path.with_suffix(".check")
+    if check_path.is_file():
+        shutil.copy(check_path, band_path / check_path.name)
+        tags["reuse"] = check_path.name
+    copy_param(str(param_path), str(band_path), tags=tags)
+
+
 def _is_soc_vasprun(vr: BSVasprun) -> bool:
     """Determine whether a VASP calculation includes spin-orbit coupling.
 
@@ -336,29 +435,101 @@ def _is_soc_vasprun(vr: BSVasprun) -> bool:
         return False
 
 
-def get_band_structure(band_directory: str | Path, splits: int) -> BandStructureSymmLine:
-    """Load and reconstruct a symmetry-line band structure from VASP outputs.
+def _castep_cell_for(bands_file: Path) -> str | None:
+    """Find a sibling .cell file usable for high-symmetry labels, if any.
 
-    Reads one or more ``vasprun.xml`` files (including split band
-    calculations) and reconstructs the full band structure along the
-    high-symmetry k-path.
+    Parameters
+    ----------
+    bands_file : Path
+        Path of the ``.bands`` file being read.
+
+    Returns
+    -------
+    str or None
+        Path of the sibling ``.cell`` when it exists and contains a k-point
+        path/list block; None otherwise. The block check matters: sumo's
+        label reader exits the interpreter on a cell without one.
+    """
+    cell_path = bands_file.with_suffix(".cell")
+    if not cell_path.is_file():
+        return None
+    if _CASTEP_KPOINT_BLOCK_RE.search(cell_path.read_text(encoding="utf-8")):
+        return str(cell_path)
+    return None
+
+
+def get_band_structure(
+        band_directory: str | Path, splits: int, code: str = "vasp"
+) -> BandStructureSymmLine:
+    """Load and reconstruct a symmetry-line band structure from calculation outputs.
+
+    Reads one or more output files (including split band calculations) and
+    reconstructs the full band structure along the high-symmetry k-path.
 
     Parameters
     ----------
     band_directory : str or Path
-        Directory containing the ``vasprun.xml`` files. Split calculations
-        are expected in subfolders named ``"split-*"``.
+        Directory containing the output files: ``vasprun.xml`` for VASP, a
+        ``<seed>.bands`` file for CASTEP (with high-symmetry labels read
+        from a sibling ``.cell`` when present). Split calculations are
+        expected in subfolders named ``"split-*"``.
     splits : int
-        Number of split calculations used. If greater than 1, one
-        ``vasprun.xml`` per split directory is read; otherwise a single
-        file.
+        Number of split calculations used. If greater than 1, one output
+        file per split directory is read; otherwise a single file.
+    code : str, optional
+        Which code produced the outputs, ``"vasp"`` or ``"castep"``.
+        Default is ``"vasp"``.
 
     Returns
     -------
     BandStructureSymmLine
         Reconstructed band structure with eigenvalues along the full
         symmetry-line path.
+
+    Raises
+    ------
+    ValueError
+        If ``code`` is not ``"vasp"`` or ``"castep"``, or a single-file
+        CASTEP directory holds several ``.bands`` files.
+    FileNotFoundError
+        If no CASTEP ``.bands`` file matches.
     """
+    if code == "castep":
+        if splits > 1:
+            # Mirrors the VASP branch below - including reading every split
+            # regardless of the argument's value; see the pinned
+            # test_splits_argument_is_honoured xfail.
+            bands_files = sorted(
+                Path(band_directory).glob("split-*/*.bands"),
+                key=lambda p: int(p.parent.name.split("-")[-1])
+            )
+            if not bands_files:
+                raise FileNotFoundError(
+                    f"No split-*/*.bands files found in {band_directory}"
+                )
+        else:
+            bands_files = sorted(Path(band_directory).glob("*.bands"))
+            if not bands_files:
+                raise FileNotFoundError(f"No *.bands file found in {band_directory}")
+            if len(bands_files) > 1:
+                names = ", ".join(f.name for f in bands_files)
+                raise ValueError(
+                    f"Several .bands files in {band_directory}: {names};"
+                    " point band_directory at a single calculation."
+                )
+
+        castep_bandstructures = [
+            castep_band_structure(str(f), cell_file=_castep_cell_for(f))
+            for f in bands_files
+        ]
+        reconstructed: BandStructureSymmLine = get_reconstructed_band_structure(
+            castep_bandstructures
+        )
+        return reconstructed
+
+    if code != "vasp":
+        raise ValueError(f"Unsupported code {code!r}; expected 'vasp' or 'castep'.")
+
     if splits > 1:
         vaspruns = sorted(
             Path(band_directory).glob("split-*/vasprun.xml"),
@@ -419,6 +590,8 @@ def plot_band_structure(
         style: str | None = None,
         no_base_style: bool = False,
 
+        code: str = "vasp",
+
 ) -> ModuleType:
     """Plot a band structure, optionally with a projected view and density of states.
 
@@ -438,8 +611,10 @@ def plot_band_structure(
     ylabel : str, optional
         Label for the energy axis. Default is ``"Energy (eV)"``.
     dos_file : str or Path or None, optional
-        Path to density of states data; when provided, the DOS is plotted
-        alongside the band structure. Default is None.
+        Path to density of states data: ``vasprun.xml`` for VASP, a
+        ``<seed>.bands`` file for CASTEP (sibling ``.pdos_bin`` and
+        ``.cell`` files are picked up automatically). When provided, the
+        DOS is plotted alongside the band structure. Default is None.
     dos_label : str or None, optional
         Label for the DOS plot. Default is None.
     total_only : bool, optional
@@ -498,13 +673,26 @@ def plot_band_structure(
         Plotting style preset. Default is None.
     no_base_style : bool, optional
         Disable the default plotting style. Default is ``False``.
+    code : str, optional
+        Which code produced the ``dos_file``, ``"vasp"`` or ``"castep"``.
+        Only consulted when a DOS panel is drawn. Default is ``"vasp"``.
 
     Returns
     -------
     module
         The plotting module with the rendered band structure, and the DOS
         when included.
+
+    Raises
+    ------
+    ValueError
+        If ``code`` is not ``"vasp"`` or ``"castep"``, or a scissor
+        correction is requested for a CASTEP DOS, which sumo's reader does
+        not support.
     """
+    if code not in ("vasp", "castep"):
+        raise ValueError(f"Unsupported code {code!r}; expected 'vasp' or 'castep'.")
+
     if projection_selection and mode == "rgb" and len(projection_selection) > 3:
         print(
             "ERROR: RGB projected band structure only "
@@ -516,15 +704,37 @@ def plot_band_structure(
     dos_plotter = None
     dos_opts = None
     if dos_file:
-        dos, pdos = load_dos(
-            dos_file,
-            elements,
-            lm_orbitals,
-            atoms,
-            gaussian,
-            total_only,
-            scissor=scissor,
-        )
+        if code == "castep":
+            if scissor:
+                raise ValueError(
+                    "A scissor correction is not supported with CASTEP DOS data."
+                )
+            bands_path = Path(dos_file)
+            pdos_file = bands_path.with_suffix(".pdos_bin")
+            cell_file = bands_path.with_suffix(".cell")
+            # A projected DOS needs both siblings; with either missing, fall
+            # back to the total DOS the way sumo's own CLI does.
+            has_pdos = pdos_file.is_file() and cell_file.is_file()
+            dos, pdos = castep_read_dos(
+                str(bands_path),
+                pdos_file=str(pdos_file) if has_pdos else None,
+                cell_file=str(cell_file) if cell_file.is_file() else None,
+                gaussian=gaussian,
+                lm_orbitals=lm_orbitals,
+                elements=elements,
+                atoms=atoms,
+                total_only=total_only,
+            )
+        else:
+            dos, pdos = load_dos(
+                dos_file,
+                elements,
+                lm_orbitals,
+                atoms,
+                gaussian,
+                total_only,
+                scissor=scissor,
+            )
 
         dos_plotter = SDOSPlotter(dos, pdos)
         dos_opts = {

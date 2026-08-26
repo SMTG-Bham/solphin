@@ -26,6 +26,7 @@ import sys
 from typing import Any
 
 import pytest
+
 from conftest import REPO_ROOT
 
 # Records global state either side of the import and prints one JSON line.

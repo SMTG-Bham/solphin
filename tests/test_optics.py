@@ -6,6 +6,8 @@ provenance-verified reference data rather than a snapshot of whatever the code
 happens to emit today, which is the distinction CONTRIBUTING asks for.
 """
 
+import shutil
+from collections.abc import Callable
 from pathlib import Path
 
 import numpy as np
@@ -14,7 +16,9 @@ import scipy.constants as sc
 from numpy.typing import NDArray
 from scipy.optimize import brentq
 
+import castep_fixtures
 import solphin.optics as optics
+
 
 # --- the dielectric tensor -------------------------------------------------
 
@@ -306,3 +310,206 @@ def test_make_blank_plot_passes_out_directory_through(tmp_opt_dir: Path, tmp_pat
     )
 
     assert (figures / "slme.png").is_file()
+
+
+# --- CASTEP ----------------------------------------------------------------
+
+
+def test_castep_epsilon_fixtures_regenerate_byte_identically(
+        castep_opt_dir: Path, castep_opt_tensor_dir: Path
+) -> None:
+    """The committed OptaDOS fixtures are exactly what castep_fixtures emits."""
+    poly = (castep_opt_dir / "toy_epsilon.dat").read_text()
+    tensor = (castep_opt_tensor_dir / "toy_epsilon.dat").read_text()
+
+    assert poly == castep_fixtures.epsilon_poly_text()
+    assert tensor == castep_fixtures.epsilon_tensor_text()
+
+
+def test_castep_calc_dielectric_returns_five_tuple(
+        castep_dielectric: tuple[float, NDArray, NDArray, NDArray, NDArray]
+) -> None:
+    """The CASTEP path honours the same 5-tuple contract as the VASP path."""
+    assert len(castep_dielectric) == 5
+
+    eps_inf, tensor, eps_full, eps_imag, energies = castep_dielectric
+
+    assert np.ndim(eps_inf) == 0
+    assert np.shape(tensor) == (3, 3)
+    assert eps_full.shape == eps_imag.shape == (len(energies), 3, 3)
+
+
+def test_castep_calc_dielectric_lorentz_static_limit(
+        castep_dielectric: tuple[float, NDArray, NDArray, NDArray, NDArray]
+) -> None:
+    """The Lorentz fixture has eps(0) = 1 + S = 6 exactly, isotropic."""
+    eps_inf, tensor, _, _, _ = castep_dielectric
+
+    assert eps_inf == pytest.approx(6.0, rel=1e-10)
+    np.testing.assert_allclose(tensor, 6.0 * np.eye(3), rtol=1e-10)
+
+
+def test_castep_calc_dielectric_matches_analytic_model(
+        castep_dielectric: tuple[float, NDArray, NDArray, NDArray, NDArray]
+) -> None:
+    """Every parsed value reproduces the Lorentz oscillator it was built from."""
+    _, _, eps_full, _, energies = castep_dielectric
+
+    expected = np.array([castep_fixtures.lorentz_epsilon(e) for e in energies])
+
+    np.testing.assert_allclose(eps_full[:, 0, 0], expected, rtol=1e-8)
+
+
+def test_castep_absorption_static_refractive_index(
+        castep_dielectric: tuple[float, NDArray, NDArray, NDArray, NDArray]
+) -> None:
+    """n(0) = sqrt(eps(0)) = sqrt(6) for the Lorentz fixture."""
+    _, _, eps_full, _, energies = castep_dielectric
+
+    data = optics.calc_absorption(eps_full, energies)
+
+    assert data["n_real"][0] == pytest.approx(np.sqrt(6.0), rel=1e-10)
+
+
+def test_castep_tensor_geometry_lossless(castep_opt_tensor_dir: Path) -> None:
+    """The tensor fixture parses to diag(2, 3, 4) and zero absorption throughout.
+
+    The CASTEP twin of test_calc_absorption_on_lossless_dielectric, but end to
+    end through the OptaDOS parser: constant real eigenvalues mean
+    n = (sqrt(2) + sqrt(3) + sqrt(4)) / 3 everywhere and no extinction.
+    """
+    eps_inf, tensor, eps_full, _, energies = optics.calc_dielectric(
+        str(castep_opt_tensor_dir / "toy_epsilon.dat"), code="castep"
+    )
+
+    assert eps_inf == pytest.approx(3.0, rel=1e-10)
+    np.testing.assert_allclose(tensor, np.diag([2.0, 3.0, 4.0]), atol=1e-12)
+
+    data = optics.calc_absorption(eps_full, energies)
+    expected_n = (np.sqrt(2.0) + np.sqrt(3.0) + np.sqrt(4.0)) / 3.0
+
+    np.testing.assert_allclose(data["n_real"], expected_n, rtol=1e-10)
+    np.testing.assert_allclose(data["absorption"], 0.0, atol=1e-8)
+
+
+def test_castep_generate_absorption_writes_readable_file(
+        castep_opt_dir: Path, tmp_path: Path
+) -> None:
+    """generate_absorption(code="castep") writes the standard absorption.dat."""
+    optics.generate_absorption(
+        str(castep_opt_dir), out_directory=tmp_path, code="castep"
+    )
+
+    written = tmp_path / "absorption.dat"
+    assert written.is_file()
+    data = np.loadtxt(written, skiprows=1)
+    assert data.shape[1] == 2
+    # alpha(0) = 0: the Lorentz model is lossless at zero energy.
+    assert data[0, 1] == pytest.approx(0.0, abs=1e-8)
+
+
+def test_castep_generate_n_real_writes_readable_file(
+        castep_opt_dir: Path, tmp_path: Path
+) -> None:
+    """generate_n_real(code="castep") writes n_real.dat with n(0) = sqrt(6)."""
+    optics.generate_n_real(str(castep_opt_dir), out_directory=tmp_path, code="castep")
+
+    data = np.loadtxt(tmp_path / "n_real.dat", skiprows=1)
+    assert data[0, 1] == pytest.approx(np.sqrt(6.0), rel=1e-10)
+
+
+def test_castep_plot_absorption_smoke(castep_opt_dir: Path, tmp_path: Path) -> None:
+    """plot_absorption(code="castep") renders and saves without error."""
+    optics.plot_absorption(
+        str(castep_opt_dir), save=True, out_directory=tmp_path, code="castep"
+    )
+
+    assert (tmp_path / "absorption.png").is_file()
+
+
+def test_find_epsilon_file_explicit_seedname(castep_opt_dir: Path) -> None:
+    """An explicit seedname resolves <seed>_epsilon.dat directly."""
+    path = optics._find_epsilon_file(castep_opt_dir, "toy")
+
+    assert path.name == "toy_epsilon.dat"
+
+
+def test_find_epsilon_file_missing_raises(tmp_path: Path) -> None:
+    """An empty directory raises FileNotFoundError, not a silent glob miss."""
+    with pytest.raises(FileNotFoundError):
+        optics._find_epsilon_file(tmp_path, None)
+
+
+def test_find_epsilon_file_ambiguous_raises(
+        castep_opt_dir: Path, tmp_path: Path
+) -> None:
+    """Two epsilon files without a seedname raise naming both candidates."""
+    for seed in ("a", "b"):
+        shutil.copyfile(
+            castep_opt_dir / "toy_epsilon.dat", tmp_path / f"{seed}_epsilon.dat"
+        )
+
+    with pytest.raises(ValueError, match="a_epsilon.dat.*b_epsilon.dat"):
+        optics._find_epsilon_file(tmp_path, None)
+
+
+def test_read_optados_epsilon_rejects_bad_block_count(tmp_path: Path) -> None:
+    """A block count that is neither 1 nor 6 is a format error, not a guess."""
+    two_blocks = "# header\n0.0 1.0 0.0\n\n# second\n0.0 2.0 0.0\n"
+    bad = tmp_path / "bad_epsilon.dat"
+    bad.write_text(two_blocks)
+
+    with pytest.raises(ValueError, match="found 2"):
+        optics._read_optados_epsilon(bad)
+
+
+def test_read_optados_epsilon_rejects_unparseable_line(tmp_path: Path) -> None:
+    """A malformed data line raises naming the line, not a numpy stack trace."""
+    bad = tmp_path / "bad_epsilon.dat"
+    bad.write_text("0.0 1.0 zero\n")
+
+    with pytest.raises(ValueError, match="zero"):
+        optics._read_optados_epsilon(bad)
+
+
+def test_read_optados_epsilon_rejects_short_line(tmp_path: Path) -> None:
+    """A data line with fewer than three columns is a format error."""
+    bad = tmp_path / "bad_epsilon.dat"
+    bad.write_text("0.0 1.0\n")
+
+    with pytest.raises(ValueError, match="3 columns"):
+        optics._read_optados_epsilon(bad)
+
+
+def test_read_optados_epsilon_rejects_mismatched_tensor_grids(tmp_path: Path) -> None:
+    """Six blocks whose energy grids disagree raise instead of mixing data."""
+    blocks = []
+    for index in range(6):
+        energy = 0.0 if index < 5 else 1.0  # last block on a shifted grid
+        blocks.append(f"# Component: 1 1\n{energy} 1.0 0.0\n")
+    bad = tmp_path / "bad_epsilon.dat"
+    bad.write_text("\n".join(blocks))
+
+    with pytest.raises(ValueError, match="energy grid"):
+        optics._read_optados_epsilon(bad)
+
+
+def test_find_epsilon_file_explicit_seedname_missing_raises(tmp_path: Path) -> None:
+    """A named seed with no epsilon file raises naming the expected path."""
+    with pytest.raises(FileNotFoundError, match="ghost_epsilon.dat"):
+        optics._find_epsilon_file(tmp_path, "ghost")
+
+
+@pytest.mark.parametrize(
+    "call",
+    [
+        lambda d: optics.calc_dielectric(d / "toy_epsilon.dat", code="banana"),
+        lambda d: optics.generate_absorption(str(d), code="banana"),
+    ],
+)
+def test_optics_unknown_code_raises(
+        castep_opt_dir: Path, call: Callable[[Path], object]
+) -> None:
+    """An unsupported code name raises instead of falling back to VASP."""
+    with pytest.raises(ValueError, match="banana"):
+        call(castep_opt_dir)
