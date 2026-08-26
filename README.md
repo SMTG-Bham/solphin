@@ -10,7 +10,7 @@
 [![docs](https://github.com/SMTG-Bham/solphin/actions/workflows/docs.yml/badge.svg)](https://github.com/SMTG-Bham/solphin/actions/workflows/docs.yml)
 [![package](https://github.com/SMTG-Bham/solphin/actions/workflows/package.yml/badge.svg)](https://github.com/SMTG-Bham/solphin/actions/workflows/package.yml)
 [![codecov](https://codecov.io/gh/SMTG-Bham/solphin/branch/main/graph/badge.svg)](https://codecov.io/gh/SMTG-Bham/solphin)
-[![documentation](https://readthedocs.org/projects/solphin/badge/?version=latest)](https://solphin.readthedocs.io/en/latest/)
+<a href="https://solphin.readthedocs.io/en/latest/"><img src="https://img.shields.io/badge/Docs-Read%20the%20Docs-8CA1AF?logo=readthedocs&amp;logoColor=white" alt="Documentation"></a>
 
 `solphin` is a code developed to assist with the characterisation of novel photovoltaic materials with `VASP` or
 `CASTEP`. It combines detailed balance analysis with other tools such as the photovoltaic figure of merit proposed by A.
