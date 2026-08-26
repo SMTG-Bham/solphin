@@ -63,7 +63,7 @@ Neither model assumes step-function absorption. Instead the absorptance
 
 The first is Beer-Lambert absorption over a double pass, the factor of two
 standing for a perfect back reflector. The second is the Lambertian
-light-trapping limit for a randomly texturing surface, in which the
+light-trapping limit for a randomly textured surface, in which the
 :math:`4n^{2}` enhancement is the classical Yablonovitch factor; it is the
 more generous of the two, and increasingly so as :math:`\alpha d` falls.
 Both are clipped to :math:`[0, 1]`. The refractive index used for the
