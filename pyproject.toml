@@ -69,6 +69,28 @@ include = ["solphin*"]
 testpaths = ["tests"]
 addopts = "-rx"
 xfail_strict = true
+# Both entries are deprecations inside sumo itself, on code paths solphin only
+# reaches through sumo's public API, so there is nothing in solphin/ to change.
+# 2.4.0.post1 is the newest release and master still carries every site, so
+# there is no version to upgrade to either.
+#
+# Matched on message rather than module: pytest hands each entry to
+# warnings._setoption, which re.escape()s the module field and anchors it with
+# \Z, so a module pattern can only ever equal one machine's absolute
+# site-packages path. `sumo.symmetry.*` looks right and matches nothing.
+filterwarnings = [
+    # spglib 2.5 deprecated the mapping interface on its dataset; sumo still
+    # reads it that way at symmetry/kpath.py:227, kpath.py:232 and
+    # kpoints.py:146. solphin never imports spglib -- every one of those reads
+    # sits behind get_path_data.
+    "ignore:dict interface is deprecated:DeprecationWarning",
+    # sumo/electronic_structure/optics.py:14 imports gaussian_filter1d from
+    # the scipy.ndimage.filters shim, deprecated and due for removal in SciPy
+    # 2.0. It fires at import, so it lands once during collection whichever
+    # tests run. Ignoring it gives up no early warning: when the namespace
+    # goes this becomes an ImportError, which no filter can hide.
+    "ignore:Please import `gaussian_filter1d` from the `scipy.ndimage` namespace:DeprecationWarning",
+]
 
 [tool.coverage.run]
 source = ["solphin"]
