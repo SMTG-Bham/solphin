@@ -245,7 +245,9 @@ def test_prepare_incar_does_not_alias_nested_magmom(config: RecipeConfig) -> Non
     assert isinstance(magmom, dict)
     magmom["Fe"] = 99
 
-    assert config["INCAR"]["PBE"]["MAGMOM"]["Fe"] != 99
+    config_magmom = config["INCAR"]["PBE"]["MAGMOM"]
+    assert isinstance(config_magmom, dict)
+    assert config_magmom["Fe"] != 99
 
 
 def test_vdw_branch_skipped_without_vdw_patch(
@@ -257,12 +259,13 @@ def test_vdw_branch_skipped_without_vdw_patch(
     vasp_set = vasp_inputs._create_vasp_set(
         structure, incar, "PBE_64", config, user_incar_settings={"KSPACING": 0.2}
     )
-    called = []
-    monkeypatch.setattr(
-        vasp_inputs,
-        "_prepare_vdw_tags",
-        lambda recipe, patches: called.append(patches) or {},
-    )
+    called: list[list[str]] = []
+
+    def record(recipe: str, patches: list[str]) -> dict[str, int | float | bool]:
+        called.append(patches)
+        return {}
+
+    monkeypatch.setattr(vasp_inputs, "_prepare_vdw_tags", record)
 
     vasp_inputs._apply_patches(vasp_set, ["optics"], "HSE06", incar)
 
@@ -283,12 +286,13 @@ def test_vdw_branch_runs_for_every_supported_patch(
     vasp_set = vasp_inputs._create_vasp_set(
         structure, incar, "PBE_64", config, user_incar_settings={"KSPACING": 0.2}
     )
-    called = []
-    monkeypatch.setattr(
-        vasp_inputs,
-        "_prepare_vdw_tags",
-        lambda recipe, patches: called.append(patches) or {},
-    )
+    called: list[list[str]] = []
+
+    def record(recipe: str, patches: list[str]) -> dict[str, int | float | bool]:
+        called.append(patches)
+        return {}
+
+    monkeypatch.setattr(vasp_inputs, "_prepare_vdw_tags", record)
 
     vasp_inputs._apply_patches(vasp_set, [patch], "R2SCAN", incar)
 

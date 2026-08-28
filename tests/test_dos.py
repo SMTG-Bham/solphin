@@ -105,6 +105,8 @@ def test_compute_dos_poor_fit_is_visible(dos_result: DOSResult) -> None:
     threshold. This is a property of the shipped data, and it must stay visible
     rather than being quietly rounded off.
     """
+    assert dos_result.fit_quality_e is not None
+    assert dos_result.em_electrons is not None
     assert dos_result.fit_quality_e < dos.MIN_DOS_FIT_R2
     assert dos_result.em_electrons.n_points < dos.MIN_DOS_FIT_POINTS
 
@@ -117,6 +119,7 @@ def test_compute_dos_holes_carrier(dos_vasprun: Path) -> None:
 
     assert result.carrier == "holes"
     assert result.em_result is result.em_holes
+    assert result.em_holes is not None
     assert result.final_result == pytest.approx(result.em_holes.m_eff_rel, rel=1e-12)
     # Holes in Cu2GeS3 are far heavier than electrons.
     assert result.final_result > 0.5
