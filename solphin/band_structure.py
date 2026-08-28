@@ -11,7 +11,7 @@ import re
 import shutil
 from pathlib import Path
 from types import ModuleType
-from typing import Any
+from typing import Any, Literal
 
 import numpy as np
 from numpy.typing import NDArray
@@ -154,6 +154,11 @@ def _write_kpoint_files(
     list of str
         Folder name for each generated KPOINTS segment, or empty strings
         when folders are not used.
+
+    Raises
+    ------
+    ValueError
+        If ``ibzkpt`` holds no k-point weights, as an automatic mesh does.
     """
     if kpts_per_split:
         kpt_splits = [
@@ -168,16 +173,28 @@ def _write_kpoint_files(
         kpt_splits = [kpoints]
         label_splits = [labels]
 
+    # Spelled the way Kpoints declares it. Both styles below are explicit, so
+    # coord_type never reaches the file -- pymatgen writes it in line-mode only
+    # -- but it does travel through as_dict().
+    coord_type: Literal["Reciprocal", "Cartesian"]
+
     if cart_coords:
-        coord_type = "cartesian"
+        coord_type = "Cartesian"
         style = Kpoints.supported_modes.Cartesian
     else:
-        coord_type = "reciprocal"
+        coord_type = "Reciprocal"
         style = Kpoints.supported_modes.Reciprocal
 
     kpt_files = []
     for kpt_split, label_split in zip(kpt_splits, label_splits):
         if ibzkpt is not None:
+            if ibzkpt.kpts_weights is None:
+                raise ValueError(
+                    "The SCF KPOINTS carries no k-point weights, so it cannot "
+                    "seed a hybrid band path; pass the IBZKPT the SCF run "
+                    "wrote, or a KPOINTS listing explicit weighted k-points."
+                )
+
             # hybrid calculation so set k-point weights to 0
             kpt_weights = ibzkpt.kpts_weights + [0] * len(kpt_split)
             kpt_split = ibzkpt.kpts + kpt_split

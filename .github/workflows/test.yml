@@ -34,12 +34,9 @@ jobs:
   types:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    # Non-blocking on purpose. The xfail register in tests/README.md still
-    # includes type-visible defects such as treating a Kpoints as an array, and
-    # mypy also reports optional-value contracts that have not yet been fixed.
-    # Turning this job red until that debt is cleared would train people to
-    # ignore it. Drop continue-on-error once mypy passes.
-    continue-on-error: true
+    # Blocking. It was continue-on-error while type-visible defects were still
+    # open; mypy is clean now, so anything it reports here is a regression
+    # rather than pre-existing debt.
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
