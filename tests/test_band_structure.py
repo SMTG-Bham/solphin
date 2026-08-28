@@ -316,13 +316,6 @@ def test_castep_plot_band_structure_scissor_rejected(
 # --- contracts that are not yet honoured -----------------------------------
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-            "band_structure.py:276 prints 'ERROR: ...' and returns None when the "
-            "hybrid path is missing scf_kpoints, so a caller cannot detect the failure"
-    ),
-)
 def test_write_band_structure_missing_scf_raises(
         relaxed_structure: Structure, tmp_path: Path
 ) -> None:
@@ -331,7 +324,7 @@ def test_write_band_structure_missing_scf_raises(
         structure=relaxed_structure
     )
 
-    with pytest.raises((ValueError, TypeError, FileNotFoundError)):
+    with pytest.raises(ValueError, match="scf_kpoints"):
         band_structure.write_band_structure_calculation(
             structure=canonical,
             kpath=kpath,
@@ -341,6 +334,48 @@ def test_write_band_structure_missing_scf_raises(
             scf_charge=None,
             scf_kpoints=None,
         )
+
+
+def test_write_band_structure_missing_charge_raises(
+        relaxed_structure: Structure, tmp_path: Path
+) -> None:
+    """The GGA branch carried the same print-and-return defect as the hybrid one."""
+    canonical, kpath = band_structure.generate_band_structure_path(
+        structure=relaxed_structure
+    )
+
+    with pytest.raises(ValueError, match="scf_charge"):
+        band_structure.write_band_structure_calculation(
+            structure=canonical,
+            kpath=kpath,
+            band_directory=str(tmp_path),
+            functional="PBE",
+            splits=2,
+            scf_charge=None,
+            scf_kpoints=None,
+        )
+
+
+def test_write_band_structure_missing_scf_writes_nothing(
+        relaxed_structure: Structure, tmp_path: Path
+) -> None:
+    """The guard must fire before anything lands on disk."""
+    canonical, kpath = band_structure.generate_band_structure_path(
+        structure=relaxed_structure
+    )
+
+    with pytest.raises(ValueError):
+        band_structure.write_band_structure_calculation(
+            structure=canonical,
+            kpath=kpath,
+            band_directory=str(tmp_path),
+            functional="HSE06",
+            splits=2,
+            scf_charge=None,
+            scf_kpoints=None,
+        )
+
+    assert list(tmp_path.iterdir()) == []
 
 
 def test_splits_argument_is_honoured(

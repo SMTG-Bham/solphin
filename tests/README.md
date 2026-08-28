@@ -63,21 +63,26 @@ for the duration of every test — in-process the property is unobservable eithe
 
 ## Known defects (`xfail`)
 
-One test states behaviour the code does not yet have. It is
-`xfail(strict=True)`, so **fixing the source turns the suite red** and tells you to drop the marker — the register
-cannot silently rot.
+The register is currently **empty** — no test is marked `xfail`, and every defect it used to hold has been fixed.
 
-`pytest -rx` prints the whole list on any run.
+The convention stands for the next one. An `xfail` here is always `xfail(strict=True)`, so **fixing the source turns
+the suite red** and tells you to drop the marker; the register cannot silently rot. `pytest -rx` prints the whole
+list on any run.
 
-| Test                                           | File                     | Defect                                                                        |
-|------------------------------------------------|--------------------------|---------------------------------------------------------------------------------|
-| `test_write_band_structure_missing_scf_raises` | `test_band_structure.py` | `band_structure.py:276` prints an error and returns `None` instead of raising |
+All six entries have been retired:
 
-Five entries have been retired as the defects were fixed: `test_mobility_plot_draws_one_line_per_lifetime`
-(`final_results.py`), `test_write_local_kpoints_writes_file` (`dos.py`), both `test_vasp_inputs.py` entries —
-`test_vdw_branch_skipped_without_vdw_patch` and `test_prepare_incar_does_not_mutate_config` — and
-`test_splits_argument_is_honoured` (`band_structure.py`). Each kept its assertions and lost only its marker, so the
-behaviour they pinned is now enforced rather than merely recorded.
+| Test                                           | Was                                                                                     |
+|------------------------------------------------|-----------------------------------------------------------------------------------------|
+| `test_mobility_plot_draws_one_line_per_lifetime` | `final_results.py` appended a 3-tuple instead of one element                           |
+| `test_write_local_kpoints_writes_file`         | `dos.py` called `len()`/`.tolist()` on a pymatgen `Kpoints`                             |
+| `test_vdw_branch_skipped_without_vdw_patch`    | `vasp_inputs.py` — `or "vdw_d4"` was always truthy                                      |
+| `test_prepare_incar_does_not_mutate_config`    | `_prepare_incar` mutated the config dict it was handed                                  |
+| `test_splits_argument_is_honoured`             | `get_band_structure` globbed every split, ignoring the `splits` value                   |
+| `test_write_band_structure_missing_scf_raises` | `write_band_structure_calculation` printed an error and returned `None` instead of raising |
+
+Each kept its assertions and lost only its marker, so the behaviour they pinned is now enforced rather than merely
+recorded. Several gained sibling tests covering the twin defect on the other branch — the GGA `scf_charge` guard, the
+`rvv10` vdW patch, and the nested `MAGMOM` aliasing were all latent alongside the defect that was actually pinned.
 
 ## Not covered, and why
 
