@@ -20,7 +20,7 @@ FUNCTIONALS = ["LDA", "PBEsol", "PBE", "HSE06", "PBE0", "R2SCAN"]
 
 @pytest.fixture
 def config() -> RecipeConfig:
-    """A fresh config per test - _prepare_incar mutates what it is given."""
+    """A fresh config per test, so no test can observe another's edits."""
     return vasp_inputs._load_config("base_recipes.json")
 
 
@@ -102,8 +102,7 @@ def test_prepare_incar_defect_patch_expands(config: RecipeConfig) -> None:
 def test_prepare_incar_gamma_only_is_not_an_incar_patch(config: RecipeConfig) -> None:
     """gamma_only changes k-points, not the INCAR, so it is skipped here."""
     plain = dict(vasp_inputs._prepare_incar("PBE", [], config))
-    fresh = vasp_inputs._load_config("base_recipes.json")
-    with_gamma = dict(vasp_inputs._prepare_incar("PBE", ["gamma_only"], fresh))
+    with_gamma = dict(vasp_inputs._prepare_incar("PBE", ["gamma_only"], config))
 
     assert plain == with_gamma
 
@@ -228,14 +227,6 @@ def test_write_vasp_calculation_writes_inputs(relax_dir: Path, tmp_path: Path) -
 # --- defects ---------------------------------------------------------------
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-            "_prepare_incar mutates config['INCAR'][recipe] in place, so a second "
-            "call with the same config inherits the first call's patches; latent "
-            "only because write_vasp_calculation re-reads the json every time"
-    ),
-)
 def test_prepare_incar_does_not_mutate_config(config: RecipeConfig) -> None:
     """_prepare_incar should not leak one call's patches into the next."""
     vasp_inputs._prepare_incar("PBE", ["optics"], config)
@@ -243,16 +234,22 @@ def test_prepare_incar_does_not_mutate_config(config: RecipeConfig) -> None:
     unpatched = vasp_inputs._prepare_incar("PBE", [], config)
 
     assert "LOPTICS" not in unpatched
+    assert "LOPTICS" not in config["INCAR"]["PBE"]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-            'vasp_inputs.py:271 reads `... or "vdw_d4"`, a bare truthy string, so '
-            "the vdW branch runs for every calculation; latent because "
-            "_prepare_vdw_tags returns {} when no vdW patch was asked for"
-    ),
-)
+def test_prepare_incar_does_not_alias_nested_magmom(config: RecipeConfig) -> None:
+    """MAGMOM is a nested dict, so a shallow copy would still alias it."""
+    incar = vasp_inputs._prepare_incar("PBE", [], config)
+
+    magmom = incar["MAGMOM"]
+    assert isinstance(magmom, dict)
+    magmom["Fe"] = 99
+
+    config_magmom = config["INCAR"]["PBE"]["MAGMOM"]
+    assert isinstance(config_magmom, dict)
+    assert config_magmom["Fe"] != 99
+
+
 def test_vdw_branch_skipped_without_vdw_patch(
         relax_dir: Path, config: RecipeConfig, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -262,13 +259,56 @@ def test_vdw_branch_skipped_without_vdw_patch(
     vasp_set = vasp_inputs._create_vasp_set(
         structure, incar, "PBE_64", config, user_incar_settings={"KSPACING": 0.2}
     )
-    called = []
-    monkeypatch.setattr(
-        vasp_inputs,
-        "_prepare_vdw_tags",
-        lambda recipe, patches: called.append(patches) or {},
-    )
+    called: list[list[str]] = []
+
+    def record(recipe: str, patches: list[str]) -> dict[str, int | float | bool]:
+        called.append(patches)
+        return {}
+
+    monkeypatch.setattr(vasp_inputs, "_prepare_vdw_tags", record)
 
     vasp_inputs._apply_patches(vasp_set, ["optics"], "HSE06", incar)
 
     assert called == []
+
+
+@pytest.mark.parametrize("patch", ["vdw_d3_bj", "vdw_d3", "vdw_d4", "rvv10"])
+def test_vdw_branch_runs_for_every_supported_patch(
+        relax_dir: Path, config: RecipeConfig, monkeypatch: pytest.MonkeyPatch, patch: str
+) -> None:
+    """Every scheme _prepare_vdw_tags handles must reach it.
+
+    rvv10 is the one the guard never named: it used to arrive only because
+    the bare-truthy `or "vdw_d4"` held the branch open for everything.
+    """
+    structure = vasp_inputs.read_structure_pmg(relax_dir / "POSCAR")
+    incar = vasp_inputs._prepare_incar("R2SCAN", [patch], config)
+    vasp_set = vasp_inputs._create_vasp_set(
+        structure, incar, "PBE_64", config, user_incar_settings={"KSPACING": 0.2}
+    )
+    called: list[list[str]] = []
+
+    def record(recipe: str, patches: list[str]) -> dict[str, int | float | bool]:
+        called.append(patches)
+        return {}
+
+    monkeypatch.setattr(vasp_inputs, "_prepare_vdw_tags", record)
+
+    vasp_inputs._apply_patches(vasp_set, [patch], "R2SCAN", incar)
+
+    assert called == [[patch]]
+
+
+def test_rvv10_tags_reach_the_input_set(relax_dir: Path, config: RecipeConfig) -> None:
+    """The rVV10 tags must survive end to end, not just reach _prepare_vdw_tags."""
+    structure = vasp_inputs.read_structure_pmg(relax_dir / "POSCAR")
+    incar = vasp_inputs._prepare_incar("R2SCAN", ["rvv10"], config)
+    vasp_set = vasp_inputs._create_vasp_set(
+        structure, incar, "PBE_64", config, user_incar_settings={"KSPACING": 0.2}
+    )
+
+    vasp_inputs._apply_patches(vasp_set, ["rvv10"], "R2SCAN", incar)
+
+    assert vasp_set.user_incar_settings["LUSE_VDW"] is True
+    assert vasp_set.user_incar_settings["BPARAM"] == 11.95
+    assert vasp_set.user_incar_settings["CPARAM"] == 0.0093

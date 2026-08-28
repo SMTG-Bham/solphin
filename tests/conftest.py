@@ -224,10 +224,9 @@ def dos_result(dos_vasprun: Path) -> DOSResult:
 def band_structure_obj(band_dir: Path) -> BandStructureSymmLine:
     """Recombined BandStructureSymmLine across the committed splits.
 
-    Seven is the number of ``split-NN`` folders actually committed. The value
-    is ignored today - see the ``test_splits_argument_is_honoured`` xfail - but
-    if that defect is ever fixed, 7 is the number that keeps this fixture
-    reading all of them.
+    Seven is the number of ``split-NN`` folders actually committed, and
+    get_band_structure now reads exactly that many, so 7 is what makes this
+    fixture the full path rather than a prefix of it.
     """
     return band_structure.get_band_structure(str(band_dir), 7)
 
