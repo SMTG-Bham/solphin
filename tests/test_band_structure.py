@@ -145,9 +145,13 @@ def test_castep_get_band_structure_split_layout(
         castep_band_dir: Path, tmp_path: Path
 ) -> None:
     """Asking for splits reads split-NN folders and reproduces the single-file result."""
-    split_dir = tmp_path / "split-01"
-    split_dir.mkdir()
-    shutil.copyfile(castep_band_dir / "toy.bands", split_dir / "toy.bands")
+    # One folder per split: splits=1 takes the single-file branch, so the split
+    # layout needs two to be exercised at all. This laid down one folder and
+    # asked for two, which passed only while the count was ignored.
+    for name in ("split-01", "split-02"):
+        split_dir = tmp_path / name
+        split_dir.mkdir()
+        shutil.copyfile(castep_band_dir / "toy.bands", split_dir / "toy.bands")
 
     bs = band_structure.get_band_structure(str(tmp_path), 2, code="castep")
 
@@ -339,13 +343,6 @@ def test_write_band_structure_missing_scf_raises(
         )
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-            "get_band_structure globs every split-*/vasprun.xml whenever splits > 1, "
-            "so the argument's value is ignored - asking for 3 still reads all 7"
-    ),
-)
 def test_splits_argument_is_honoured(
         band_dir: Path, band_structure_obj: BandStructureSymmLine
 ) -> None:
@@ -353,3 +350,24 @@ def test_splits_argument_is_honoured(
     subset = band_structure.get_band_structure(str(band_dir), 3)
 
     assert len(subset.kpoints) < len(band_structure_obj.kpoints)
+
+
+def test_splits_argument_reads_exactly_that_many(band_dir: Path) -> None:
+    """The k-point count must track the number of splits asked for.
+
+    Reading more splits must strictly add k-points - "fewer than all seven"
+    alone would still pass if the slice were off by one. Counts start at 2
+    because splits=1 takes the single-file branch, not the split branch.
+    """
+    counts = [
+        len(band_structure.get_band_structure(str(band_dir), n).kpoints)
+        for n in (2, 3, 4)
+    ]
+
+    assert counts[0] < counts[1] < counts[2]
+
+
+def test_splits_beyond_those_present_raises(band_dir: Path) -> None:
+    """Asking for more splits than exist must fail, not silently truncate."""
+    with pytest.raises(FileNotFoundError, match="only 7"):
+        band_structure.get_band_structure(str(band_dir), 8)
