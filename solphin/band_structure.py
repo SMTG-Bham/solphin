@@ -268,26 +268,35 @@ def write_band_structure_calculation(
         ``False``.
     user_incar_settings : dict or None, optional
         Additional INCAR settings provided by the user. Default is None.
+
+    Raises
+    ------
+    ValueError
+        If the SCF input the functional needs is missing: ``scf_kpoints``
+        for a hybrid functional, or ``scf_charge`` for a GGA one.
     """
     hybrid = functional in ["PBE0", "HSE06", "DD_hybrid", "R2SCAN"]
 
     if hybrid:
         if scf_kpoints is None:
-            print(
-                "ERROR: SCF irreducible k-points are required for band structure calculations with a hybrid functional")
-            return
+            raise ValueError(
+                f"scf_kpoints is required for a band structure with the hybrid "
+                f"functional {functional!r}; pass the path to the SCF "
+                f"IBZKPT/KPOINTS file."
+            )
 
-        else:
-            # ibz = _parse_ibzkpt(scf_kpoints)
-            ibz = Kpoints.from_file(scf_kpoints)
+        # ibz = _parse_ibzkpt(scf_kpoints)
+        ibz = Kpoints.from_file(scf_kpoints)
 
     else:
         if scf_charge is None:
-            print("ERROR: Converged charge density is required for band structure calculations with a GGA functional")
-            return
+            raise ValueError(
+                f"scf_charge is required for a band structure with the GGA "
+                f"functional {functional!r}; pass the path to the converged "
+                f"CHGCAR."
+            )
 
-        else:
-            ibz = None
+        ibz = None
 
     kpoints, labels = kpath
 
