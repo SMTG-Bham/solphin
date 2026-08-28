@@ -19,7 +19,6 @@ from scipy.optimize import brentq
 import castep_fixtures
 import solphin.optics as optics
 
-
 # --- the dielectric tensor -------------------------------------------------
 
 
