@@ -20,7 +20,7 @@ FUNCTIONALS = ["LDA", "PBEsol", "PBE", "HSE06", "PBE0", "R2SCAN"]
 
 @pytest.fixture
 def config() -> RecipeConfig:
-    """A fresh config per test - _prepare_incar mutates what it is given."""
+    """A fresh config per test, so no test can observe another's edits."""
     return vasp_inputs._load_config("base_recipes.json")
 
 
@@ -102,8 +102,7 @@ def test_prepare_incar_defect_patch_expands(config: RecipeConfig) -> None:
 def test_prepare_incar_gamma_only_is_not_an_incar_patch(config: RecipeConfig) -> None:
     """gamma_only changes k-points, not the INCAR, so it is skipped here."""
     plain = dict(vasp_inputs._prepare_incar("PBE", [], config))
-    fresh = vasp_inputs._load_config("base_recipes.json")
-    with_gamma = dict(vasp_inputs._prepare_incar("PBE", ["gamma_only"], fresh))
+    with_gamma = dict(vasp_inputs._prepare_incar("PBE", ["gamma_only"], config))
 
     assert plain == with_gamma
 
@@ -228,14 +227,6 @@ def test_write_vasp_calculation_writes_inputs(relax_dir: Path, tmp_path: Path) -
 # --- defects ---------------------------------------------------------------
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-            "_prepare_incar mutates config['INCAR'][recipe] in place, so a second "
-            "call with the same config inherits the first call's patches; latent "
-            "only because write_vasp_calculation re-reads the json every time"
-    ),
-)
 def test_prepare_incar_does_not_mutate_config(config: RecipeConfig) -> None:
     """_prepare_incar should not leak one call's patches into the next."""
     vasp_inputs._prepare_incar("PBE", ["optics"], config)
@@ -243,6 +234,18 @@ def test_prepare_incar_does_not_mutate_config(config: RecipeConfig) -> None:
     unpatched = vasp_inputs._prepare_incar("PBE", [], config)
 
     assert "LOPTICS" not in unpatched
+    assert "LOPTICS" not in config["INCAR"]["PBE"]
+
+
+def test_prepare_incar_does_not_alias_nested_magmom(config: RecipeConfig) -> None:
+    """MAGMOM is a nested dict, so a shallow copy would still alias it."""
+    incar = vasp_inputs._prepare_incar("PBE", [], config)
+
+    magmom = incar["MAGMOM"]
+    assert isinstance(magmom, dict)
+    magmom["Fe"] = 99
+
+    assert config["INCAR"]["PBE"]["MAGMOM"]["Fe"] != 99
 
 
 def test_vdw_branch_skipped_without_vdw_patch(
