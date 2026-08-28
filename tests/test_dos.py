@@ -15,6 +15,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 from pymatgen.core import Lattice, Structure
+from pymatgen.io.vasp.inputs import Kpoints
 
 import castep_fixtures
 import solphin.dos as dos
@@ -104,6 +105,8 @@ def test_compute_dos_poor_fit_is_visible(dos_result: DOSResult) -> None:
     threshold. This is a property of the shipped data, and it must stay visible
     rather than being quietly rounded off.
     """
+    assert dos_result.fit_quality_e is not None
+    assert dos_result.em_electrons is not None
     assert dos_result.fit_quality_e < dos.MIN_DOS_FIT_R2
     assert dos_result.em_electrons.n_points < dos.MIN_DOS_FIT_POINTS
 
@@ -116,6 +119,7 @@ def test_compute_dos_holes_carrier(dos_vasprun: Path) -> None:
 
     assert result.carrier == "holes"
     assert result.em_result is result.em_holes
+    assert result.em_holes is not None
     assert result.final_result == pytest.approx(result.em_holes.m_eff_rel, rel=1e-12)
     # Holes in Cu2GeS3 are far heavier than electrons.
     assert result.final_result > 0.5
@@ -311,15 +315,13 @@ def test_write_eff_mass_unknown_code_raises(tmp_path: Path) -> None:
         )
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-            "dos.py:1453 calls len() and .tolist() on the pymatgen Kpoints object "
-            "returned by _generate_local_kpoints; Kpoints has neither -> TypeError"
-    ),
-)
 def test_write_local_kpoints_writes_file(tmp_path: Path) -> None:
     """write_local_kpoints should produce a KPOINTS file in the folder."""
     dos.write_local_kpoints(str(tmp_path), np.array([0.0, 0.0, 0.0]), (3, 3, 3), 0.01)
 
+    kpoints = Kpoints.from_file(str(tmp_path / "KPOINTS"))
+
     assert (tmp_path / "KPOINTS").is_file()
+    assert kpoints.num_kpts == 27
+    assert len(kpoints.kpts) == 27
+    assert kpoints.style is Kpoints.supported_modes.Reciprocal

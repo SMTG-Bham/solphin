@@ -816,7 +816,7 @@ def test_dos_mass_windows(
 
 def _format_em_table(
         em: _DOSEffectiveMassResult,
-        edge: float,
+        edge: float | None,
         is_dos_carrier: bool,
         fit: float | None,
 ) -> list[str]:
@@ -826,8 +826,9 @@ def _format_em_table(
     ----------
     em : _DOSEffectiveMassResult
         DOS effective-mass result with the calculated mass and fit details.
-    edge : float
-        Energy of the band edge the effective mass was fitted at, in eV.
+    edge : float or None
+        Energy of the band edge the effective mass was fitted at, in eV. If
+        None, the edge is displayed as ``"N/A"``.
     is_dos_carrier : bool
         If True, mark the effective mass as the FOM DOS mass in the output.
     fit : float or None
@@ -863,9 +864,15 @@ def _format_em_table(
         else "N/A"
     )
 
+    edge_text = (
+        f"{edge:.3f} eV"
+        if edge is not None
+        else "N/A"
+    )
+
     return [
         f"  {em.carrier.capitalize()} "
-        f"(fitted at {edge_label}: {edge:.3f} eV)",
+        f"(fitted at {edge_label}: {edge_text})",
 
         f"  {'DOS effective mass':<22}: "
         f"{em.m_eff_rel:.6f} m{sub}"
@@ -914,6 +921,12 @@ def _format_dos_summary(
         else result.vbm
     )
 
+    edge_text = (
+        f"{edge_value:.3f} eV"
+        if edge_value is not None
+        else "N/A"
+    )
+
     lines = [
         "",
         "=" * 60,
@@ -922,7 +935,7 @@ def _format_dos_summary(
         f"  Primary carrier     : "
         f"{result.carrier.capitalize()}",
         f"  Band edge ({edge_label})     : "
-        f"{edge_value:.3f} eV",
+        f"{edge_text}",
         f"  Cell volume         : "
         f"{result.cell_volume_m3:.3e} m³",
         "",
@@ -1443,16 +1456,9 @@ def write_local_kpoints(
         Maximum fractional reciprocal-space displacement from the central
         k-point along each direction.
     """
-    kpoints = _generate_local_kpoints(k0_frac, mesh, delta)
+    kp = _generate_local_kpoints(k0_frac, mesh, delta)
     folder_path = Path(folder)
     folder_path.mkdir(parents=True, exist_ok=True)
-
-    kp = Kpoints(
-        comment="Local k-mesh for effective mass",
-        style=Kpoints.supported_modes.Reciprocal,
-        num_kpts=len(kpoints),
-        kpts=kpoints.tolist(),
-        kpts_weights=[1] * len(kpoints), )
 
     kp.write_file(f"{folder_path}/KPOINTS")
 

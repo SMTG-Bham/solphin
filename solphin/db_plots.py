@@ -133,17 +133,19 @@ def iv_pv_curve_plot(
         Primary axis for the current density. Default is None, which
         creates a new dual-axis figure.
     ax2 : Axes or None, optional
-        Secondary axis for the power curve; only used when ``ax1`` is
-        provided. Default is None.
+        Secondary axis for the power curve. Default is None, which twins the
+        y-axis of ``ax1``.
     """
     v_open = db_fom.voc(Egap, spectrum, Tcell)
     v = np.linspace(0, v_open)
 
-    if ax1:
-        ax1 = ax1
-        ax2 = ax2
-    else:
+    if ax1 is None:
         fig, ax1 = plt.subplots()
+        ax2 = ax1.twinx()
+
+    elif ax2 is None:
+        # A caller can hand over the primary axis on its own; the power curve
+        # still needs a second y-axis to draw on.
         ax2 = ax1.twinx()
 
     p = v * db_fom.current_density(Egap, spectrum, v, Tcell)
@@ -253,10 +255,21 @@ def plot_db_combined(
         new 1x3 subplot grid.
     ax2 : Axes or None, optional
         Secondary y-axis for the IV-plot power curve. Default is None.
+
+    Raises
+    ------
+    ValueError
+        If ``fig`` is given without ``axes``.
     """
-    if not fig:
+    if fig is None:
         fig, axes = plt.subplots(1, 3, figsize=(14, 3), dpi=120)
         ax2 = axes[1].twinx()
+
+    elif axes is None:
+        raise ValueError(
+            "axes is required alongside fig: the three panels are drawn onto "
+            "axes[0], axes[1] and axes[2], and a bare figure carries none."
+        )
 
     photons_above_bandgap_plot(spectrum, Egap, ax=axes[0])
     iv_pv_curve_plot(spectrum, Egap, Tcell, ax1=axes[1], ax2=ax2)

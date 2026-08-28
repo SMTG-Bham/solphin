@@ -1,5 +1,6 @@
 """Generate VASP input sets from the packaged calculation recipes."""
 
+import copy
 import json
 from importlib.resources import files
 from pathlib import Path
@@ -13,6 +14,11 @@ from sumo.io.castep import CastepCell
 # A VASP INCAR tag value. Tags are scalars, except MAGMOM, which the recipes
 # carry as a per-element mapping.
 IncarValue: TypeAlias = str | int | float | bool | dict[str, float]
+
+# Patches that _prepare_vdw_tags knows how to turn into dispersion tags. It
+# returns {} for anything else, so this guard only exists to keep the call off
+# the hot path -- but it must list rvv10, which the vdW branch also serves.
+_VDW_PATCHES = ("vdw_d3_bj", "vdw_d3", "vdw_d4", "rvv10")
 
 
 class RecipeConfig(TypedDict):
@@ -131,7 +137,10 @@ def _prepare_incar(
     dict of str to IncarValue
         Final INCAR settings for the VASP calculation.
     """
-    incar = config["INCAR"][recipe]
+    # Deep copy: patches are layered on with update(), so an alias would leak
+    # one call's patches into the next, and MAGMOM is a nested dict the caller
+    # keeps a reference to. Mirrors _prepare_param on the CASTEP side.
+    incar = copy.deepcopy(config["INCAR"][recipe])
     if recipe in ["HSE06", "PBE0"]:
         incar.update({"NCORE": 4})
 
@@ -248,8 +257,9 @@ def _apply_patches(
     patches : list of str
         Patch identifiers: ``"relax_cell"`` raises ENCUT for structural
         relaxation, ``"gamma_only"`` sets a Gamma-point-only k-mesh,
-        ``"vdw_d3"``/``"vdw_d3_bj"``/``"vdw_d4"`` apply dispersion
-        corrections, and ``"lobster"`` raises NBANDS for orbital analysis.
+        ``"vdw_d3"``/``"vdw_d3_bj"``/``"vdw_d4"``/``"rvv10"`` apply
+        dispersion corrections, and ``"lobster"`` raises NBANDS for orbital
+        analysis.
     recipe : str
         Exchange-correlation functional or calculation type, used for the
         vdW parameter selection.
@@ -268,7 +278,7 @@ def _apply_patches(
         # explicitly supports does not type-check.
         vasp_set.user_kpoints_settings = Kpoints(kpts=((1, 1, 1)))  # type: ignore[assignment]
 
-    if "vdw_d3_bj" in patches or "vdw_d3" in patches or "vdw_d4":
+    if any(patch in patches for patch in _VDW_PATCHES):
         vdw_tags = _prepare_vdw_tags(recipe, patches)
         vasp_set.user_incar_settings.update(vdw_tags)
 

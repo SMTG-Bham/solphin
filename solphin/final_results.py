@@ -12,7 +12,6 @@ from numpy.typing import NDArray
 from solphin.db_fom import max_eff
 from solphin.pv_fom import Final_equation
 
-
 # Calculating equation 33 from the FOM paper
 
 def SQ_relative_FOM_PV_efficiency(
@@ -480,7 +479,7 @@ def mobility_plot(
         efficiency_list = []
 
         for mu in mobility_values:
-            efficiency = SQ_relative_FOM_PV_efficiency(
+            _, _, efficiency = SQ_relative_FOM_PV_efficiency(
                 E_gap,
                 photon_spectrum,
                 alpha,

@@ -99,7 +99,18 @@ relative_files = true
 [tool.ruff]
 target-version = "py311"
 line-length = 100
-extend-exclude = ["docs/source/full_workflow_tutorial.ipynb"]
+extend-exclude = [
+    "docs/source/full_workflow_tutorial.ipynb",
+    "docs/source/castep_workflow_tutorial.ipynb",
+]
+# Import roots, so isort can tell first-party from third-party. pytest puts
+# tests/ on sys.path via rootdir insertion, which is how the suite imports
+# conftest and castep_fixtures -- but ruff does not read pytest's config, so
+# without tests/ listed here it files both under third-party and asks for
+# `import castep_fixtures` to sit between numpy and pytest. Naming the roots
+# fixes the classification itself, rather than enumerating the two module
+# names, so a new helper added to tests/ is sorted correctly on arrival.
+src = [".", "tests"]
 
 [tool.ruff.lint]
 select = ["E402", "F401", "F811", "I", "D", "D212", "D417"]

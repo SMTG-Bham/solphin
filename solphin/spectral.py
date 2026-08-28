@@ -1,4 +1,10 @@
-"""Irradiance-weighted spectral average and dispersion of absorption coefficients."""
+"""Photon-flux-weighted spectral average and dispersion of absorption coefficients.
+
+Implements equations (1) and (2) of Crovetto 2024 (J. Phys. Energy 6 025009):
+the average absorption coefficient and the dispersion of its base-10
+logarithm over the wavelength window from 300 nm to the band-gap wavelength,
+both weighted by the spectral photon flux of the illumination spectrum.
+"""
 
 from collections.abc import Sequence
 from pathlib import Path
@@ -79,221 +85,200 @@ def _extract_int_limits(E_gap: float) -> tuple[float, float]:
     return wavelength_min, Eg_wavelength
 
 
-# Make the truncated spectras
+def _resample_common_grid(
+        abs_energy_eV: NDArray,
+        abs_coeff: NDArray,
+        spectrum: NDArray,
+        E_gap: float,
+        num_points: int = 20001,
+) -> tuple[NDArray, NDArray, NDArray]:
+    """Interpolate absorption and photon flux onto one fine wavelength grid.
 
-def _truncate_abs_spectra(
-        E_gap: float, abs_energy_eV: NDArray, abs_coeff: NDArray
-) -> tuple[Sequence[float], Sequence[float]]:
-    """Truncate an absorption spectrum to the band-gap-defined wavelength range.
-
-    Converts the absorption energies to wavelengths, then keeps only the values
-    between the fixed lower limit and the band-gap wavelength.
+    The grid spans 300 nm to the band-gap wavelength, the integration window
+    of Crovetto 2024 equations (1)-(2). The absorption data is converted from
+    energy to wavelength space, the illumination spectrum from spectral
+    irradiance to photon flux, and both are linearly interpolated onto the
+    common grid.
 
     Parameters
     ----------
-    E_gap : float
-        Band gap energy in eV, setting the upper wavelength cutoff.
     abs_energy_eV : numpy.ndarray
         Photon energies in eV for the absorption data.
     abs_coeff : numpy.ndarray
         Absorption coefficient at each energy point.
-
-    Returns
-    -------
-    filtered_wavelengths_abs : sequence of float
-        Wavelengths in nm within the valid range.
-    filtered_abs_coff : sequence of float
-        Absorption coefficients for the filtered wavelengths.
-    """
-    wavelength_min, Eg_wavelength = _extract_int_limits(E_gap)
-
-    abs_wavelength_nm = _wavelength_conv(abs_energy_eV)
-
-    filtered_pairs = [(wl, val) for wl, val in zip(abs_wavelength_nm, abs_coeff) if
-                      wavelength_min <= wl <= Eg_wavelength]
-
-    filtered_wavelengths_abs, filtered_abs_coff = zip(*filtered_pairs) if filtered_pairs else ([], [])
-
-    return filtered_wavelengths_abs, filtered_abs_coff
-
-
-def _truncate_light_spectra(
-        spectrum: NDArray, E_gap: float
-) -> tuple[Sequence[float], Sequence[float]]:
-    """Truncate a light spectrum to the band-gap-defined wavelength range.
-
-    Parameters
-    ----------
     spectrum : numpy.ndarray
         2D array; column 0 is wavelength in nm, column 1 spectral irradiance
         in W m⁻² nm⁻¹.
     E_gap : float
         Band gap energy in eV, setting the upper wavelength cutoff.
+    num_points : int, optional
+        Number of points in the common wavelength grid. Default is 20001.
 
     Returns
     -------
-    filtered_wavelengths_spec : sequence of float
-        Wavelengths in nm within the valid range.
-    filtered_irradiance_spec : sequence of float
-        Spectral irradiance for the filtered wavelengths.
+    wavelengths : numpy.ndarray
+        Common wavelength grid in nm, ascending across the window.
+    alpha : numpy.ndarray
+        Absorption coefficient interpolated onto the grid.
+    photon_flux : numpy.ndarray
+        Spectral photon flux φ(λ) on the grid, in photons m⁻² s⁻¹ nm⁻¹.
+
+    Raises
+    ------
+    ValueError
+        If the band gap leaves no wavelength window above 300 nm, or the
+        spectrum does not reach the window (e.g. an energy-space spectrum
+        from ``convert_spectrum`` was passed instead of a wavelength-space
+        one).
     """
     wavelength_min, Eg_wavelength = _extract_int_limits(E_gap)
+    if Eg_wavelength <= wavelength_min:
+        raise ValueError(
+            f"Band gap {E_gap} eV puts the gap wavelength at "
+            f"{Eg_wavelength:.1f} nm, at or below the 300 nm cutoff; no "
+            "spectral window remains."
+        )
 
-    spectrum = np.copy(spectrum)
+    spectrum_wavelengths = np.asarray(spectrum[:, 0], dtype=float)
+    spectrum_irradiance = np.asarray(spectrum[:, 1], dtype=float)
+    if spectrum_wavelengths.max() < wavelength_min:
+        raise ValueError(
+            "spectrum must be in wavelength space (column 0 in nm, column 1 in"
+            " W m⁻² nm⁻¹, as loaded by load_spectrum); its wavelengths end"
+            " below the 300 nm integration window. Was an energy-space"
+            " spectrum from convert_spectrum passed?"
+        )
 
-    wavelength = spectrum[:, 0]
-    irradiance = spectrum[:, 1]  # irradiance (W/m2/nm)
+    wavelengths = np.linspace(wavelength_min, Eg_wavelength, num_points)
 
-    filtered_pairs_spec = [(wl, val) for wl, val in zip(wavelength, irradiance) if
-                           wavelength_min <= wl <= Eg_wavelength]
+    abs_energy = np.asarray(abs_energy_eV, dtype=float)
+    abs_alpha = np.asarray(abs_coeff, dtype=float)
+    positive_energy = abs_energy > 0
+    abs_wavelengths_nm = _wavelength_conv(abs_energy[positive_energy])
+    abs_alpha = abs_alpha[positive_energy]
 
-    filtered_wavelengths_spec, filtered_irradiance_spec = zip(*filtered_pairs_spec) if filtered_pairs_spec else ([], [])
+    abs_order = np.argsort(abs_wavelengths_nm)
+    alpha = np.interp(wavelengths, abs_wavelengths_nm[abs_order], abs_alpha[abs_order])
 
-    return filtered_wavelengths_spec, filtered_irradiance_spec
+    spec_order = np.argsort(spectrum_wavelengths)
+    irradiance = np.interp(
+        wavelengths, spectrum_wavelengths[spec_order], spectrum_irradiance[spec_order]
+    )
+    photon_flux = irradiance * (wavelengths * sc.nano) / (h * c)
 
-
-def _match_wavelengths(
-        filtered_wavelengths_abs: Sequence[float],
-        filtered_wavelengths_spec: Sequence[float],
-        filtered_irradiance_spec: Sequence[float],
-) -> list[float]:
-    """Map irradiance values onto an absorption wavelength grid by nearest neighbour.
-
-    For each absorption wavelength, the closest wavelength(s) in the light
-    spectrum supply the irradiance value, averaging in case of ties.
-
-    Parameters
-    ----------
-    filtered_wavelengths_abs : sequence of float
-        Wavelengths in nm from the absorption dataset.
-    filtered_wavelengths_spec : sequence of float
-        Wavelengths in nm from the light spectrum.
-    filtered_irradiance_spec : sequence of float
-        Spectral irradiance in W m⁻² nm⁻¹ for ``filtered_wavelengths_spec``.
-
-    Returns
-    -------
-    list of float
-        Irradiance values mapped onto the absorption wavelength grid.
-    """
-    matched_values = []
-
-    for target_wl in filtered_wavelengths_abs:
-        # Calculate absolute differences from target wavelength
-        diffs = [abs(spec_wl - target_wl) for spec_wl in filtered_wavelengths_spec]
-        min_diff = min(diffs)  # Find the smallest difference
-
-        # Find indices where the difference is equal to min_diff
-        close_indices = [i for i, d in enumerate(diffs) if d == min_diff]
-
-        # Get the irradiance values at those indices and take the average
-        closest_values = [filtered_irradiance_spec[i] for i in close_indices]
-        matched_values.append(sum(closest_values) / len(closest_values))  # Average
-
-    # matched_values = np.array(matched_values, dtype = float)
-
-    return matched_values
-
-
-def calculate_spectral_dispersion(
-        filtered_abs_coff: Sequence[float] | NDArray,
-        matched_irradiance: Sequence[float] | NDArray,
-        filtered_wavelengths_abs: Sequence[float] | NDArray,
-) -> float:
-    """Calculate the irradiance-weighted dispersion of the log absorption coefficient.
-
-    Analogous to a weighted standard deviation of log(α), with the matched
-    spectral irradiance as the weights.
-
-    Parameters
-    ----------
-    filtered_abs_coff : sequence of float or numpy.ndarray
-        Absorption coefficients α at each wavelength.
-    matched_irradiance : sequence of float or numpy.ndarray
-        Spectral irradiance matched to the absorption grid, used as weights.
-    filtered_wavelengths_abs : sequence of float or numpy.ndarray
-        Wavelength grid in nm for the absorption data. Unused; accepted for
-        interface consistency.
-
-    Returns
-    -------
-    float
-        Weighted spectral dispersion of the log absorption coefficient.
-    """
-    valid_data = [
-        (a, irr)
-        for a, irr in zip(filtered_abs_coff, matched_irradiance)
-        if a > 0 and np.isfinite(a)
-    ]
-
-    filtered_abs_coff, matched_irradiance = zip(*valid_data)
-    # Convert to log scale
-    log_alpha = [np.log(a) for a in filtered_abs_coff]
-
-    # Compute weighted mean log(α)
-    numerator_mean = sum(irr * log_a for irr, log_a in zip(matched_irradiance, log_alpha))  # not mean?
-    denominator_mean = sum(matched_irradiance)
-    log_alpha_bar = numerator_mean / denominator_mean  # Weighted mean log(alpha)
-
-    # Compute numerator (variance term)
-
-    numerator_x = list(irr * (log_a - log_alpha_bar) ** 2 for irr, log_a in zip(matched_irradiance, log_alpha))
-    numerator_variance = simpson(numerator_x)
-
-    # Compute denominator (normalization term)
-    denominator_variance = simpson(matched_irradiance)
-
-    # Spectral density
-    spectral_dispersion = np.sqrt(numerator_variance / denominator_variance)
-
-    return spectral_dispersion
+    return wavelengths, alpha, photon_flux
 
 
 def calculate_spectral_average(
-        filtered_abs_coff: Sequence[float] | NDArray,
-        matched_irradiance: Sequence[float] | NDArray,
-        filtered_wavelengths_abs: Sequence[float] | NDArray,
+        abs_coeff: Sequence[float] | NDArray,
+        photon_flux: Sequence[float] | NDArray,
+        wavelengths: Sequence[float] | NDArray,
 ) -> float:
-    """Calculate the irradiance-weighted average of the absorption coefficient.
+    """Calculate the photon-flux-weighted average of the absorption coefficient.
 
+    Equation (1) of Crovetto 2024: the absorption coefficient is averaged
+    over wavelength with the spectral photon flux φ(λ) as the weight.
     Integration is performed numerically with Simpson's rule.
 
     Parameters
     ----------
-    filtered_abs_coff : sequence of float or numpy.ndarray
+    abs_coeff : sequence of float or numpy.ndarray
         Absorption coefficients α at each wavelength.
-    matched_irradiance : sequence of float or numpy.ndarray
-        Spectral irradiance matched to the absorption grid, used as weights.
-    filtered_wavelengths_abs : sequence of float or numpy.ndarray
-        Wavelength grid in nm for the absorption data. Unused; accepted for
-        interface consistency.
+    photon_flux : sequence of float or numpy.ndarray
+        Spectral photon flux on the same wavelength grid, used as weights.
+    wavelengths : sequence of float or numpy.ndarray
+        Ascending wavelength grid in nm shared by ``abs_coeff`` and
+        ``photon_flux``.
 
     Returns
     -------
     float
-        Irradiance-weighted average absorption coefficient.
+        Photon-flux-weighted average absorption coefficient.
     """
-    # Compute numerator (weighted sum of alpha)
-    numerator_1 = list(alpha * irr for alpha, irr in zip(filtered_abs_coff, matched_irradiance))
+    alpha = np.asarray(abs_coeff, dtype=float)
+    flux = np.asarray(photon_flux, dtype=float)
+    wavelengths = np.asarray(wavelengths, dtype=float)
 
-    numerator = simpson(numerator_1)
+    numerator = simpson(alpha * flux, x=wavelengths)
+    denominator = simpson(flux, x=wavelengths)
 
-    # Compute denominator (total irradiance)
-    denominator = simpson(matched_irradiance)
-
-    # Spectral average
     spectral_average = numerator / denominator if denominator != 0 else 0
 
     return spectral_average
 
 
+def calculate_spectral_dispersion(
+        abs_coeff: Sequence[float] | NDArray,
+        photon_flux: Sequence[float] | NDArray,
+        wavelengths: Sequence[float] | NDArray,
+) -> float:
+    """Calculate the photon-flux-weighted dispersion of the log absorption coefficient.
+
+    Equation (2) of Crovetto 2024: the flux-weighted dispersion of log₁₀(α)
+    about log₁₀ of the equation-(1) average. Points with α ⩽ 0, where the
+    logarithm is undefined, are excluded from every integral, including the
+    average used as the centre; for physical data (α > 0 across the window,
+    as the paper assumes) this is exactly equation (2).
+
+    Parameters
+    ----------
+    abs_coeff : sequence of float or numpy.ndarray
+        Absorption coefficients α at each wavelength.
+    photon_flux : sequence of float or numpy.ndarray
+        Spectral photon flux on the same wavelength grid, used as weights.
+    wavelengths : sequence of float or numpy.ndarray
+        Ascending wavelength grid in nm shared by ``abs_coeff`` and
+        ``photon_flux``.
+
+    Returns
+    -------
+    float
+        Photon-flux-weighted dispersion of log₁₀(α), dimensionless.
+
+    Raises
+    ------
+    ValueError
+        If fewer than two points carry a positive absorption coefficient.
+    """
+    alpha = np.asarray(abs_coeff, dtype=float)
+    flux = np.asarray(photon_flux, dtype=float)
+    wavelengths = np.asarray(wavelengths, dtype=float)
+
+    valid = np.isfinite(alpha) & (alpha > 0)
+    if np.count_nonzero(valid) < 2:
+        raise ValueError(
+            "Fewer than two positive absorption coefficients; the dispersion"
+            " of log(α) is undefined."
+        )
+
+    alpha = alpha[valid]
+    flux = flux[valid]
+    wavelengths = wavelengths[valid]
+
+    spectral_average = calculate_spectral_average(alpha, flux, wavelengths)
+    deviation = np.log10(alpha) - np.log10(spectral_average)
+
+    numerator = simpson(flux * deviation ** 2, x=wavelengths)
+    denominator = simpson(flux, x=wavelengths)
+
+    spectral_dispersion = float(np.sqrt(numerator / denominator))
+
+    return spectral_dispersion
+
+
 def generate_spectral_parameters(
-        optics_directory: str | Path, spectrum: NDArray, E_gap: float
+        optics_directory: str | Path,
+        spectrum: NDArray,
+        E_gap: float,
+        num_points: int = 20001,
 ) -> tuple[float, float]:
     """Compute the spectral average and dispersion from absorption and light spectra.
 
-    Combines the absorption data with a truncated light spectrum to quantify
-    how absorption varies across the spectral range set by the band gap.
+    Implements equations (1) and (2) of Crovetto 2024: ``absorption.dat`` and
+    the illumination spectrum are interpolated onto a common wavelength grid
+    spanning 300 nm to the band-gap wavelength, the irradiance is converted
+    to a photon flux, and the flux-weighted average of α and dispersion of
+    log₁₀(α) are integrated over wavelength.
 
     Parameters
     ----------
@@ -305,23 +290,25 @@ def generate_spectral_parameters(
         spectral irradiance in W m⁻² nm⁻¹.
     E_gap : float
         Band gap energy in eV used to define the spectral cutoffs.
+    num_points : int, optional
+        Number of points in the common wavelength grid. Default is 20001.
 
     Returns
     -------
     spectral_average : float
-        Irradiance-weighted mean absorption coefficient.
+        Photon-flux-weighted mean absorption coefficient.
     spectral_dispersion : float
-        Irradiance-weighted dispersion of the log absorption coefficient.
+        Photon-flux-weighted dispersion of log₁₀ of the absorption
+        coefficient.
     """
     abs_file = f'{optics_directory}/absorption.dat'
 
     abs_energy_eV, abs_coeff = _load_absorption(abs_file)
-    filtered_wavelengths_abs, filtered_abs_coff = _truncate_abs_spectra(E_gap, abs_energy_eV, abs_coeff)
-    filtered_wavelengths_spec, filtered_irradiance_spec = _truncate_light_spectra(spectrum, E_gap)
-    matched_irradiance = _match_wavelengths(filtered_wavelengths_abs, filtered_wavelengths_spec,
-                                            filtered_irradiance_spec)
+    wavelengths, alpha, photon_flux = _resample_common_grid(
+        abs_energy_eV, abs_coeff, spectrum, E_gap, num_points
+    )
 
-    spectral_average = calculate_spectral_average(filtered_abs_coff, matched_irradiance, filtered_wavelengths_abs)
-    spectral_dispersion = calculate_spectral_dispersion(filtered_abs_coff, matched_irradiance, filtered_wavelengths_abs)
+    spectral_average = calculate_spectral_average(alpha, photon_flux, wavelengths)
+    spectral_dispersion = calculate_spectral_dispersion(alpha, photon_flux, wavelengths)
 
     return spectral_average, spectral_dispersion

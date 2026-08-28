@@ -111,7 +111,7 @@ def _photons_above_bandgap(E_gap: float, photon_spectrum: NDArray) -> float:
     Returns
     -------
     float
-        Integrated photon flux above the band gap.
+        Integrated photon flux above the band gap, in photons m⁻² s⁻¹.
     """
     indexes = np.where(photon_spectrum[:, 0] > E_gap)
     y = photon_spectrum[indexes, 1][0]
@@ -134,7 +134,7 @@ def _rr0(E_gap: float, photon_spectrum: NDArray, Tcell: float) -> float:
     Returns
     -------
     float
-        Radiative recombination rate in cm⁻³ s⁻¹.
+        Radiative recombination rate per unit area, in photons m⁻² s⁻¹.
     """
     k_eV = k / q
     h_eV = h / q
@@ -170,7 +170,7 @@ def recomb_rate(E_gap: float, photon_spectrum: NDArray, voltage: float, Tcell: f
     Returns
     -------
     float
-        Radiative recombination rate in cm⁻³ s⁻¹.
+        Radiative recombination current density in A m⁻².
     """
     print('recomb rate')
     return q * _rr0(E_gap, photon_spectrum, Tcell) * np.exp(q * voltage / (k * Tcell))
@@ -207,11 +207,13 @@ def current_density(
     Returns
     -------
     float or numpy.ndarray
-        Current density in C cm⁻³ s⁻¹. Scalar for scalar ``voltage``,
+        Current density in A m⁻². Scalar for scalar ``voltage``,
         elementwise array otherwise.
     """
-    return q * (_photons_above_bandgap(E_gap, photon_spectrum) - _rr0(E_gap, photon_spectrum, Tcell) * np.exp(
-        q * voltage / (k * Tcell)) - 1)
+    Jph = _photons_above_bandgap(E_gap, photon_spectrum)
+    J0 = _rr0(E_gap, photon_spectrum, Tcell)
+
+    return q * (Jph - J0 * (np.exp(q * voltage / (k * Tcell)) - 1))
 
 
 def jsc(E_gap: float, photon_spectrum: NDArray, Tcell: float) -> float:
@@ -229,7 +231,7 @@ def jsc(E_gap: float, photon_spectrum: NDArray, Tcell: float) -> float:
     Returns
     -------
     float
-        Current density at zero applied voltage in C cm⁻³ s⁻¹.
+        Current density at zero applied voltage in A m⁻².
     """
     return current_density(E_gap, photon_spectrum, 0, Tcell)
 
@@ -301,7 +303,7 @@ def j_at_mpp(E_gap: float, photon_spectrum: NDArray, Tcell: float = 300.0) -> fl
     Returns
     -------
     float
-        Current density at the maximum power point in C cm⁻³ s⁻¹.
+        Current density at the maximum power point in A m⁻².
     """
     return max_power(E_gap, photon_spectrum, Tcell) / v_at_mpp(E_gap, photon_spectrum, Tcell)
 
@@ -321,7 +323,7 @@ def max_power(E_gap: float, photon_spectrum: NDArray, Tcell: float) -> float:
     Returns
     -------
     float
-        Maximum power of the cell in V C cm⁻³ s⁻¹.
+        Maximum areal power density of the cell in W m⁻².
     """
     v_open = voc(E_gap, photon_spectrum, Tcell)
     v = np.linspace(0, v_open)

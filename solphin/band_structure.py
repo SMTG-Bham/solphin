@@ -11,7 +11,7 @@ import re
 import shutil
 from pathlib import Path
 from types import ModuleType
-from typing import Any
+from typing import Any, Literal
 
 import numpy as np
 from numpy.typing import NDArray
@@ -154,6 +154,11 @@ def _write_kpoint_files(
     list of str
         Folder name for each generated KPOINTS segment, or empty strings
         when folders are not used.
+
+    Raises
+    ------
+    ValueError
+        If ``ibzkpt`` holds no k-point weights, as an automatic mesh does.
     """
     if kpts_per_split:
         kpt_splits = [
@@ -168,16 +173,28 @@ def _write_kpoint_files(
         kpt_splits = [kpoints]
         label_splits = [labels]
 
+    # Spelled the way Kpoints declares it. Both styles below are explicit, so
+    # coord_type never reaches the file -- pymatgen writes it in line-mode only
+    # -- but it does travel through as_dict().
+    coord_type: Literal["Reciprocal", "Cartesian"]
+
     if cart_coords:
-        coord_type = "cartesian"
+        coord_type = "Cartesian"
         style = Kpoints.supported_modes.Cartesian
     else:
-        coord_type = "reciprocal"
+        coord_type = "Reciprocal"
         style = Kpoints.supported_modes.Reciprocal
 
     kpt_files = []
     for kpt_split, label_split in zip(kpt_splits, label_splits):
         if ibzkpt is not None:
+            if ibzkpt.kpts_weights is None:
+                raise ValueError(
+                    "The SCF KPOINTS carries no k-point weights, so it cannot "
+                    "seed a hybrid band path; pass the IBZKPT the SCF run "
+                    "wrote, or a KPOINTS listing explicit weighted k-points."
+                )
+
             # hybrid calculation so set k-point weights to 0
             kpt_weights = ibzkpt.kpts_weights + [0] * len(kpt_split)
             kpt_split = ibzkpt.kpts + kpt_split
@@ -268,26 +285,35 @@ def write_band_structure_calculation(
         ``False``.
     user_incar_settings : dict or None, optional
         Additional INCAR settings provided by the user. Default is None.
+
+    Raises
+    ------
+    ValueError
+        If the SCF input the functional needs is missing: ``scf_kpoints``
+        for a hybrid functional, or ``scf_charge`` for a GGA one.
     """
     hybrid = functional in ["PBE0", "HSE06", "DD_hybrid", "R2SCAN"]
 
     if hybrid:
         if scf_kpoints is None:
-            print(
-                "ERROR: SCF irreducible k-points are required for band structure calculations with a hybrid functional")
-            return
+            raise ValueError(
+                f"scf_kpoints is required for a band structure with the hybrid "
+                f"functional {functional!r}; pass the path to the SCF "
+                f"IBZKPT/KPOINTS file."
+            )
 
-        else:
-            # ibz = _parse_ibzkpt(scf_kpoints)
-            ibz = Kpoints.from_file(scf_kpoints)
+        # ibz = _parse_ibzkpt(scf_kpoints)
+        ibz = Kpoints.from_file(scf_kpoints)
 
     else:
         if scf_charge is None:
-            print("ERROR: Converged charge density is required for band structure calculations with a GGA functional")
-            return
+            raise ValueError(
+                f"scf_charge is required for a band structure with the GGA "
+                f"functional {functional!r}; pass the path to the converged "
+                f"CHGCAR."
+            )
 
-        else:
-            ibz = None
+        ibz = None
 
     kpoints, labels = kpath
 
@@ -458,6 +484,53 @@ def _castep_cell_for(bands_file: Path) -> str | None:
     return None
 
 
+def _split_output_files(
+        band_directory: str | Path, pattern: str, splits: int
+) -> list[Path]:
+    """Collect the first ``splits`` split-NN outputs, ordered by split index.
+
+    Both the VASP and CASTEP branches of ``get_band_structure`` read their
+    splits through here so the two cannot drift apart again - they used to
+    share a defect where ``splits`` gated the branch but never bounded the
+    glob, so every committed split was read whatever the caller asked for.
+
+    Parameters
+    ----------
+    band_directory : str or Path
+        Directory holding the ``split-NN`` subfolders.
+    pattern : str
+        Filename glob inside each split folder, e.g. ``"vasprun.xml"``.
+    splits : int
+        Number of splits to read, counting from ``split-01``.
+
+    Returns
+    -------
+    list of Path
+        The first ``splits`` matching files, in split order.
+
+    Raises
+    ------
+    FileNotFoundError
+        If no split outputs match, or fewer than ``splits`` of them exist.
+        Reading short would silently truncate the k-path rather than fail.
+    """
+    found = sorted(
+        Path(band_directory).glob(f"split-*/{pattern}"),
+        key=lambda p: int(p.parent.name.split("-")[-1]),
+    )
+    if not found:
+        raise FileNotFoundError(
+            f"No split-*/{pattern} files found in {band_directory}"
+        )
+    if len(found) < splits:
+        raise FileNotFoundError(
+            f"Asked for {splits} splits but {band_directory} holds only "
+            f"{len(found)} split-*/{pattern}; reading short would truncate "
+            f"the k-path."
+        )
+    return found[:splits]
+
+
 def get_band_structure(
         band_directory: str | Path, splits: int, code: str = "vasp"
 ) -> BandStructureSymmLine:
@@ -474,8 +547,10 @@ def get_band_structure(
         from a sibling ``.cell`` when present). Split calculations are
         expected in subfolders named ``"split-*"``.
     splits : int
-        Number of split calculations used. If greater than 1, one output
-        file per split directory is read; otherwise a single file.
+        Number of split calculations to read. If greater than 1, the first
+        ``splits`` ``split-NN`` folders are read, counting from
+        ``split-01``; otherwise a single output file in ``band_directory``
+        itself. Must not exceed the number of splits actually present.
     code : str, optional
         Which code produced the outputs, ``"vasp"`` or ``"castep"``.
         Default is ``"vasp"``.
@@ -492,21 +567,12 @@ def get_band_structure(
         If ``code`` is not ``"vasp"`` or ``"castep"``, or a single-file
         CASTEP directory holds several ``.bands`` files.
     FileNotFoundError
-        If no CASTEP ``.bands`` file matches.
+        If no CASTEP ``.bands`` file matches, or - for either code - fewer
+        than ``splits`` split outputs exist.
     """
     if code == "castep":
         if splits > 1:
-            # Mirrors the VASP branch below - including reading every split
-            # regardless of the argument's value; see the pinned
-            # test_splits_argument_is_honoured xfail.
-            bands_files = sorted(
-                Path(band_directory).glob("split-*/*.bands"),
-                key=lambda p: int(p.parent.name.split("-")[-1])
-            )
-            if not bands_files:
-                raise FileNotFoundError(
-                    f"No split-*/*.bands files found in {band_directory}"
-                )
+            bands_files = _split_output_files(band_directory, "*.bands", splits)
         else:
             bands_files = sorted(Path(band_directory).glob("*.bands"))
             if not bands_files:
@@ -531,10 +597,7 @@ def get_band_structure(
         raise ValueError(f"Unsupported code {code!r}; expected 'vasp' or 'castep'.")
 
     if splits > 1:
-        vaspruns = sorted(
-            Path(band_directory).glob("split-*/vasprun.xml"),
-            key=lambda p: int(p.parent.name.split("-")[-1])
-        )
+        vaspruns = _split_output_files(band_directory, "vasprun.xml", splits)
 
     else:
         vaspruns = [Path(band_directory) / "vasprun.xml"]

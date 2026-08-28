@@ -145,9 +145,13 @@ def test_castep_get_band_structure_split_layout(
         castep_band_dir: Path, tmp_path: Path
 ) -> None:
     """Asking for splits reads split-NN folders and reproduces the single-file result."""
-    split_dir = tmp_path / "split-01"
-    split_dir.mkdir()
-    shutil.copyfile(castep_band_dir / "toy.bands", split_dir / "toy.bands")
+    # One folder per split: splits=1 takes the single-file branch, so the split
+    # layout needs two to be exercised at all. This laid down one folder and
+    # asked for two, which passed only while the count was ignored.
+    for name in ("split-01", "split-02"):
+        split_dir = tmp_path / name
+        split_dir.mkdir()
+        shutil.copyfile(castep_band_dir / "toy.bands", split_dir / "toy.bands")
 
     bs = band_structure.get_band_structure(str(tmp_path), 2, code="castep")
 
@@ -312,13 +316,6 @@ def test_castep_plot_band_structure_scissor_rejected(
 # --- contracts that are not yet honoured -----------------------------------
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-            "band_structure.py:276 prints 'ERROR: ...' and returns None when the "
-            "hybrid path is missing scf_kpoints, so a caller cannot detect the failure"
-    ),
-)
 def test_write_band_structure_missing_scf_raises(
         relaxed_structure: Structure, tmp_path: Path
 ) -> None:
@@ -327,7 +324,7 @@ def test_write_band_structure_missing_scf_raises(
         structure=relaxed_structure
     )
 
-    with pytest.raises((ValueError, TypeError, FileNotFoundError)):
+    with pytest.raises(ValueError, match="scf_kpoints"):
         band_structure.write_band_structure_calculation(
             structure=canonical,
             kpath=kpath,
@@ -339,13 +336,48 @@ def test_write_band_structure_missing_scf_raises(
         )
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-            "get_band_structure globs every split-*/vasprun.xml whenever splits > 1, "
-            "so the argument's value is ignored - asking for 3 still reads all 7"
-    ),
-)
+def test_write_band_structure_missing_charge_raises(
+        relaxed_structure: Structure, tmp_path: Path
+) -> None:
+    """The GGA branch carried the same print-and-return defect as the hybrid one."""
+    canonical, kpath = band_structure.generate_band_structure_path(
+        structure=relaxed_structure
+    )
+
+    with pytest.raises(ValueError, match="scf_charge"):
+        band_structure.write_band_structure_calculation(
+            structure=canonical,
+            kpath=kpath,
+            band_directory=str(tmp_path),
+            functional="PBE",
+            splits=2,
+            scf_charge=None,
+            scf_kpoints=None,
+        )
+
+
+def test_write_band_structure_missing_scf_writes_nothing(
+        relaxed_structure: Structure, tmp_path: Path
+) -> None:
+    """The guard must fire before anything lands on disk."""
+    canonical, kpath = band_structure.generate_band_structure_path(
+        structure=relaxed_structure
+    )
+
+    with pytest.raises(ValueError):
+        band_structure.write_band_structure_calculation(
+            structure=canonical,
+            kpath=kpath,
+            band_directory=str(tmp_path),
+            functional="HSE06",
+            splits=2,
+            scf_charge=None,
+            scf_kpoints=None,
+        )
+
+    assert list(tmp_path.iterdir()) == []
+
+
 def test_splits_argument_is_honoured(
         band_dir: Path, band_structure_obj: BandStructureSymmLine
 ) -> None:
@@ -353,3 +385,24 @@ def test_splits_argument_is_honoured(
     subset = band_structure.get_band_structure(str(band_dir), 3)
 
     assert len(subset.kpoints) < len(band_structure_obj.kpoints)
+
+
+def test_splits_argument_reads_exactly_that_many(band_dir: Path) -> None:
+    """The k-point count must track the number of splits asked for.
+
+    Reading more splits must strictly add k-points - "fewer than all seven"
+    alone would still pass if the slice were off by one. Counts start at 2
+    because splits=1 takes the single-file branch, not the split branch.
+    """
+    counts = [
+        len(band_structure.get_band_structure(str(band_dir), n).kpoints)
+        for n in (2, 3, 4)
+    ]
+
+    assert counts[0] < counts[1] < counts[2]
+
+
+def test_splits_beyond_those_present_raises(band_dir: Path) -> None:
+    """Asking for more splits than exist must fail, not silently truncate."""
+    with pytest.raises(FileNotFoundError, match="only 7"):
+        band_structure.get_band_structure(str(band_dir), 8)

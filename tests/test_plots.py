@@ -169,15 +169,6 @@ def test_plot_fom_three_panels(photon_spectrum: NDArray) -> None:
     assert all(ax.lines for ax in axes)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-            "final_results.py:506 appends the whole (SQ, SQ_relative, FOM_efficiency) "
-            "tuple instead of indexing one element the way plot_FOM does, so "
-            "matplotlib unpacks each row into three lines and the axis labelled "
-            "'PV efficiency' carries the SQ limit and the SQ-relative ratio too"
-    ),
-)
 def test_mobility_plot_draws_one_line_per_lifetime(photon_spectrum: NDArray) -> None:
     """Two lifetimes should give two curves, not two curves' worth of columns."""
     final_results.mobility_plot(
