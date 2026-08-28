@@ -15,6 +15,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 from pymatgen.core import Lattice, Structure
+from pymatgen.io.vasp.inputs import Kpoints
 
 import castep_fixtures
 import solphin.dos as dos
@@ -311,15 +312,13 @@ def test_write_eff_mass_unknown_code_raises(tmp_path: Path) -> None:
         )
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-            "dos.py:1453 calls len() and .tolist() on the pymatgen Kpoints object "
-            "returned by _generate_local_kpoints; Kpoints has neither -> TypeError"
-    ),
-)
 def test_write_local_kpoints_writes_file(tmp_path: Path) -> None:
     """write_local_kpoints should produce a KPOINTS file in the folder."""
     dos.write_local_kpoints(str(tmp_path), np.array([0.0, 0.0, 0.0]), (3, 3, 3), 0.01)
 
+    kpoints = Kpoints.from_file(str(tmp_path / "KPOINTS"))
+
     assert (tmp_path / "KPOINTS").is_file()
+    assert kpoints.num_kpts == 27
+    assert len(kpoints.kpts) == 27
+    assert kpoints.style is Kpoints.supported_modes.Reciprocal
