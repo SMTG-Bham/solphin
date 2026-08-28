@@ -12,13 +12,13 @@
 [![codecov](https://codecov.io/gh/SMTG-Bham/solphin/branch/main/graph/badge.svg)](https://codecov.io/gh/SMTG-Bham/solphin)
 <a href="https://solphin.readthedocs.io/en/latest/"><img src="https://img.shields.io/badge/Docs-Read%20the%20Docs-8CA1AF?logo=readthedocs&amp;logoColor=white" alt="Documentation"></a>
 
-`solphin` is a code developed to assist with the characterisation of novel photovoltaic materials with `VASP` or
-`CASTEP`. It combines detailed balance analysis with other tools such as the photovoltaic figure of merit proposed by A.
-Crovetto, Spectroscopic Limited Maximum Efficiency (SLME), Blank et. al. Maximum Efficiency and optical absorption plots
-to provide a full picture of a material's theoretical photovoltaic efficiency. The code supports the automatic
-generation of `VASP` and `CASTEP` input files for the required calculations based on an initial crystal structure.
+`solphin` helps characterise candidate photovoltaic materials from first-principles calculations. It combines
+detailed-balance analysis with the photovoltaic figure of merit of A. Crovetto, the Spectroscopic Limited Maximum
+Efficiency (SLME), the Blank *et al.* maximum efficiency and optical absorption plots to build a full picture of a
+material's theoretical photovoltaic performance. From an initial crystal structure, `solphin` generates the `VASP` or
+`CASTEP` input files for each required calculation, and reads the results of either code.
 
-**Please note that Solphin is still in early stage testing and development**
+**Please note that Solphin is still in early-stage testing and development**
 
 Documentation, including workflow tutorials for both codes and the Python API reference, lives at
 [solphin.readthedocs.io](https://solphin.readthedocs.io/en/latest/).
@@ -35,34 +35,15 @@ cd solphin
 pip install -e .
 ```
 
-`plot_db_combined_interactive` and `plot_final_result_interactive` drive
-`%matplotlib widget`, which needs the `ipympl` backend:
-
-```bash
-pip install -e ".[interactive]"
-```
-
-For a full conda development environment — tutorial, docs and dev tooling included —
-see [environment.yml](environment.yml). Note that `sumo` has to be installed from PyPI rather than conda-forge there;
-the reason is documented at the top of that file.
-
-If using the `VASP` input file generation functionality, please ensure that your `VASP` pseudopotentials are added to
-your path through the use of a `pymatgen` configuration file `$HOME/.pmgrc.yaml`. The file should contain:
-
-```
-PMG_VASP_PSP_DIR: <Path to VASP pseudopotential top directory>
-```
-
-This applies to `VASP` only — `CASTEP` uses on-the-fly pseudopotentials, so no equivalent setup is needed.
+Python 3.11 or newer is required. See the
+[installation docs](https://solphin.readthedocs.io/en/latest/installation.html) for the optional extras, the conda
+development environment and VASP pseudopotential setup.
 
 ## CASTEP
 
-Every reader takes a `code="castep"` keyword (`vasp` is the default), and `solphin.castep_inputs` mirrors the VASP input
-generation with `.cell`/`.param` files. Band structures and densities of states are read from `<seed>.bands`; optical
-data comes from the `<seed>_epsilon.dat` written by [OptaDOS](https://github.com/optados-developers/optados). See
-the ["Using solphin with CASTEP"](https://solphin.readthedocs.io/en/latest/castep.html) documentation page for the
-reference, and [tutorial/castep_workflow_tutorial.ipynb](tutorial/castep_workflow_tutorial.ipynb) for the workflow
-walked end to end.
+Every VASP-facing capability has a CASTEP counterpart — see
+["Using solphin with CASTEP"](https://solphin.readthedocs.io/en/latest/castep.html) for the reference, and
+[tutorial/castep_workflow_tutorial.ipynb](tutorial/castep_workflow_tutorial.ipynb) for the workflow walked end to end.
 
 ## Citation
 

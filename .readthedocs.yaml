@@ -6,8 +6,7 @@ build:
   os: ubuntu-24.04
   tools:
     # 3.11 matches requires-python in pyproject.toml and the pin in
-    # environment.yml; see the note in pyproject.toml for why the dependencies
-    # rather than our own syntax set that floor.
+    # environment.yml.
     python: "3.11"
 
 sphinx:
