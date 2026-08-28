@@ -245,14 +245,6 @@ def test_prepare_incar_does_not_mutate_config(config: RecipeConfig) -> None:
     assert "LOPTICS" not in unpatched
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-            'vasp_inputs.py:271 reads `... or "vdw_d4"`, a bare truthy string, so '
-            "the vdW branch runs for every calculation; latent because "
-            "_prepare_vdw_tags returns {} when no vdW patch was asked for"
-    ),
-)
 def test_vdw_branch_skipped_without_vdw_patch(
         relax_dir: Path, config: RecipeConfig, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -272,3 +264,44 @@ def test_vdw_branch_skipped_without_vdw_patch(
     vasp_inputs._apply_patches(vasp_set, ["optics"], "HSE06", incar)
 
     assert called == []
+
+
+@pytest.mark.parametrize("patch", ["vdw_d3_bj", "vdw_d3", "vdw_d4", "rvv10"])
+def test_vdw_branch_runs_for_every_supported_patch(
+        relax_dir: Path, config: RecipeConfig, monkeypatch: pytest.MonkeyPatch, patch: str
+) -> None:
+    """Every scheme _prepare_vdw_tags handles must reach it.
+
+    rvv10 is the one the guard never named: it used to arrive only because
+    the bare-truthy `or "vdw_d4"` held the branch open for everything.
+    """
+    structure = vasp_inputs.read_structure_pmg(relax_dir / "POSCAR")
+    incar = vasp_inputs._prepare_incar("R2SCAN", [patch], config)
+    vasp_set = vasp_inputs._create_vasp_set(
+        structure, incar, "PBE_64", config, user_incar_settings={"KSPACING": 0.2}
+    )
+    called = []
+    monkeypatch.setattr(
+        vasp_inputs,
+        "_prepare_vdw_tags",
+        lambda recipe, patches: called.append(patches) or {},
+    )
+
+    vasp_inputs._apply_patches(vasp_set, [patch], "R2SCAN", incar)
+
+    assert called == [[patch]]
+
+
+def test_rvv10_tags_reach_the_input_set(relax_dir: Path, config: RecipeConfig) -> None:
+    """The rVV10 tags must survive end to end, not just reach _prepare_vdw_tags."""
+    structure = vasp_inputs.read_structure_pmg(relax_dir / "POSCAR")
+    incar = vasp_inputs._prepare_incar("R2SCAN", ["rvv10"], config)
+    vasp_set = vasp_inputs._create_vasp_set(
+        structure, incar, "PBE_64", config, user_incar_settings={"KSPACING": 0.2}
+    )
+
+    vasp_inputs._apply_patches(vasp_set, ["rvv10"], "R2SCAN", incar)
+
+    assert vasp_set.user_incar_settings["LUSE_VDW"] is True
+    assert vasp_set.user_incar_settings["BPARAM"] == 11.95
+    assert vasp_set.user_incar_settings["CPARAM"] == 0.0093
