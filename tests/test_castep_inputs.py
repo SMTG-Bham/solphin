@@ -2,9 +2,8 @@
 
 CASTEP uses on-the-fly pseudopotentials, so unlike the VASP twin of this file
 nothing here needs licensed data: the full write path runs unconditionally.
-The tests mirror test_vasp_inputs.py section for section, plus one deliberate
-divergence - _prepare_param must NOT mutate its config, which for the VASP
-side is a pinned strict xfail.
+The tests mirror test_vasp_inputs.py section for section, including the
+shared contract that _prepare_param must NOT mutate its config.
 """
 
 from pathlib import Path
@@ -124,9 +123,8 @@ def test_prepare_param_unknown_recipe_raises(config: CastepRecipeConfig) -> None
 def test_prepare_param_does_not_mutate_config(config: CastepRecipeConfig) -> None:
     """One call's patches must not leak into the next.
 
-    The VASP twin of this test is a pinned strict xfail - _prepare_incar
-    mutates its config - and this test is the proof the defect was not
-    replicated on the CASTEP side.
+    The VASP twin is test_prepare_incar_does_not_mutate_config; both sides
+    deep-copy the recipe before layering patches on with update().
     """
     castep_inputs._prepare_param("PBE", ["optics"], config)
 

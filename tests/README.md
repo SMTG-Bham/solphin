@@ -63,20 +63,21 @@ for the duration of every test — in-process the property is unobservable eithe
 
 ## Known defects (`xfail`)
 
-Six tests state behaviour the code does not yet have. They are all
+Two tests state behaviour the code does not yet have. They are all
 `xfail(strict=True)`, so **fixing the source turns the suite red** and tells you to drop the marker — the register
 cannot silently rot.
 
 `pytest -rx` prints the whole list on any run.
 
-| Test                                             | File                     | Defect                                                                                                                                    |
-|--------------------------------------------------|--------------------------|-------------------------------------------------------------------------------------------------------------------------------------------|
-| `test_write_local_kpoints_writes_file`           | `test_dos.py`            | `dos.py:1453` calls `len()`/`.tolist()` on a pymatgen `Kpoints`                                                                           |
-| `test_write_band_structure_missing_scf_raises`   | `test_band_structure.py` | `band_structure.py:276` prints an error and returns `None` instead of raising                                                             |
-| `test_splits_argument_is_honoured`               | `test_band_structure.py` | `get_band_structure` globs every split, ignoring the `splits` value (the CASTEP branch deliberately mirrors this, so one fix covers both) |
-| `test_prepare_incar_does_not_mutate_config`      | `test_vasp_inputs.py`    | `_prepare_incar` mutates the config dict it is handed (the CASTEP `_prepare_param` deep-copies; its non-mutation test is green)           |
-| `test_vdw_branch_skipped_without_vdw_patch`      | `test_vasp_inputs.py`    | `vasp_inputs.py:271` — `or "vdw_d4"` is always truthy                                                                                     |
-| `test_mobility_plot_draws_one_line_per_lifetime` | `test_plots.py`          | `final_results.py:439` appends a 3-tuple instead of one element                                                                           |
+| Test                                           | File                     | Defect                                                                                                                                   |
+|------------------------------------------------|--------------------------|------------------------------------------------------------------------------------------------------------------------------------------|
+| `test_write_band_structure_missing_scf_raises` | `test_band_structure.py` | `band_structure.py:276` prints an error and returns `None` instead of raising                                                            |
+| `test_splits_argument_is_honoured`             | `test_band_structure.py` | `get_band_structure` globs every split, ignoring the `splits` value (the CASTEP branch deliberately mirrors this, so one fix covers both) |
+
+Four entries have been retired as the defects were fixed: `test_mobility_plot_draws_one_line_per_lifetime`
+(`final_results.py`), `test_write_local_kpoints_writes_file` (`dos.py`), and both `test_vasp_inputs.py` entries —
+`test_vdw_branch_skipped_without_vdw_patch` and `test_prepare_incar_does_not_mutate_config`. Each kept its assertions
+and lost only its marker, so the behaviour they pinned is now enforced rather than merely recorded.
 
 ## Not covered, and why
 

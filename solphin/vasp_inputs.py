@@ -1,5 +1,6 @@
 """Generate VASP input sets from the packaged calculation recipes."""
 
+import copy
 import json
 from importlib.resources import files
 from pathlib import Path
@@ -136,7 +137,10 @@ def _prepare_incar(
     dict of str to IncarValue
         Final INCAR settings for the VASP calculation.
     """
-    incar = config["INCAR"][recipe]
+    # Deep copy: patches are layered on with update(), so an alias would leak
+    # one call's patches into the next, and MAGMOM is a nested dict the caller
+    # keeps a reference to. Mirrors _prepare_param on the CASTEP side.
+    incar = copy.deepcopy(config["INCAR"][recipe])
     if recipe in ["HSE06", "PBE0"]:
         incar.update({"NCORE": 4})
 
