@@ -1443,16 +1443,9 @@ def write_local_kpoints(
         Maximum fractional reciprocal-space displacement from the central
         k-point along each direction.
     """
-    kpoints = _generate_local_kpoints(k0_frac, mesh, delta)
+    kp = _generate_local_kpoints(k0_frac, mesh, delta)
     folder_path = Path(folder)
     folder_path.mkdir(parents=True, exist_ok=True)
-
-    kp = Kpoints(
-        comment="Local k-mesh for effective mass",
-        style=Kpoints.supported_modes.Reciprocal,
-        num_kpts=len(kpoints),
-        kpts=kpoints.tolist(),
-        kpts_weights=[1] * len(kpoints), )
 
     kp.write_file(f"{folder_path}/KPOINTS")
 
