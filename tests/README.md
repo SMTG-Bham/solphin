@@ -63,21 +63,21 @@ for the duration of every test — in-process the property is unobservable eithe
 
 ## Known defects (`xfail`)
 
-Two tests state behaviour the code does not yet have. They are all
+One test states behaviour the code does not yet have. It is
 `xfail(strict=True)`, so **fixing the source turns the suite red** and tells you to drop the marker — the register
 cannot silently rot.
 
 `pytest -rx` prints the whole list on any run.
 
-| Test                                           | File                     | Defect                                                                                                                                   |
-|------------------------------------------------|--------------------------|------------------------------------------------------------------------------------------------------------------------------------------|
-| `test_write_band_structure_missing_scf_raises` | `test_band_structure.py` | `band_structure.py:276` prints an error and returns `None` instead of raising                                                            |
-| `test_splits_argument_is_honoured`             | `test_band_structure.py` | `get_band_structure` globs every split, ignoring the `splits` value (the CASTEP branch deliberately mirrors this, so one fix covers both) |
+| Test                                           | File                     | Defect                                                                        |
+|------------------------------------------------|--------------------------|---------------------------------------------------------------------------------|
+| `test_write_band_structure_missing_scf_raises` | `test_band_structure.py` | `band_structure.py:276` prints an error and returns `None` instead of raising |
 
-Four entries have been retired as the defects were fixed: `test_mobility_plot_draws_one_line_per_lifetime`
-(`final_results.py`), `test_write_local_kpoints_writes_file` (`dos.py`), and both `test_vasp_inputs.py` entries —
-`test_vdw_branch_skipped_without_vdw_patch` and `test_prepare_incar_does_not_mutate_config`. Each kept its assertions
-and lost only its marker, so the behaviour they pinned is now enforced rather than merely recorded.
+Five entries have been retired as the defects were fixed: `test_mobility_plot_draws_one_line_per_lifetime`
+(`final_results.py`), `test_write_local_kpoints_writes_file` (`dos.py`), both `test_vasp_inputs.py` entries —
+`test_vdw_branch_skipped_without_vdw_patch` and `test_prepare_incar_does_not_mutate_config` — and
+`test_splits_argument_is_honoured` (`band_structure.py`). Each kept its assertions and lost only its marker, so the
+behaviour they pinned is now enforced rather than merely recorded.
 
 ## Not covered, and why
 
