@@ -10,17 +10,15 @@ things that mattered, :math:`\Gamma_{\mathrm{PV}}` asks a blunter question:
 given eight bulk properties of the material, how much of the Shockley-Queisser
 limit does a planar single-junction device made from it actually keep?
 
-It is worth being clear about where the expression comes from, because it is
-unlike the other two models in the package. Crovetto ran 2573 one-dimensional
-drift-diffusion simulations of an idealised cell — fully carrier-selective
-contacts, no interfaces, each absorber evaluated at its own optimal thickness
-:math:`d_{\mathrm{opt}}` — and then fitted a closed-form expression to the
-resulting efficiencies. The result is neither a derivation nor a black box: the
-factors were chosen by hand and rationalised physically where possible, but the
-coefficients are fits. Its accuracy against that training set is
-:math:`R^2 = 0.995`, or :math:`\pm 3.4` percentage points on the fraction of
-the SQ limit retained, and :math:`\pm 1.1` percentage points on the absolute
-efficiency for a 1.5 eV gap.
+The expression's origin is unlike the other two models in the package.
+Crovetto ran 2573 one-dimensional drift-diffusion simulations of an
+idealised cell — fully carrier-selective contacts, no interfaces, each
+absorber at its own optimal thickness — and fitted a closed-form expression
+to the resulting efficiencies. The factors were chosen by hand and
+rationalised physically where possible, but the coefficients are fits.
+Accuracy against that training set is :math:`R^2 = 0.995`, or
+:math:`\pm 1.1` percentage points on the absolute efficiency for a 1.5 eV
+gap.
 
 The eight inputs
 ----------------
@@ -100,13 +98,11 @@ differently and are not interchangeable.
 
 .. warning::
 
-   Every property enters the expression in unitless form — divided by the unit
-   given above — because the fitted factors take logarithms and fractional
-   powers of them. This is why :math:`\alpha` must be in cm\ :sup:`-1` and not
-   m\ :sup:`-1`: :func:`~solphin.optics.calc_absorption` returns
-   m\ :sup:`-1`, but the ``absorption.dat`` file written by
-   :func:`~solphin.optics.generate_absorption` is already in cm\ :sup:`-1`, and
-   is the intended route into :mod:`solphin.spectral`.
+   Every property enters the expression in unitless form — divided by the
+   unit given above — because the fitted factors take logarithms and
+   fractional powers of them. :math:`\alpha` must therefore be in
+   cm\ :sup:`-1`, the unit of the ``absorption.dat`` file that is the
+   intended route into :mod:`solphin.spectral` (see :doc:`formalism_optics`).
 
 .. warning::
 
@@ -119,10 +115,8 @@ differently and are not interchangeable.
 How the expression is put together
 ----------------------------------
 
-The paper builds :math:`\Gamma_{\mathrm{PV}}` in stages, letting one more
-property vary at each step and adding whatever factors are needed to keep the
-simulated efficiencies collapsed onto a single curve. The group letters record
-that history:
+The paper builds :math:`\Gamma_{\mathrm{PV}}` in stages, adding one property
+at a time; the group letters record that history:
 
 .. list-table::
    :header-rows: 1
@@ -160,23 +154,14 @@ and a variable :math:`E_{\mathrm{g}}` and is what
 Larger is better. Each group is built so that it is inert — equal to one — for
 a material in which that loss is not binding, and the two groups written as
 :math:`1 + (\cdots)` can therefore only ever penalise, never reward. Evaluating
-a group on its own tells you *which* property is holding a material back, and
-every factor is exposed individually: ``_A_1_equation``, ``_D_3_equation``,
-``_T_2_equation`` and the rest, matching equations (19)–(31) one for one.
-
-.. note::
-
-   The calligraphic factors above are not quite the :math:`A_i`, :math:`D_j`
-   of the intermediate FOMs in the paper's equations (9), (12), (14) and (17).
-   Those are the fixed-\ :math:`E_{\mathrm{g}}` versions; the ones implemented
-   here are their generalisations, with re-fitted constants. The paper writes
-   the generalised constants with bars for the same reason.
+a group on its own tells you *which* property is holding a material back;
+every factor is implemented as its own function in the :mod:`solphin.pv_fom`
+source, matching equations (19)–(31) one for one.
 
 Absorption
 ----------
 
-The numerator collects the terms that make a material better, and
-:math:`\mathcal{A}_1` carries almost all of it:
+The numerator collects the terms that make a material better:
 
 .. math::
 
@@ -187,15 +172,17 @@ The numerator collects the terms that make a material better, and
    \mathcal{A}_2 = 1 + \left(\frac{10^{-7}\,\sigma^{10}}
                         {\alpha\tau}\right)^{0.4}
 
-:math:`\mathcal{A}_1` is essentially the :math:`\alpha\tau` figure of merit of
-Kaienburg *et al.*, with :math:`\sigma` entering as an exponent-of-an-exponent
-and :math:`m` dividing it out. The :math:`\sigma` dependence is the interesting
-part: a broad spread of :math:`\log\alpha` means the generation profile is a
-sum of exponentials with very different penetration depths, so a thicker film
-is needed to absorb the same fraction of the spectrum, and the extra volume
-recombines. This is why crystalline silicon scores below a chalcogenide
-perovskite at equal :math:`\alpha\tau`. :math:`\mathcal{A}_2` is a correction
-that only wakes up at low :math:`\alpha\tau`, and :math:`\mathcal{D}_1`,
+:math:`\mathcal{A}_1` is essentially the :math:`\alpha\tau` figure of merit
+of Kaienburg *et al.* (see [Crovetto2024]_ and references therein), with
+:math:`\sigma` entering as an exponent-of-an-exponent and :math:`m` dividing
+it out. The :math:`\sigma` dependence matters because a broad spread of
+:math:`\log\alpha` means the generation profile is a sum of exponentials
+with very different penetration depths, so a thicker film is needed to
+absorb the same fraction of the spectrum, and the extra volume recombines.
+:math:`\mathcal{A}_2` is a correction that becomes significant only at low
+:math:`\alpha\tau`.
+
+The third numerator factor is :math:`\mathcal{D}_1`:
 
 .. math::
 
@@ -203,16 +190,16 @@ that only wakes up at low :math:`\alpha\tau`, and :math:`\mathcal{D}_1`,
                         {\epsilon^{0.8}\alpha^{2}}\right)
          ^{0.22\log(\alpha/39)}
 
-sits in the numerator because doping raises the quasi-Fermi level splitting,
-and with it :math:`V_{\mathrm{oc}}`, under low-injection conditions. Its form
-also sets the threshold at which doping starts to matter at all:
-:math:`n \gtrsim \alpha^{2}/\bar{d}_1`.
+It rewards doping: under low-injection conditions a higher :math:`n` raises
+the quasi-Fermi-level splitting, and with it :math:`V_{\mathrm{oc}}`. The
+factor departs from one only once :math:`4.4\times10^{-5}\,n` is comparable
+to :math:`\epsilon^{0.8}\alpha^{2}`, which sets the threshold at which
+doping starts to matter at all.
 
 Doping
 ------
 
-The same doping density is penalised three times over, once for each way it can
-go wrong:
+Three separate penalties attach to the same doping density:
 
 .. math::
 
@@ -225,29 +212,27 @@ go wrong:
    \mathcal{D}_4 &= 1 + \left(\frac{7.7\times10^{-7}}
                          {E_{\mathrm{g}}^{17}\,\alpha\,\tau}\right)^{0.6}
 
-The competition :math:`\mathcal{D}_1` is up against is a
-:math:`J_{\mathrm{sc}}` effect. At low enough :math:`n` the absorber is fully
-depleted at short circuit, so an electric field extends through it and carriers
-are collected by drift rather than diffusion alone. For a poor absorber — low
-:math:`\mu`, low :math:`\tau`, low :math:`\alpha` — that collection gain
-outweighs the :math:`V_{\mathrm{oc}}` a higher :math:`n` would have bought. The
-optimum is therefore genuinely interior, which is why the figure of merit is
-non-monotonic in :math:`n` alone and why
+What :math:`\mathcal{D}_1` competes against is a :math:`J_{\mathrm{sc}}`
+effect. At low enough :math:`n` the absorber is fully depleted at short
+circuit, so carriers are collected by drift rather than diffusion alone; for
+a poor absorber that collection gain outweighs the :math:`V_{\mathrm{oc}}` a
+higher :math:`n` would have bought. The figure of merit is therefore
+non-monotonic in :math:`n` alone, which is why
 :func:`~solphin.final_results.plot_FOM` sweeps it rather than reporting a
 single value.
 
-:math:`\mathcal{D}_3` is worth reading closely for its denominator, a sigmoid in
-:math:`E_{\mathrm{g}}` centred on 1.5 eV with a width of 0.1 eV: below that gap
-the term is live, above it the switch closes and :math:`\mathcal{D}_3 \to 1`.
-:math:`\mathcal{T}_3''` uses the same construction with a width of 0.01 eV.
-:math:`\mathcal{D}_4`, by contrast, diverges as :math:`\alpha\tau \to 0` and is
-the correction for absorbers that are poor on both counts at once.
+:math:`\mathcal{D}_3`'s denominator is a sigmoid in :math:`E_{\mathrm{g}}`
+centred on 1.5 eV with a width of 0.1 eV: below that gap the term is live,
+above it :math:`\mathcal{D}_3 \to 1`. :math:`\mathcal{T}_3''` (defined below
+under Transport) uses the same construction with a width of 0.01 eV.
+:math:`\mathcal{D}_4`, by contrast, diverges as :math:`\alpha\tau \to 0` and
+is the correction for absorbers that are poor on both counts at once.
 
 Transport
 ---------
 
-The transport group is where a slow, heavy carrier is charged for the current
-it fails to collect:
+The transport group penalises carriers too slow or too heavy to be
+collected:
 
 .. math::
 
@@ -261,8 +246,7 @@ it fails to collect:
    \mathcal{T}_3 &= \left(1 + \mathcal{T}_3' \mathcal{T}_3''\right)
           ^{1.6\times10^{-3}E_{\mathrm{g}}^{8}+0.6}
 
-with :math:`\mathcal{T}_3` split across ``_T_3_prime_equation`` and
-``_T_3_double_prime_equation``:
+with :math:`\mathcal{T}_3'` and :math:`\mathcal{T}_3''` given by
 
 .. math::
 
@@ -275,27 +259,22 @@ with :math:`\mathcal{T}_3` split across ``_T_3_prime_equation`` and
                       ^{1-0.74\exp(-\alpha/1.5\times10^{5})}}
                      {1 + 10^{(E_{\mathrm{g}}-1.5)/0.01}}
 
-Because the group enters as :math:`1 + \mathcal{T}_1\mathcal{T}_2\mathcal{T}_3`
-and :math:`\mathcal{T}_1 \propto \mu^{-(0.9 + \cdots)}` while
-:math:`\mathcal{T}_2 \propto \tau^{-0.47E_{\mathrm{g}}^{1.25}}`, mobility and
-lifetime trade against one another and the penalty bites only when a material
-is poor on both. The exponential in :math:`\mathcal{T}_3'` is a strong-absorber
-cut-off: for :math:`\alpha` of order 10\ :sup:`5` cm\ :sup:`-1` it has already
-collapsed, because a film that absorbs in a short distance never asks much of
-transport in the first place.
-
-The practical consequence, and the paper's main argument against simpler
-figures of merit, is that there is no universal mobility below which transport
-starts to matter. The threshold is a function of every other property — the
-paper writes it out as its equation (15) — and it varies by orders of magnitude
-between materials.
+Because the group enters as :math:`1 + \mathcal{T}_1\mathcal{T}_2\mathcal{T}_3`,
+with :math:`\mathcal{T}_1` falling in :math:`\mu` and :math:`\mathcal{T}_2`
+in :math:`\tau`, mobility and lifetime trade against one another and the
+penalty bites only when a material is poor on both. The exponential in
+:math:`\mathcal{T}_3'` is a strong-absorber cut-off: for :math:`\alpha` of
+order 10\ :sup:`5` cm\ :sup:`-1` it has collapsed, since a film that absorbs
+in a short distance asks little of transport. There is consequently no
+universal mobility below which transport starts to matter — the threshold
+(the paper's equation (15)) depends on every other property and varies by
+orders of magnitude between materials.
 
 Saturation
 ----------
 
-The last group is the one that is easiest to misread from the code alone.
-:math:`\mathcal{S}` stands for *saturation*, and it exists because a real
-absorber's efficiency stops improving before it reaches the SQ limit:
+:math:`\mathcal{S}` stands for *saturation*: a real absorber's efficiency
+stops improving before it reaches the SQ limit:
 
 .. math::
 
@@ -306,24 +285,24 @@ absorber's efficiency stops improving before it reaches the SQ limit:
    \mathcal{S}_2 = 1 + \left(\frac{4.8\times10^{3}}{\alpha}\right)^{20}
              \mu^{0.5}\log n
 
-The diffusion length is ultimately capped by the *radiative* lifetime. Once the
-SRH lifetime :math:`\tau` has grown past it, lengthening :math:`\tau` further
-buys nothing, and if the diffusion length is still shorter than the absorption
-depth — the combination of low :math:`\mu` and low :math:`\alpha` — the SQ
-limit is never reached at any thickness. :math:`\mathcal{S}_1` grows with
-:math:`\tau` for exactly this reason: it is the brake that stops the numerator's
-:math:`\mathcal{A}_1 \propto \tau` from rewarding a lifetime the device cannot
-use. :math:`\mathcal{S}_2` is the switch that decides when the brake engages,
-and its twentieth power makes it effectively a step at
-:math:`\alpha \approx 4.8\times10^{3}` cm\ :sup:`-1` — the bottom of the
-sampled absorption range. For any decent absorber :math:`\mathcal{S}_2 = 1`.
+The diffusion length is ultimately capped by the *radiative* lifetime: once
+the SRH lifetime :math:`\tau` has grown past it, lengthening :math:`\tau`
+further buys nothing, and if the diffusion length is still shorter than the
+absorption depth — low :math:`\mu` combined with low :math:`\alpha` — the SQ
+limit is never reached at any thickness. :math:`\mathcal{S}_1` therefore
+grows with :math:`\tau`, cancelling the reward the numerator's
+:math:`\mathcal{A}_1 \propto \tau` would otherwise give a lifetime the
+device cannot use. :math:`\mathcal{S}_2` gates that penalty: its twentieth
+power makes it effectively a step at :math:`\alpha \approx 4.8\times10^{3}`
+cm\ :sup:`-1`, the bottom of the sampled absorption range, so for any decent
+absorber :math:`\mathcal{S}_2 = 1`.
 
 Worked example
 --------------
 
 The paper's own worked example is methylammonium lead iodide, with the
 properties of state-of-the-art films (its table 2), and ``solphin`` reproduces
-it. The reference block is quoted in cell 40 of the full workflow tutorial:
+it. The reference inputs appear in the full workflow tutorial:
 
 .. code-block:: python
 
@@ -357,11 +336,9 @@ dormant, which is the expression agreeing that MAPI is a good absorber.
      - 13.44%
      - :math:`(13.5 \pm 1.1)\%`
 
-The two degraded cases show the groups doing their job. Cutting :math:`\tau`
-lands mostly in the numerator, since :math:`\mathcal{A}_1 \propto \tau`, which
-falls from 3.26 to 0.047; the transport group only rises from 1.09 to 3.74.
-Lowering :math:`\mu` on top of that leaves the numerator untouched and drives
-:math:`\mathcal{T}` to 699. Same scalar output, different diagnosis.
+Evaluating the groups separately attributes each loss: the :math:`\tau` cut
+lands mostly in the numerator (:math:`\mathcal{A}_1 \propto \tau`), while
+the additional :math:`\mu` cut instead drives the transport group.
 
 From the figure of merit to an efficiency
 -----------------------------------------
