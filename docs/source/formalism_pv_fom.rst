@@ -53,7 +53,7 @@ The eight inputs
      - ``dos_mass``
      - :math:`m_0`
      - 0.12 – 2.5
-     - :mod:`solphin.dos`
+     - :math:`\sqrt{m_{\mathrm{e}} m_{\mathrm{h}}}`, from :mod:`solphin.dos`
    * - :math:`\epsilon`
      - ``epsilon``
      - —
@@ -96,7 +96,23 @@ majority-carrier concentration :math:`|N_{\mathrm{D}} - N_{\mathrm{A}}|`, not a
 dopant count. :math:`m` is the *DOS* effective mass, in units of
 :math:`m_0`, which is not the conductivity effective mass :math:`M` that
 appears in :math:`\mu = q\tau_{\mathrm{s}}/M` — the two are derived
-differently and are not interchangeable.
+differently and are not interchangeable. It is also not either carrier's mass
+on its own: equation (S6) of the supplementary material defines it as the
+geometric average
+
+.. math::
+
+   m = \sqrt{m_{\mathrm{e}} m_{\mathrm{h}}}
+
+because the quasi-Fermi level splitting depends on the :math:`N_{\mathrm{c}}
+N_{\mathrm{v}}` product, which goes as :math:`(m_{\mathrm{e}}
+m_{\mathrm{h}})^{3/2}`. This is what :attr:`~solphin.dos.DOSResult.final_result`
+reports; the ``carrier`` argument of :func:`~solphin.dos.compute_dos` selects
+which band edge the summary and :attr:`~solphin.dos.DOSResult.em_result`
+describe, not which mass is handed to the figure of merit. Either individual
+fit remains available as ``em_electrons.m_eff_rel`` or
+``em_holes.m_eff_rel`` — worth looking at, since a light electron paired with a
+heavy hole can put the average well away from both.
 
 .. warning::
 
@@ -112,9 +128,32 @@ differently and are not interchangeable.
 
    The sampled ranges above are the ranges over which the fit was trained.
    Crovetto notes that the efficiency prediction for an absorber falling
-   outside them "may be grossly incorrect" — the expression will still return
-   a number, and ``solphin`` will not warn you. Check your inputs against the
-   table before trusting the output.
+   outside them "may be grossly incorrect", so ``solphin`` refuses them:
+   :func:`~solphin.pv_fom.Final_equation` and
+   :func:`~solphin.final_results.SQ_relative_FOM_PV_efficiency` raise a
+   ``ValueError`` naming the property, its value, its unit and the range it
+   left. The sweep bounds of :func:`~solphin.final_results.plot_FOM`,
+   :func:`~solphin.final_results.mobility_plot` and the two interactive
+   dashboards are checked the same way, before the first point is evaluated.
+
+   The ranges themselves live in one place,
+   :data:`solphin.pv_fom.SAMPLED_RANGES`, so the table above is a transcription
+   of the constant the code checks against rather than a second copy of the
+   numbers.
+
+   The paper's discussion allows that :math:`\Gamma_{\mathrm{PV}}` "may remain
+   sufficiently accurate even when some of the properties fall outside the
+   ranges in table 1", so every one of those functions takes a keyword-only
+   ``allow_out_of_range=True``, which downgrades the refusal to a
+   ``UserWarning`` and evaluates anyway. Reach for it deliberately, and treat
+   what comes back as an extrapolation.
+
+   Two of the eight are computed rather than chosen, so they are reported at
+   source instead: :func:`~solphin.spectral.generate_spectral_parameters` warns
+   when the :math:`\alpha` or :math:`\sigma` it measured from your absorption
+   data falls outside the table, and :func:`~solphin.dos.compute_dos` warns
+   about the mass it fitted. All three still return their values — the material
+   is what it is; only the figure of merit refuses.
 
 How the expression is put together
 ----------------------------------
