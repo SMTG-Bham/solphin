@@ -6,6 +6,7 @@ logarithm over the wavelength window from 300 nm to the band-gap wavelength,
 both weighted by the spectral photon flux of the illumination spectrum.
 """
 
+import warnings
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -13,6 +14,8 @@ import numpy as np
 import scipy.constants as sc
 from numpy.typing import NDArray
 from scipy.integrate import simpson
+
+from solphin.pv_fom import SAMPLED_RANGES
 
 h = sc.h  # Planck's constant (J·s)
 c = sc.c  # Speed of light (m/s)
@@ -169,6 +172,54 @@ def _resample_common_grid(
     return wavelengths, alpha, photon_flux
 
 
+def _warn_outside_sampled_range(spectral_average: float, spectral_dispersion: float) -> None:
+    """Warn when a computed absorption descriptor leaves the Γₚᵥ sampled range.
+
+    Both descriptors are measurements of the supplied absorption data rather
+    than user choices, so they are returned either way. The warning is raised
+    here rather than left to the figure of merit so that the cause — a weak
+    absorber, or a slow absorption onset — is reported where it arises instead
+    of surfacing later as a range error on a number the caller did not pick.
+
+    Parameters
+    ----------
+    spectral_average : float
+        Photon-flux-weighted mean absorption coefficient in cm⁻¹.
+    spectral_dispersion : float
+        Photon-flux-weighted dispersion of log₁₀ of the absorption
+        coefficient, dimensionless.
+
+    Warns
+    -----
+    UserWarning
+        If either descriptor lies outside its range in
+        :data:`~solphin.pv_fom.SAMPLED_RANGES`.
+    """
+    descriptors = (
+        ("alpha", "Spectral average", spectral_average),
+        ("sigma", "Spectral dispersion", spectral_dispersion),
+    )
+
+    for key, label, value in descriptors:
+
+        minimum, maximum, unit = SAMPLED_RANGES[key]
+
+        if minimum <= value <= maximum:
+            continue
+
+        unit_text = f" {unit}" if unit else ""
+
+        warnings.warn(
+            f"{label} {value:.4g}{unit_text} is outside the"
+            f" {minimum:.3g} - {maximum:.3g}{unit_text} range sampled by"
+            " Crovetto 2024 table 1. This is a property of the supplied"
+            " absorption data, but Γₚᵥ will refuse it unless"
+            " allow_out_of_range=True is passed.",
+            UserWarning,
+            stacklevel=3,
+        )
+
+
 def calculate_spectral_average(
         abs_coeff: Sequence[float] | NDArray,
         photon_flux: Sequence[float] | NDArray,
@@ -300,6 +351,12 @@ def generate_spectral_parameters(
     spectral_dispersion : float
         Photon-flux-weighted dispersion of log₁₀ of the absorption
         coefficient.
+
+    Warns
+    -----
+    UserWarning
+        If either descriptor falls outside the range sampled by Crovetto 2024
+        table 1, which Γₚᵥ will refuse. Both are returned regardless.
     """
     abs_file = f'{optics_directory}/absorption.dat'
 
@@ -310,5 +367,7 @@ def generate_spectral_parameters(
 
     spectral_average = calculate_spectral_average(alpha, photon_flux, wavelengths)
     spectral_dispersion = calculate_spectral_dispersion(alpha, photon_flux, wavelengths)
+
+    _warn_outside_sampled_range(spectral_average, spectral_dispersion)
 
     return spectral_average, spectral_dispersion

@@ -22,11 +22,14 @@ import solphin.final_results as final_results
 TCELL = 300.0
 E_GAP = 1.34
 
-# Crovetto's defaults, as set in tutorial cell 41.
+# Crovetto's defaults, as set in tutorial cell 41. dos_mass is the geometric
+# average sqrt(m_e * m_h) of equation (S6) for the reference data, which is what
+# compute_dos now reports; the electron mass alone, 0.073, is below the 0.12
+# lower bound of table 1 and the figure of merit refuses it.
 FOM_ARGS = dict(alpha=1.3e5,
                 tau=1e-6,
                 sigma=1.5,
-                dos_mass=0.073,
+                dos_mass=0.2375865,
                 dop_density=1e10,
                 epsilon=6.11,
                 mu=1e6)
@@ -170,11 +173,127 @@ def test_plot_fom_three_panels(photon_spectrum: NDArray) -> None:
 
 
 def test_mobility_plot_draws_one_line_per_lifetime(photon_spectrum: NDArray) -> None:
-    """Two lifetimes should give two curves, not two curves' worth of columns."""
+    """Each lifetime should give one curve, not one curve's worth of columns.
+
+    The exponent bounds are inclusive, so lifetime_min=-9 with lifetime_max=-7
+    sweeps 1e-9, 1e-8 and 1e-7 - three lifetimes, three lines.
+    """
     final_results.mobility_plot(
         E_GAP, photon_spectrum, FOM_ARGS["alpha"], FOM_ARGS["sigma"],
         FOM_ARGS["dos_mass"], FOM_ARGS["epsilon"],
         mob_min=0, mob_max=2, lifetime_min=-9, lifetime_max=-7, step=1, Tcell=TCELL,
     )
 
-    assert len(plt.gca().lines) == 2
+    assert len(plt.gca().lines) == 3
+
+
+# --- the table 1 guard on the sweep bounds --------------------------------
+#
+# The sweeps step one property across a range, so an endpoint outside table 1
+# is refused for the same reason a single value is - and refused before the
+# first point is drawn, so the message names the range rather than arriving
+# fifty times from inside the figure of merit.
+
+
+def test_plot_fom_refuses_a_sweep_outside_table_1(photon_spectrum: NDArray) -> None:
+    """A lifetime range reaching past 1e3 s is not something the fit was trained on."""
+    fig, axes = plt.subplots(1, 3)
+
+    with pytest.raises(ValueError, match="tau"):
+        final_results.plot_FOM(
+            fig, list(axes), E_GAP, photon_spectrum, FOM_ARGS["alpha"], FOM_ARGS["tau"],
+            FOM_ARGS["sigma"], FOM_ARGS["dos_mass"], FOM_ARGS["dop_density"],
+            FOM_ARGS["epsilon"], FOM_ARGS["mu"], TCELL,
+            tau_range=(1e-15, 1e5),
+        )
+
+
+def test_plot_fom_sweep_opt_out_still_draws(photon_spectrum: NDArray) -> None:
+    """With the flag, the out-of-range span is warned about and then plotted."""
+    fig, axes = plt.subplots(1, 3)
+
+    with pytest.warns(UserWarning, match="tau"):
+        final_results.plot_FOM(
+            fig, list(axes), E_GAP, photon_spectrum, FOM_ARGS["alpha"], FOM_ARGS["tau"],
+            FOM_ARGS["sigma"], FOM_ARGS["dos_mass"], FOM_ARGS["dop_density"],
+            FOM_ARGS["epsilon"], FOM_ARGS["mu"], TCELL,
+            tau_range=(1e-15, 1e5), allow_out_of_range=True,
+        )
+
+    assert all(ax.lines for ax in axes)
+
+
+def test_plot_fom_defaults_span_table_1(photon_spectrum: NDArray) -> None:
+    """The default sweeps are the sampled ranges themselves, so they must pass."""
+    fig, axes = plt.subplots(1, 3)
+
+    final_results.plot_FOM(
+        fig, list(axes), E_GAP, photon_spectrum, FOM_ARGS["alpha"], FOM_ARGS["tau"],
+        FOM_ARGS["sigma"], FOM_ARGS["dos_mass"], FOM_ARGS["dop_density"],
+        FOM_ARGS["epsilon"], FOM_ARGS["mu"], TCELL,
+    )
+
+    assert all(ax.lines for ax in axes)
+
+
+def test_plot_fom_panels_are_all_logarithmic(photon_spectrum: NDArray) -> None:
+    """Each sweep spans decades, so a linear axis would sample almost none of it."""
+    fig, axes = plt.subplots(1, 3)
+
+    final_results.plot_FOM(
+        fig, list(axes), E_GAP, photon_spectrum, FOM_ARGS["alpha"], FOM_ARGS["tau"],
+        FOM_ARGS["sigma"], FOM_ARGS["dos_mass"], FOM_ARGS["dop_density"],
+        FOM_ARGS["epsilon"], FOM_ARGS["mu"], TCELL,
+    )
+
+    assert [ax.get_xscale() for ax in axes] == ["log", "log", "log"]
+
+
+def test_mobility_plot_refuses_an_exponent_outside_table_1(
+        photon_spectrum: NDArray
+) -> None:
+    """The exponents are converted to values before being checked."""
+    with pytest.raises(ValueError, match="mu"):
+        final_results.mobility_plot(
+            E_GAP, photon_spectrum, FOM_ARGS["alpha"], FOM_ARGS["sigma"],
+            FOM_ARGS["dos_mass"], FOM_ARGS["epsilon"],
+            mob_min=0, mob_max=12, lifetime_min=-9, lifetime_max=-7, step=1,
+            Tcell=TCELL,
+        )
+
+
+def test_mobility_plot_defaults_reach_the_documented_bounds(
+        photon_spectrum: NDArray
+) -> None:
+    """The docstring promises 1e-2 to 1e9, so the default grid must reach 1e9."""
+    final_results.mobility_plot(
+        E_GAP, photon_spectrum, FOM_ARGS["alpha"], FOM_ARGS["sigma"],
+        FOM_ARGS["dos_mass"], FOM_ARGS["epsilon"], Tcell=TCELL,
+    )
+
+    mobilities, _ = plt.gca().lines[0].get_data()
+
+    assert mobilities[0] == pytest.approx(1e-2)
+    assert mobilities[-1] == pytest.approx(1e9)
+    assert len(plt.gca().lines) == 19
+
+
+@pytest.mark.parametrize(
+    "start, stop, step, expected",
+    [
+        (-2, 9, 1, [-2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9]),
+        # 9 is not on a three-wide grid from -2, so the sweep stops below it
+        # rather than overshooting to 10 - which would leave both the caller's
+        # maximum and the table 1 range behind.
+        (-2, 9, 3, [-2, 1, 4, 7]),
+        (-15, 3, 2, [-15, -13, -11, -9, -7, -5, -3, -1, 1, 3]),
+    ],
+)
+def test_exponent_grid_includes_the_stop_without_passing_it(
+        start: float, stop: float, step: float, expected: list[float]
+) -> None:
+    """np.arange excluded the stop; pushing it out by a step could overshoot it."""
+    grid = final_results._exponent_grid(start, stop, step)
+
+    assert list(grid) == pytest.approx(expected)
+    assert grid.max() <= stop

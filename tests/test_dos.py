@@ -91,11 +91,40 @@ def test_clean_dos_values_requires_three_points() -> None:
 
 
 def test_compute_dos_reference_value(dos_result: DOSResult) -> None:
-    """The DOS effective mass of the reference data."""
-    assert dos_result.final_result == pytest.approx(0.0727540, rel=1e-6)
+    """The DOS effective mass of the reference data.
+
+    final_result is the geometric average of Crovetto's equation (S6), so both
+    per-carrier masses are pinned alongside it: 0.0727540 on its own is below
+    the 0.12 lower bound of the FOM's sampled range, and sqrt(m_e * m_h) is
+    not.
+    """
+    assert dos_result.em_electrons is not None
+    assert dos_result.em_holes is not None
+    assert dos_result.em_electrons.m_eff_rel == pytest.approx(0.0727540, rel=1e-6)
+    assert dos_result.em_holes.m_eff_rel == pytest.approx(0.7758652, rel=1e-6)
+    assert dos_result.final_result == pytest.approx(0.2375865, rel=1e-6)
     assert dos_result.cbm == pytest.approx(1.40177392, rel=1e-6)
     assert dos_result.cell_volume_m3 == pytest.approx(2.2340578e-28, rel=1e-6)
     assert dos_result.carrier == "electrons"
+
+
+def test_compute_dos_final_result_is_the_geometric_average(
+        dos_result: DOSResult
+) -> None:
+    """final_result is sqrt(m_e * m_h), equation (S6) of Crovetto 2024.
+
+    The QFLS depends on the N_c N_v product, which goes as (m_e m_h)^(3/2), so
+    the mass entering the FOM is the geometric average of the two rather than
+    either one alone.
+    """
+    assert dos_result.em_electrons is not None
+    assert dos_result.em_holes is not None
+
+    expected = np.sqrt(
+        dos_result.em_electrons.m_eff_rel * dos_result.em_holes.m_eff_rel
+    )
+
+    assert dos_result.final_result == pytest.approx(expected, rel=1e-12)
 
 
 def test_compute_dos_poor_fit_is_visible(dos_result: DOSResult) -> None:
@@ -120,9 +149,14 @@ def test_compute_dos_holes_carrier(dos_vasprun: Path) -> None:
     assert result.carrier == "holes"
     assert result.em_result is result.em_holes
     assert result.em_holes is not None
-    assert result.final_result == pytest.approx(result.em_holes.m_eff_rel, rel=1e-12)
     # Holes in Cu2GeS3 are far heavier than electrons.
-    assert result.final_result > 0.5
+    assert result.em_holes.m_eff_rel > 0.5
+    # carrier picks which fit em_result exposes, not final_result: that stays
+    # the geometric average either way, so both selections agree on it.
+    assert result.em_electrons is not None
+    assert result.final_result == pytest.approx(
+        np.sqrt(result.em_electrons.m_eff_rel * result.em_holes.m_eff_rel), rel=1e-12
+    )
 
 
 def test_compute_dos_rejects_bad_carrier(dos_vasprun: Path) -> None:
@@ -148,7 +182,10 @@ def test_get_dos_effective_mass_matches_compute_dos(
         dos_vasprun=str(dos_vasprun), carrier="electrons", energy_window=0.1
     )
 
-    assert single.m_eff_rel == pytest.approx(dos_result.final_result, rel=1e-12)
+    assert dos_result.em_electrons is not None
+    assert single.m_eff_rel == pytest.approx(
+        dos_result.em_electrons.m_eff_rel, rel=1e-12
+    )
     assert single.E_c == single.E_edge
 
 
@@ -244,9 +281,17 @@ def test_castep_compute_dos_summary(castep_dos_bands: Path) -> None:
     assert result.cbm == pytest.approx(castep_fixtures.DOS_GAP_EV, abs=0.03)
     assert result.vbm == 0.0
     assert result.cell_volume_m3 == pytest.approx(castep_fixtures.VOLUME_M3, rel=1e-6)
-    assert result.final_result == pytest.approx(castep_fixtures.DOS_M_ELECTRON, rel=0.05)
+    assert result.em_electrons is not None
+    assert result.em_electrons.m_eff_rel == pytest.approx(
+        castep_fixtures.DOS_M_ELECTRON, rel=0.05
+    )
     assert result.em_holes is not None
     assert result.em_holes.m_eff_rel == pytest.approx(castep_fixtures.DOS_M_HOLE, rel=0.05)
+    # The fixture encodes both masses analytically, so equation (S6) has a
+    # closed-form answer here: sqrt(0.30 * 1.20) = 0.6.
+    assert result.final_result == pytest.approx(
+        np.sqrt(castep_fixtures.DOS_M_ELECTRON * castep_fixtures.DOS_M_HOLE), rel=0.05
+    )
 
 
 def test_castep_compute_dos_m_eff_override(castep_dos_bands: Path) -> None:
