@@ -5,14 +5,119 @@ References
 Andrea Crovetto, 2024, J. Phys. Energy 6 025009.
 """
 
+import warnings
+
 import numpy as np
 
-__all__ = []
+__all__ = ["SAMPLED_RANGES", "Final_equation", "check_sampled_ranges"]
+
+# Sampled ranges of the eight bulk properties in the Γₚᵥ training set, table 1 of
+# Crovetto 2024. Keyed by the argument name each property takes, valued as
+# (minimum, maximum, unit). The intervals are closed: the table caption defines
+# these as the minimum and the maximum value each property attains in the ~2573
+# point ηsim-versus-P dataset, so the endpoints are themselves trained input.
+#
+# The units are the ones the paper's Methods section divides each property by to
+# reach the unitless form the fitted factors take logarithms and fractional
+# powers of, so they are the units the arguments must already be in.
+SAMPLED_RANGES: dict[str, tuple[float, float, str]] = {
+    "E_gap": (0.7, 2.0, "eV"),
+    "alpha": (5e3, 5e5, "cm⁻¹"),
+    "sigma": (0.2, 1.8, ""),
+    "tau": (1e-15, 1e3, "s"),
+    "mu": (1e-2, 1e9, "cm² V⁻¹ s⁻¹"),
+    "dop_density": (1e10, 1e18, "cm⁻³"),
+    "epsilon": (1.0, 100.0, ""),
+    "dos_mass": (0.12, 2.5, "m₀"),
+}
+
+
+def check_sampled_ranges(
+        allow_out_of_range: bool = False, **properties: float
+) -> None:
+    """Check Γₚᵥ inputs against the sampled ranges of Crovetto 2024 table 1.
+
+    Γₚᵥ is a fit, not a derivation, and table 1 records the range of each
+    property across the ~2573 drift-diffusion simulations it was fitted to.
+    The table caption warns that the efficiency prediction for an absorber
+    falling outside those ranges "may be grossly incorrect", so out-of-range
+    input raises by default. The paper's discussion also allows that Γₚᵥ "may
+    remain sufficiently accurate even when some of the properties fall outside
+    the ranges in table 1", which is what ``allow_out_of_range`` is for.
+
+    Every violation is reported together rather than one at a time: a property
+    set supplied in the wrong units usually breaks several bounds at once, and
+    one message naming all of them saves the caller as many round trips.
+
+    Parameters
+    ----------
+    allow_out_of_range : bool, optional
+        If True, an out-of-range value raises a ``UserWarning`` instead of a
+        ``ValueError`` and evaluation continues. Default is False.
+    **properties : float
+        Property values keyed by the argument names of
+        :data:`SAMPLED_RANGES`. Keys outside that mapping are ignored, so a
+        caller may pass a whole argument set through.
+
+    Raises
+    ------
+    ValueError
+        If any property lies outside its table 1 range, or is not a number,
+        and ``allow_out_of_range`` is False.
+
+    Warns
+    -----
+    UserWarning
+        The same conditions, when ``allow_out_of_range`` is True.
+    """
+    violations = []
+
+    for name, value in properties.items():
+
+        if name not in SAMPLED_RANGES:
+            continue
+
+        minimum, maximum, unit = SAMPLED_RANGES[name]
+
+        # NaN fails both comparisons, so it is reported as out of range rather
+        # than slipping through to produce a silent NaN figure of merit.
+        if minimum <= value <= maximum:
+            continue
+
+        unit_text = f" {unit}" if unit else ""
+
+        violations.append(
+            f"{name} = {value:.3g}{unit_text} is outside the"
+            f" {minimum:.3g} - {maximum:.3g}{unit_text} range sampled by"
+            " Crovetto 2024 table 1"
+        )
+
+    if not violations:
+        return
+
+    detail = "; ".join(violations)
+
+    message = (
+        f"{detail}; the Γₚᵥ fit was not trained there, so the efficiency it"
+        " predicts may be grossly incorrect."
+    )
+
+    if allow_out_of_range:
+        # Three frames up: this function, the solphin function that called it,
+        # and the caller's own code, which is where the offending value came
+        # from and so where the warning should point.
+        warnings.warn(message, UserWarning, stacklevel=3)
+
+        return
+
+    raise ValueError(
+        f"{message} Pass allow_out_of_range=True to evaluate anyway."
+    )
 
 
 def Final_equation(
         E_gap: float, alpha: float, tau: float, sigma: float, dos_mass: float, dop_density: float,
-        epsilon: float, mu: float
+        epsilon: float, mu: float, *, allow_out_of_range: bool = False
 ) -> float:
     """Calculate the total Γₚᵥ photovoltaic figure of merit from Crovetto 2024.
 
@@ -34,12 +139,41 @@ def Final_equation(
         Static dielectric constant, dimensionless.
     mu : float
         Charge carrier mobility in cm² V⁻¹ s⁻¹.
+    allow_out_of_range : bool, optional
+        If True, a property outside its Crovetto 2024 table 1 sampled range
+        warns instead of raising, and the figure of merit is evaluated anyway.
+        Default is False. Keyword-only.
 
     Returns
     -------
     float
         Γₚᵥ photovoltaic figure of merit, dimensionless.
+
+    Raises
+    ------
+    ValueError
+        If any property lies outside its table 1 range in
+        :data:`SAMPLED_RANGES` and ``allow_out_of_range`` is False.
+
+    Warns
+    -----
+    UserWarning
+        The same conditions, when ``allow_out_of_range`` is True.
     """
+    # Every private factor below is reached only through this function, so this
+    # is the one place the eight properties have to be checked.
+    check_sampled_ranges(
+        allow_out_of_range,
+        E_gap=E_gap,
+        alpha=alpha,
+        tau=tau,
+        sigma=sigma,
+        dos_mass=dos_mass,
+        dop_density=dop_density,
+        epsilon=epsilon,
+        mu=mu,
+    )
+
     E_gap_2_5 = E_gap ** 2.5
     E_gap_0_8 = E_gap ** -0.8
 

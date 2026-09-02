@@ -26,6 +26,7 @@ from sumo.io.castep import read_bands_header
 from sumo.io.castep import read_dos as castep_read_dos
 
 from solphin.castep_inputs import write_castep_calculation
+from solphin.pv_fom import SAMPLED_RANGES
 from solphin.vasp_inputs import write_vasp_calculation
 
 HBAR = sc.hbar  # J·s
@@ -166,9 +167,15 @@ class DOSResult:
     cell_volume_m3 : float
         Unit-cell volume in m³.
     carrier : str
-        Primary carrier type, ``"electrons"`` or ``"holes"``.
+        Primary carrier type, ``"electrons"`` or ``"holes"``. Selects which
+        band edge and which fit the summary and :attr:`em_result` report; it
+        does not select :attr:`final_result`.
     final_result : float
-        Selected effective mass relative to the free electron mass.
+        DOS effective mass entering Γₚᵥ, relative to the free electron mass:
+        the geometric average √(mₑm_h) of supplementary equation (S6) of
+        Crovetto 2024. Falls back to whichever single carrier fitted, with a
+        warning, when only one edge could be fitted, and is the user-supplied
+        mass when ``m_eff`` was given.
     em_electrons : _DOSEffectiveMassResult or None
         Electron fit result; None if not calculated.
     em_holes : _DOSEffectiveMassResult or None
@@ -191,7 +198,7 @@ class DOSResult:
 
     @property
     def em_result(self) -> _DOSEffectiveMassResult | None:
-        """Fit result for the primary carrier, or None if unavailable."""
+        """Fit result for the carrier named by :attr:`carrier`, or None."""
         if self.carrier == "electrons":
             return self.em_electrons
 
@@ -830,7 +837,7 @@ def _format_em_table(
         Energy of the band edge the effective mass was fitted at, in eV. If
         None, the edge is displayed as ``"N/A"``.
     is_dos_carrier : bool
-        If True, mark the effective mass as the FOM DOS mass in the output.
+        If True, mark this carrier as the primary one in the output.
     fit : float or None
         Fit quality as the coefficient of determination (R²). If None, the
         fit quality is displayed as ``"N/A"``.
@@ -853,7 +860,7 @@ def _format_em_table(
     )
 
     marker = (
-        "  ← FOM DOS mass"
+        "  ← primary carrier"
         if is_dos_carrier
         else ""
     )
@@ -979,7 +986,11 @@ def _format_dos_summary(
             "  Holes: DOS effective mass not calculated."
         )
 
+    # The value that actually reaches the figure of merit, printed beside the
+    # two masses it is formed from.
     lines += [
+        "",
+        f"  Γₚᵥ DOS mass √(mₑm_h) : {result.final_result:.6f} m₀",
         "=" * 60,
         "",
     ]
@@ -1144,8 +1155,11 @@ def compute_dos(
     """Compute density-of-states information and the corresponding effective mass.
 
     Parses the calculation output, extracts the band edges, and fits the
-    DOS effective masses for electrons and holes. A user-supplied effective
-    mass, when given, is used as the final result instead of fitting.
+    DOS effective masses for electrons and holes. The mass reported as the
+    final result is their geometric average √(mₑm_h), which is the quantity
+    supplementary equation (S6) of Crovetto 2024 defines as the DOS effective
+    mass entering Γₚᵥ. A user-supplied effective mass, when given, is used as
+    the final result instead of fitting.
 
     Parameters
     ----------
@@ -1156,8 +1170,10 @@ def compute_dos(
         User-supplied effective mass relative to the free electron mass.
         If provided, DOS effective-mass fitting is skipped. Default is None.
     carrier : str, optional
-        Primary charge carrier the final effective mass is selected for,
-        either ``"electrons"`` or ``"holes"``. Default is ``"electrons"``.
+        Primary charge carrier, either ``"electrons"`` or ``"holes"``. Selects
+        the band edge reported and the fit exposed as
+        :attr:`DOSResult.em_result`; both masses are fitted either way, and
+        both enter the geometric average. Default is ``"electrons"``.
     energy_window : float, optional
         Energy range from each band edge over which the effective-mass fits
         are performed, in eV. Default is ``0.15``.
@@ -1175,21 +1191,25 @@ def compute_dos(
     Returns
     -------
     DOSResult
-        The cell volume, zero-referenced band-edge energies, selected
-        effective mass, per-carrier fit results and fit-quality information.
+        The cell volume, zero-referenced band-edge energies, the geometric
+        average DOS effective mass of equation (S6), per-carrier fit results
+        and fit-quality information.
 
     Raises
     ------
     ValueError
-        If ``carrier`` is not ``"electrons"`` or ``"holes"``, or if the
-        requested carrier effective mass cannot be calculated when no
-        user-supplied effective mass is provided.
+        If ``carrier`` is not ``"electrons"`` or ``"holes"``, or if neither
+        carrier effective mass can be calculated when no user-supplied
+        effective mass is provided.
 
     Warns
     -----
     UserWarning
         If the electron or hole DOS effective-mass calculation fails. The
-        calculation for the other carrier is still attempted.
+        calculation for the other carrier is still attempted, and a single
+        fitted mass is then reported in place of the geometric average. Also
+        if the resulting mass falls outside the range sampled by Crovetto 2024
+        table 1, which Γₚᵥ will refuse.
     """
     if carrier not in (
             "electrons",
@@ -1291,28 +1311,67 @@ def compute_dos(
             m_eff
         )
 
-    elif carrier == "electrons":
+    elif em_electrons is not None and em_holes is not None:
 
-        if em_electrons is None:
-            raise ValueError(
-                "Electron DOS effective mass could not "
-                "be calculated."
-            )
-
-        final_result = (
-            em_electrons.m_eff_rel
+        # Supplementary equation (S6) of Crovetto 2024: the mass entering Γₚᵥ is
+        # the geometric average of the two DOS masses, because the quasi-Fermi
+        # level splitting depends on the N_c N_v product, which goes as
+        # (m_e m_h)^(3/2).
+        final_result = float(
+            np.sqrt(em_electrons.m_eff_rel * em_holes.m_eff_rel)
         )
 
     else:
 
-        if em_holes is None:
+        # At most one edge fitted. Each carrier is tested on its own rather than
+        # as `em_electrons if em_holes is None else em_holes`: mypy narrows one
+        # Optional at a time and cannot infer from the branch above that exactly
+        # one of the pair is None, so that expression stays typed as possibly
+        # None and its attribute reads are rejected.
+        if em_electrons is not None:
+
+            fitted, missing = em_electrons, "hole"
+
+        elif em_holes is not None:
+
+            fitted, missing = em_holes, "electron"
+
+        else:
+
             raise ValueError(
-                "Hole DOS effective mass could not "
-                "be calculated."
+                "Neither the electron nor the hole DOS effective mass could be "
+                "calculated, so the geometric average of Crovetto 2024 equation "
+                "(S6) has no ingredients."
             )
 
+        # One edge fitted, so the geometric average is unavailable. Falling back
+        # to the carrier that did fit keeps a usable number, but it is not the
+        # quantity Γₚᵥ was fitted against, so say so.
+        warnings.warn(
+            f"The {missing} DOS effective-mass fit is unavailable, so the "
+            "geometric average √(mₑm_h) of Crovetto 2024 equation (S6) cannot "
+            f"be formed; falling back to the {fitted.carrier} mass "
+            f"{fitted.m_eff_rel:.6f} m₀ alone.",
+            UserWarning,
+            stacklevel=2,
+        )
+
         final_result = (
-            em_holes.m_eff_rel
+            fitted.m_eff_rel
+        )
+
+    minimum, maximum, _ = SAMPLED_RANGES["dos_mass"]
+
+    if not minimum <= final_result <= maximum:
+
+        warnings.warn(
+            f"DOS effective mass {final_result:.6f} m₀ is outside the "
+            f"{minimum} - {maximum} m₀ range sampled by Crovetto 2024 table 1;"
+            " it is a property of the supplied density of states, but the Γₚᵥ"
+            " figure of merit will refuse it unless"
+            " allow_out_of_range=True is passed.",
+            UserWarning,
+            stacklevel=2,
         )
 
     result = DOSResult(

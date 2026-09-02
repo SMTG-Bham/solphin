@@ -44,6 +44,9 @@ anchors:
 | A constant α gives back exactly α, with exactly zero dispersion                     | `test_spectral.py`       |
 | A lossless dielectric has `n = √ε` and zero absorption                              | `test_optics.py`         |
 | The parabolic-band DOS relation, run backwards to recover a chosen mass             | `test_dos.py`            |
+| The DOS mass entering Γₚᵥ is √(mₑm_h), Crovetto's equation (S6)                      | `test_dos.py`            |
+| Crovetto table 1 bounds every Γₚᵥ input, endpoints included; the box has no holes    | `test_pv_fom.py`         |
+| Crovetto table 2: MAPI gives 31.4 %, 85.4 % and 26.8 %                              | `test_final_results.py`  |
 | `absorption.dat` / `n_real.dat` regenerate from `vasprun.xml`                       | `test_optics.py`         |
 | A Lorentz-oscillator `_epsilon.dat` parses back to the analytic ε(E), with ε(0) = 6 | `test_optics.py`         |
 | The OptaDOS tensor geometry gives `n = √ε` per axis and zero absorption end to end  | `test_optics.py`         |
