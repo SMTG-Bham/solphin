@@ -11,6 +11,7 @@ import inspect
 import itertools
 import math
 from collections.abc import Callable, Sequence
+from typing import Any
 
 import numpy as np
 import pytest
@@ -27,7 +28,11 @@ from solphin.pv_fom import (
 )
 
 # Methylammonium lead iodide, from the commented reference block in the tutorial.
-MAPI = {
+#
+# dict[str, Any] rather than the inferred dict[str, float]: the set is splatted
+# into functions whose keyword-only allow_out_of_range is a bool, and mypy checks
+# a **dict's value type against every parameter the dict could reach.
+MAPI: dict[str, Any] = {
     "E_gap": 1.55,  # eV
     "alpha": 9.9e4,  # cm^-1
     "tau": 6.9e-7,  # s
@@ -200,7 +205,7 @@ def test_every_corner_of_the_box_evaluates() -> None:
     bounds = [SAMPLED_RANGES[name][:2] for name in names]
 
     for corner in itertools.product(*bounds):
-        gamma = Final_equation(**dict(zip(names, corner)))
+        gamma = _call_with(Final_equation, **dict(zip(names, corner)))
 
         assert math.isfinite(gamma)
         assert gamma > 0
@@ -256,4 +261,4 @@ def test_nan_is_refused() -> None:
 
 def test_check_sampled_ranges_ignores_unknown_keys() -> None:
     """Callers pass whole argument sets through, Tcell and all."""
-    check_sampled_ranges(**MAPI, Tcell=300.0, photon_spectrum=None)
+    check_sampled_ranges(**MAPI, Tcell=300.0)

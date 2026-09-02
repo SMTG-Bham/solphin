@@ -1321,22 +1321,32 @@ def compute_dos(
             np.sqrt(em_electrons.m_eff_rel * em_holes.m_eff_rel)
         )
 
-    elif em_electrons is None and em_holes is None:
-
-        raise ValueError(
-            "Neither the electron nor the hole DOS effective mass could be "
-            "calculated, so the geometric average of Crovetto 2024 equation "
-            "(S6) has no ingredients."
-        )
-
     else:
+
+        # At most one edge fitted. Each carrier is tested on its own rather than
+        # as `em_electrons if em_holes is None else em_holes`: mypy narrows one
+        # Optional at a time and cannot infer from the branch above that exactly
+        # one of the pair is None, so that expression stays typed as possibly
+        # None and its attribute reads are rejected.
+        if em_electrons is not None:
+
+            fitted, missing = em_electrons, "hole"
+
+        elif em_holes is not None:
+
+            fitted, missing = em_holes, "electron"
+
+        else:
+
+            raise ValueError(
+                "Neither the electron nor the hole DOS effective mass could be "
+                "calculated, so the geometric average of Crovetto 2024 equation "
+                "(S6) has no ingredients."
+            )
 
         # One edge fitted, so the geometric average is unavailable. Falling back
         # to the carrier that did fit keeps a usable number, but it is not the
         # quantity Γₚᵥ was fitted against, so say so.
-        fitted = em_electrons if em_holes is None else em_holes
-        missing = "hole" if em_holes is None else "electron"
-
         warnings.warn(
             f"The {missing} DOS effective-mass fit is unavailable, so the "
             "geometric average √(mₑm_h) of Crovetto 2024 equation (S6) cannot "
