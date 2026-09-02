@@ -9,6 +9,7 @@ weights, base-10 logarithm, centring on the linear mean) are pinned by the
 sigma range its supplementary material states for power-law onset spectra.
 """
 
+import warnings
 from pathlib import Path
 
 import numpy as np
@@ -235,3 +236,57 @@ def test_generate_spectral_parameters_rejects_converted_spectrum(
         spectral.generate_spectral_parameters(
             str(opt_dir), photon_spectrum, E_gap=REFERENCE_E_GAP
         )
+
+
+# --- the table 1 range of the descriptors this module produces -------------
+#
+# alpha and sigma are measurements of the supplied absorption data, not user
+# choices, so they are always returned. The warning exists so that a weak
+# absorber or a slow absorption onset is reported where it arises, rather than
+# surfacing two cells later as a range error on a number the caller never
+# picked.
+
+
+def test_generate_spectral_parameters_is_quiet_for_the_reference_data(
+        opt_dir: Path, am15: NDArray
+) -> None:
+    """The committed reference absorption sits inside table 1, so nothing is said."""
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+
+        spectral.generate_spectral_parameters(
+            str(opt_dir), am15, E_gap=REFERENCE_E_GAP
+        )
+
+
+def test_warns_for_an_absorption_average_below_the_sampled_range() -> None:
+    """A weak absorber is a real material, so it warns rather than raising."""
+    with pytest.warns(UserWarning, match="Spectral average"):
+        spectral._warn_outside_sampled_range(1.2e3, 1.0)
+
+
+def test_warns_for_a_dispersion_above_the_sampled_range() -> None:
+    """A slow absorption onset pushes sigma past 1.8."""
+    with pytest.warns(UserWarning, match="Spectral dispersion"):
+        spectral._warn_outside_sampled_range(1e5, 2.4)
+
+
+def test_warning_names_the_bound_and_the_way_out() -> None:
+    """The message has to explain itself without the paper to hand."""
+    with pytest.warns(UserWarning) as record:
+        spectral._warn_outside_sampled_range(1.2e3, 1.0)
+
+    message = str(record[0].message)
+
+    assert "5e+03" in message
+    assert "cm⁻¹" in message
+    assert "allow_out_of_range=True" in message
+
+
+def test_no_warning_at_either_endpoint() -> None:
+    """The sampled ranges are closed intervals, here as in pv_fom."""
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+
+        spectral._warn_outside_sampled_range(5e3, 0.2)
+        spectral._warn_outside_sampled_range(5e5, 1.8)
