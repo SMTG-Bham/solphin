@@ -1,23 +1,30 @@
-.. solphin documentation master file, created by
-   sphinx-quickstart on Wed Jun 17 12:25:24 2026.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
-
 Solphin
-=========
+========
 
 .. raw:: html
 
-   <img id="diagram-light" src="_static/solphin_transparent.png">
-   <img id="diagram-dark" src="_static/solphin_white.png" style="display:none;">
+   <img id="diagram-light" src="_static/solphin_transparent.png" alt="solphin logo">
+   <img id="diagram-dark" src="_static/solphin_white.png" style="display:none;" alt="solphin logo">
 
-``solphin`` is a code developed to assist with the characterisation of novel photovoltaic materials. It combines detailed balance analysis with other tools such as the photovoltaic figure of merit proposed by A. Crovetto, Spectroscopic Limited Maximum Efficiency (SLME), Blank et. al. Maximum Efficiency and optical absorption plots to provide a full picture of a material's theoretical photovoltaic efficiency. The code supports the automatic generation of ``VASP`` and ``CASTEP`` input files for the required calculations based on an initial crystal structure, and reads the results of either code.
+``solphin`` helps characterise candidate photovoltaic materials from
+first-principles calculations. It combines detailed-balance analysis with
+the photovoltaic figure of merit of A. Crovetto, the Spectroscopic Limited
+Maximum Efficiency (SLME), the Blank *et al.* maximum efficiency and
+optical absorption plots to build a full picture of a material's
+theoretical photovoltaic performance.
 
-**Please note that Solphin is still in early stage testing and development.**
+From an initial crystal structure, ``solphin`` generates the ``VASP`` or
+``CASTEP`` input files for each required calculation, and reads the results
+of either code.
+
+**Please note that Solphin is still in early-stage testing and development.**
 
 .. raw:: html
 
-   <img id="flowchart" src="_static/solphin_workflow.drawio.png">
+   <img id="flowchart" src="_static/solphin_workflow.drawio.png"
+        alt="Flowchart of the solphin workflow, from crystal structure through
+        VASP or CASTEP calculations to the efficiency analysis"
+        style="background:#fff;border-radius:6px;padding:8px;">
 
 Citation
 --------
@@ -32,15 +39,11 @@ If you use ``solphin`` in your work, please cite the following:
   for plotting and analysis of periodic ab initio calculations. Journal of Open
   Source Software, 2018 3 (28), 717, doi:10.21105/joss.00717.
 
-Contents
----------
 .. toctree::
    :maxdepth: 1
 
-   installation.rst
-   tutorials.rst
-   castep.rst
-   api.rst
-   formalism.rst
-   publications.rst
-   changelog.rst
+   installation
+   tutorials
+   castep
+   api
+   formalism

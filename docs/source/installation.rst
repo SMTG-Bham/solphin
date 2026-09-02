@@ -9,9 +9,7 @@ Installation
    cd solphin
    pip install -e .
 
-Python 3.11 or newer is required. The floor is set by the dependencies rather
-than by ``solphin`` itself: the current releases of ``pymatgen``, ``numpy``,
-``scipy`` and ``matplotlib`` all declare ``Requires-Python >=3.11``.
+Python 3.11 or newer is required (``requires-python`` in ``pyproject.toml``).
 
 Optional extras
 ---------------
@@ -23,8 +21,10 @@ Optional extras
 
    pip install -e ".[interactive]"
 
-The other extras are ``tutorial`` (JupyterLab and the notebook dependencies),
-``docs`` (Sphinx and the theme) and ``dev`` (pytest, ruff, pre-commit).
+The other extras are ``tutorial`` (JupyterLab and the notebook stack),
+``docs`` (Sphinx, the Wagtail theme and ``myst-nb``, which renders the
+tutorial notebooks) and ``dev`` (pytest, ruff, mypy, pre-commit and the
+packaging tools).
 
 Development environment
 -----------------------
@@ -61,9 +61,7 @@ its input generation needs no local pseudopotential library.
 CASTEP support
 --------------
 
-CASTEP support needs no extra installation for pip users: the ``.bands`` and
-``.cell`` readers come with ``sumo`` and its ``castepxbin`` dependency, both
-installed with ``solphin``. Optics parsing consumes the ``<seed>_epsilon.dat``
-written by `OptaDOS <https://github.com/optados-developers/optados>`_, which
-is a Fortran post-processing tool from the CASTEP ecosystem rather than a
-Python dependency — see :doc:`castep` for the workflow.
+CASTEP support needs no extra installation: the ``.bands`` and ``.cell``
+readers come with ``sumo`` and its ``castepxbin`` dependency, both installed
+with ``solphin``. Optics parsing consumes an OptaDOS ``<seed>_epsilon.dat``
+file — see :doc:`castep` for the workflow.
