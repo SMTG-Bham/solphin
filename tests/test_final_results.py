@@ -7,6 +7,8 @@ merit, and the equation-(33) fit with its supplementary-material constants -
 against the article rather than against this implementation.
 """
 
+from typing import Any
+
 import pytest
 from numpy.typing import NDArray
 
@@ -14,7 +16,12 @@ import solphin.final_results as final_results
 
 # CH3NH3PbI3 (MAPI) property set from Table 2 of the paper; the same block is
 # quoted in tutorial cell 40 and reused by test_pv_fom.
-MAPI = {
+#
+# dict[str, Any] rather than the inferred dict[str, float]: the set is splatted
+# into SQ_relative_FOM_PV_efficiency, whose keyword-only allow_out_of_range is
+# a bool, and mypy checks a **dict's value type against every parameter the
+# dict could reach.
+MAPI: dict[str, Any] = {
     "E_gap": 1.55,  # eV
     "alpha": 9.9e4,  # cm^-1
     "tau": 6.9e-7,  # s
