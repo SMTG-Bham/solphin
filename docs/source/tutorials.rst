@@ -1,5 +1,5 @@
 Tutorials
-==================
+=========
 
 Two walkthroughs of the same workflow, one per supported code. The full
 workflow tutorial runs it with ``VASP`` on the reference calculation set for
