@@ -2,27 +2,6 @@
 #
 #   conda env create -f environment.yml
 #   conda activate solphin
-#   pip install --no-deps sumo castepxbin
-#   pip install -e . --no-deps
-#
-# Both pip steps are separate on purpose, for two different reasons.
-#
-# sumo must come from PyPI. conda-forge's sumo pins `castepxbin 0.1.0.*`, and
-# conda-forge's castepxbin 0.1.0 requires `numpy >=1,<2` -- so listing sumo
-# here alongside `numpy>=2.0` does not merely downgrade numpy, it makes the
-# environment unsolvable outright (LibMambaUnsatisfiableError). PyPI's
-# castepxbin 0.3.1 accepts `numpy>=1,<3`, so the pip route is numpy-2 clean.
-# --no-deps is safe because every other sumo dependency -- spglib, h5py,
-# phonopy, seekpath, colormath, matplotlib, numpy, scipy, pymatgen -- is
-# resolved by conda below. castepxbin in that pip line also satisfies
-# solphin's own declared dependency on it, which backs the CASTEP readers --
-# it stays out of the conda list below for the same numpy-2 reason.
-#
-# The editable install is likewise separate: conda's `pip:` block is passed to
-# pip as a requirements file, which accepts neither --no-deps nor an opt-out of
-# the -U that conda adds -- so an inline `-e .` would pull PyPI wheels over the
-# conda builds of numpy/scipy/pymatgen. Add new runtime deps to *both* this
-# file and pyproject.toml.
 name: solphin
 
 channels:
@@ -36,6 +15,8 @@ dependencies:
   - matplotlib-base>=3.9.4
   - pymatgen>=2024.8.9
   - ipywidgets
+  # sumo's own dependencies (solphin imports none of them directly), kept on
+  # conda-forge so the pip block adds nothing but sumo, castepxbin and solphin.
   - colormath
   - h5py
   - phonopy
@@ -61,3 +42,9 @@ dependencies:
   - pre-commit
   - twine
   - pip
+
+  # --- PyPI only; see the header. `pip` above is what runs this block. ---
+  - pip:
+      - sumo>=3.0
+      - castepxbin>=0.3.1
+      - -e .
