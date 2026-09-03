@@ -1,47 +1,37 @@
-import scipy.constants as sc
-import numpy as np
-import logging
+"""Detailed-balance (Shockley-Queisser) limit efficiency and its constituent quantities."""
+
 from importlib.resources import files
+from typing import overload
 
-logging.basicConfig(level=logging.INFO)
+import numpy as np
+import scipy.constants as sc
+from numpy.typing import NDArray
 
-""" This section details the calculation of the detailed balance limit efficiency and associated values."""
+h = sc.h  # Planck's constant (J·s)
+c = sc.c  # Speed of light (m/s)
+k = sc.k  # Boltzmann constant (J/K)
+q = sc.e  # Elementary charge (Coulombs)
 
-h = sc.h        # Planck's constant (J·s)
-c = sc.c        # Speed of light (m/s)
-k = sc.k        # Boltzmann constant (J/K)
-q = sc.e        # Elementary charge (Coulombs)
 
 # Convert the spectrum to the useful units - taken from https://github.com/kaklin/sq-limit?tab=readme-ov-file
 
-def load_spectrum(spectrum_type):
+def load_spectrum(spectrum_type: str) -> NDArray:
+    """Load a predefined spectral irradiance dataset from bundled resources.
+
+    Parameters
+    ----------
+    spectrum_type : str
+        Identifier for the spectrum: ``"AM1.5"``, ``"Fluorescent"``,
+        ``"Blue LED"``, ``"Green LED"``, ``"Red LED"``, ``"White LED"``,
+        ``"IR LED"`` or ``"Photopic"``. Unrecognised values fall back to
+        ``"AM1.5"``.
+
+    Returns
+    -------
+    numpy.ndarray
+        2D array; column 0 is wavelength in nm, column 1 spectral irradiance
+        in W m⁻² nm⁻¹.
     """
-    Loads a predefined spectral irradiance dataset from bundled resource files.
-
-    This function selects a spectrum based on a predefined set of illumination sources
-    (e.g. solar AM1.5, LEDs, fluorescent, photopic response), loads the corresponding
-    CSV file from package resources, and returns it as a numerical array.
-
-    Parameters:
-        spectrum_type(string): identifier for the desired spectrum.
-            Supported options:
-            - "AM1.5"
-            - "Fluorescent"
-            - "Blue LED"
-            - "Green LED"
-            - "Red LED"
-            - "White LED"
-            - "IR LED"
-            - "Photopic"
-
-            If an unrecognised value is provided, the function defaults to "AM1.5".
-
-    Returns:
-        spectrum(np.array): 2D array where:
-            - column 0 is wavelength (nm)
-            - column 1 is spectral irradiance
-    """
-
     if spectrum_type == "AM1.5":
         filename = 'ASTMG173.csv'
 
@@ -80,72 +70,79 @@ def load_spectrum(spectrum_type):
 
     return spectrum
 
-def convert_spectrum(spectrum):
 
-    """
-    Converts the input spectrum from standard format to the required units for this code. 
+def convert_spectrum(spectrum: NDArray) -> NDArray:
+    """Convert an irradiance spectrum to a photon-flux spectrum over energy.
 
-    Parameters:
-        spectrum(numpy.ndarray): Input spectrum loaded from a csv file with numpy.loadtxt.
+    Parameters
+    ----------
+    spectrum : numpy.ndarray
+        Spectrum as loaded by ``load_spectrum``: wavelength in nm against
+        spectral irradiance in W m⁻² nm⁻¹.
 
-    Returns:
-        photon_spectrum(numpy.ndarray): Output spectrum as numpy ndarray.
-
-    Spectrum input:
-        y: Irradiance (W/m2/nm)
-        x: Wavelength (nm)
-    Converted output:
-        y: Number of photons (Np/m2/s/dE)
-        x: Energy (eV)
+    Returns
+    -------
+    numpy.ndarray
+        Converted spectrum: photon energy in eV against photon flux per unit
+        energy in m⁻² s⁻¹ eV⁻¹.
     """
     converted = np.copy(spectrum)
-    converted[:, 0] = converted[:, 0] * 1e-9  # wavelength to m
-    converted[:, 1] = converted[:, 1] / 1e-9  # irradiance to W/m2/m (from W/m2/nm)
+    converted[:, 0] = converted[:, 0] * sc.nano  # wavelength to m
+    converted[:, 1] = converted[:, 1] / sc.nano  # irradiance to W/m2/m (from W/m2/nm)
 
-    E = h * c / converted[:, 0] # Bandgap in J
-    d_lambda_d_E = h * c / E**2 
+    E = h * c / converted[:, 0]  # Bandgap in J
+    d_lambda_d_E = h * c / E ** 2
     converted[:, 1] = converted[:, 1] * d_lambda_d_E * q / E
     converted[:, 0] = E / q
 
     return converted
 
 
+def _photons_above_bandgap(E_gap: float, photon_spectrum: NDArray) -> float:
+    """Count the photons above a given band gap.
 
-def _photons_above_bandgap(E_gap, photon_spectrum):
-    """Counts number of photons above given bandgap.
-    
-    Parameters:
-        E_gap(float): Optical Band Gap in eV  
-        photon_spectrum(numpy.ndarray): Output spectrum as numpy ndarray.
+    Parameters
+    ----------
+    E_gap : float
+        Optical band gap in eV.
+    photon_spectrum : numpy.ndarray
+        Converted photon flux spectrum from ``convert_spectrum``.
 
-    Returns:
-       (float): Integration of the spectrum for the number of photons above the bandgap.  
+    Returns
+    -------
+    float
+        Integrated photon flux above the band gap, in photons m⁻² s⁻¹.
     """
     indexes = np.where(photon_spectrum[:, 0] > E_gap)
     y = photon_spectrum[indexes, 1][0]
     x = photon_spectrum[indexes, 0][0]
     return np.trapezoid(y[::-1], x[::-1])
 
-def _rr0(E_gap, photon_spectrum, Tcell):
-    """
-    Calculates the radiative recombination rate at 0 Quasi-Fermi Level splitting. 
 
-    Parameters: 
-        E_gap(float):  Optical Band Gap in eV  
-        photon_spectrum(numpy.ndarray): Output spectrum as numpy ndarray.
-        Tcell(float): Operating temperature of the cell in K
+def _rr0(E_gap: float, photon_spectrum: NDArray, Tcell: float) -> float:
+    """Calculate the radiative recombination rate at zero quasi-Fermi-level splitting.
 
-    Returns:
-        Radiative recomination rate(float) in cm⁻³s⁻¹ 
+    Parameters
+    ----------
+    E_gap : float
+        Optical band gap in eV.
+    photon_spectrum : numpy.ndarray
+        Converted photon flux spectrum from ``convert_spectrum``.
+    Tcell : float
+        Operating temperature of the cell in K.
 
+    Returns
+    -------
+    float
+        Radiative recombination rate per unit area, in photons m⁻² s⁻¹.
     """
     k_eV = k / q
     h_eV = h / q
-    const = (2 * np.pi) / (c**2 * h_eV**3)
+    const = (2 * np.pi) / (c ** 2 * h_eV ** 3)
 
-    E = photon_spectrum[::-1, ]  # in increasing order of bandgap energy
+    E = photon_spectrum[::-1,]  # in increasing order of bandgap energy
     egap_index = np.where(E[:, 0] >= E_gap)
-    numerator = E[:, 0]**2
+    numerator = E[:, 0] ** 2
     exponential_in = E[:, 0] / (k_eV * Tcell)
     denominator = np.exp(exponential_in) - 1
     integrand = numerator / denominator
@@ -155,172 +152,233 @@ def _rr0(E_gap, photon_spectrum, Tcell):
     result = const * integral
     return result[0]
 
-def recomb_rate(E_gap, photon_spectrum, voltage, Tcell):
+
+def recomb_rate(E_gap: float, photon_spectrum: NDArray, voltage: float, Tcell: float) -> float:
+    """Calculate the radiative recombination rate at an applied voltage.
+
+    Parameters
+    ----------
+    E_gap : float
+        Optical band gap in eV.
+    photon_spectrum : numpy.ndarray
+        Converted photon flux spectrum from ``convert_spectrum``.
+    voltage : float
+        Applied voltage in V.
+    Tcell : float
+        Operating temperature of the cell in K.
+
+    Returns
+    -------
+    float
+        Radiative recombination current density in A m⁻².
     """
-    Calculates the radiative recombination rate. 
+    print('recomb rate')
+    return q * _rr0(E_gap, photon_spectrum, Tcell) * np.exp(q * voltage / (k * Tcell))
 
-    Parameters: 
-        E_gap(float):  Optical Band Gap in eV  
-        photon_spectrum(numpy.ndarray): Output spectrum as numpy ndarray.
-        voltage(float): Open circuit voltage in V
-        Tcell(float): Operating temperature of the cell in K
 
-    Returns:
-        Radiative recomination rate(float) in cm⁻³s⁻¹ 
+@overload
+def current_density(
+        E_gap: float, photon_spectrum: NDArray, voltage: float, Tcell: float
+) -> float: ...
 
+
+@overload
+def current_density(
+        E_gap: float, photon_spectrum: NDArray, voltage: NDArray, Tcell: float
+) -> NDArray: ...
+
+
+def current_density(
+        E_gap: float, photon_spectrum: NDArray, voltage: float | NDArray, Tcell: float
+) -> float | NDArray:
+    """Calculate the current density at an applied voltage.
+
+    Parameters
+    ----------
+    E_gap : float
+        Optical band gap in eV.
+    photon_spectrum : numpy.ndarray
+        Converted photon flux spectrum from ``convert_spectrum``.
+    voltage : float or numpy.ndarray
+        Applied voltage in V.
+    Tcell : float
+        Operating temperature of the cell in K.
+
+    Returns
+    -------
+    float or numpy.ndarray
+        Current density in A m⁻². Scalar for scalar ``voltage``,
+        elementwise array otherwise.
     """
-
-    print ('recomb rate')
-    return q * _rr0(E_gap, photon_spectrum) * np.exp(q * voltage / (k * Tcell))
-
-def current_density(E_gap, photon_spectrum, voltage, Tcell):
-    """
-    Calculates the current density. 
-
-    Parameters: 
-        E_gap(float):  Optical Band Gap in eV  
-        photon_spectrum(numpy.ndarray): Output spectrum as numpy ndarray.
-        voltage(float): Open circuit voltage in V
-        Tcell(float): Operating temperature of the cell in K
-
-    Returns:
-        Current density (float):  Current that flows across a cross sectional area in A/m2. 
-
-    """
-
-    return q * (_photons_above_bandgap(E_gap, photon_spectrum) - _rr0(E_gap, photon_spectrum, Tcell) * np.exp(q * voltage / (k * Tcell))-1)
-
-def jsc(E_gap, photon_spectrum, Tcell):
-
-    """
-    Calculates the current density. 
-
-    Parameters: 
-        E_gap(float):  Optical Band Gap in eV  
-        photon_spectrum(numpy.ndarray): Output spectrum as numpy ndarray.
-
-    Returns:
-        Short circuit current density (float):  Current that flows across a cross sectional area at 0 applied voltage in A/m2.  
-
-    """
-    
-    return current_density(E_gap, photon_spectrum, 0, Tcell)
-
-def voc(E_gap, photon_spectrum, Tcell):
-    """
-    Calculates the open circuit voltage.
-
-    Parameters: 
-        E_gap(float):  Optical Band Gap in eV  
-        photon_spectrum(numpy.ndarray): Output spectrum as numpy ndarray.
-        Tcell(float): Operating temperature of the cell in K
-
-    Returns:
-        Open circuit voltage (float):  Maximum voltage across a solar cell with no current flow in V. 
-
-    """
-
     Jph = _photons_above_bandgap(E_gap, photon_spectrum)
     J0 = _rr0(E_gap, photon_spectrum, Tcell)
 
+    return q * (Jph - J0 * (np.exp(q * voltage / (k * Tcell)) - 1))
 
-    return (k * Tcell / q) * np.log( Jph / J0 +1)
 
-def v_at_mpp(E_gap, photon_spectrum,Tcell):
+def jsc(E_gap: float, photon_spectrum: NDArray, Tcell: float) -> float:
+    """Calculate the short-circuit current density.
 
+    Parameters
+    ----------
+    E_gap : float
+        Optical band gap in eV.
+    photon_spectrum : numpy.ndarray
+        Converted photon flux spectrum from ``convert_spectrum``.
+    Tcell : float
+        Operating temperature of the cell in K.
+
+    Returns
+    -------
+    float
+        Current density at zero applied voltage in A m⁻².
     """
-    Calculates the voltage at maximum power point (mpp) of a solar cell.
+    return current_density(E_gap, photon_spectrum, 0, Tcell)
 
-    Parameters: 
-        E_gap(float):  Optical Band Gap in eV  
-        photon_spectrum(numpy.ndarray): Output spectrum as numpy ndarray.
 
-    Returns:
-        Voltage at MPP (float):  Voltage across a solar cell at the maximum power point in V. 
+def voc(E_gap: float, photon_spectrum: NDArray, Tcell: float) -> float:
+    """Calculate the open-circuit voltage.
 
+    Parameters
+    ----------
+    E_gap : float
+        Optical band gap in eV.
+    photon_spectrum : numpy.ndarray
+        Converted photon flux spectrum from ``convert_spectrum``.
+    Tcell : float
+        Operating temperature of the cell in K.
+
+    Returns
+    -------
+    float
+        Maximum voltage across the cell with no current flow, in V.
     """
+    Jph = _photons_above_bandgap(E_gap, photon_spectrum)
+    J0 = _rr0(E_gap, photon_spectrum, Tcell)
 
-    v_open = voc(E_gap, photon_spectrum,Tcell)
+    return (k * Tcell / q) * np.log(Jph / J0 + 1)
+
+
+# Tcell is optional on v_at_mpp and j_at_mpp only: both are documented and
+# called as two-argument functions, and 300 K is the standard-condition
+# temperature the rest of this module's anchors (SQ limit, Voc tests) assume.
+def v_at_mpp(E_gap: float, photon_spectrum: NDArray, Tcell: float = 300.0) -> float:
+    """Calculate the voltage at the maximum power point.
+
+    Parameters
+    ----------
+    E_gap : float
+        Optical band gap in eV.
+    photon_spectrum : numpy.ndarray
+        Converted photon flux spectrum from ``convert_spectrum``.
+    Tcell : float, optional
+        Operating temperature of the cell in K. Default is ``300.0``.
+
+    Returns
+    -------
+    float
+        Voltage at the maximum power point in V.
+    """
+    v_open = voc(E_gap, photon_spectrum, Tcell)
     # print v_open
     v = np.linspace(0, v_open)
-    index = np.where(v * current_density(E_gap, photon_spectrum, v,Tcell)==max(v * current_density(E_gap, photon_spectrum, v, Tcell)))
+    index = np.where(
+        v * current_density(E_gap, photon_spectrum, v, Tcell)
+        == max(v * current_density(E_gap, photon_spectrum, v, Tcell)))
     return v[index][0]
 
-def j_at_mpp(E_gap, photon_spectrum,Tcell):
 
+def j_at_mpp(E_gap: float, photon_spectrum: NDArray, Tcell: float = 300.0) -> float:
+    """Calculate the current density at the maximum power point.
+
+    Parameters
+    ----------
+    E_gap : float
+        Optical band gap in eV.
+    photon_spectrum : numpy.ndarray
+        Converted photon flux spectrum from ``convert_spectrum``.
+    Tcell : float, optional
+        Operating temperature of the cell in K. Default is ``300.0``.
+
+    Returns
+    -------
+    float
+        Current density at the maximum power point in A m⁻².
     """
-    Calculates the current at maximum power point (mpp) of a solar cell.
+    return max_power(E_gap, photon_spectrum, Tcell) / v_at_mpp(E_gap, photon_spectrum, Tcell)
 
-    Parameters: 
-        E_gap(float):  Optical Band Gap in eV  
-        photon_spectrum(numpy.ndarray): Output spectrum as numpy ndarray.
 
-    Returns:
-       Current at MPP (float):  Current across a solar cell at the maximum power point. 
+def max_power(E_gap: float, photon_spectrum: NDArray, Tcell: float) -> float:
+    """Calculate the maximum power of a solar cell.
 
+    Parameters
+    ----------
+    E_gap : float
+        Optical band gap in eV.
+    photon_spectrum : numpy.ndarray
+        Converted photon flux spectrum from ``convert_spectrum``.
+    Tcell : float
+        Operating temperature of the cell in K.
+
+    Returns
+    -------
+    float
+        Maximum areal power density of the cell in W m⁻².
     """
-
-    return max_power(E_gap, photon_spectrum, Tcell) / v_at_mpp(E_gap, photon_spectrum,Tcell)
-
-def max_power(E_gap, photon_spectrum, Tcell):
-
-    """
-    Calculates the maximum power of a solar cell.
-
-    Parameters: 
-        E_gap(float):  Optical Band Gap in eV  
-        photon_spectrum(numpy.ndarray): Output spectrum as numpy ndarray.
-        Tcell(float): Operating temperature of the cell in K
-
-    Returns:
-       Maximum power (float):  Maximum power of the solar cell in V C cm⁻³ s⁻¹. 
-
-    """
-
     v_open = voc(E_gap, photon_spectrum, Tcell)
     v = np.linspace(0, v_open)
-    index = np.where(v * current_density(E_gap, photon_spectrum, v, Tcell)==max(v * current_density(E_gap, photon_spectrum, v, Tcell)))
+    index = np.where(v * current_density(E_gap, photon_spectrum, v, Tcell) == max(
+        v * current_density(E_gap, photon_spectrum, v, Tcell)))
     return max(v * current_density(E_gap, photon_spectrum, v, Tcell))
 
-def max_eff(E_gap, photon_spectrum, Tcell):
 
+def max_eff(E_gap: float, photon_spectrum: NDArray, Tcell: float) -> float:
+    """Calculate the maximum efficiency of a solar cell.
+
+    Parameters
+    ----------
+    E_gap : float
+        Optical band gap in eV.
+    photon_spectrum : numpy.ndarray
+        Converted photon flux spectrum from ``convert_spectrum``.
+    Tcell : float
+        Operating temperature of the cell in K.
+
+    Returns
+    -------
+    float
+        Maximum efficiency of the cell relative to the total irradiance,
+        as a dimensionless fraction.
     """
-    Calculates the maximum efficiency of a solar cell.
-
-    Parameters: 
-        E_gap(float):  Optical Band Gap in eV  
-        photon_spectrum(numpy.ndarray): Output spectrum as numpy ndarray.
-        Tcell(float): Operating temperature of the cell in K
-
-    Returns:
-       Maximum efficiency (float):  Maximum effeciency of the solar cell relative to the total irradiance in %.
-    """
-
-    photon_spectrum_1 = photon_spectrum[::-1, 1] 
+    photon_spectrum_1 = photon_spectrum[::-1, 1]
     photon_spectrum_0 = photon_spectrum[::-1, 0]
 
-    irradiance =  np.trapezoid(photon_spectrum_1 * q * photon_spectrum_0, photon_spectrum_0)
+    irradiance = np.trapezoid(photon_spectrum_1 * q * photon_spectrum_0, photon_spectrum_0)
     return max_power(E_gap, photon_spectrum, Tcell) / irradiance
 
-def fill_factor(E_gap, photon_spectrum, Tcell):
 
+def fill_factor(E_gap: float, photon_spectrum: NDArray, Tcell: float) -> float:
+    """Calculate the fill factor of a solar cell.
+
+    Parameters
+    ----------
+    E_gap : float
+        Optical band gap in eV.
+    photon_spectrum : numpy.ndarray
+        Converted photon flux spectrum from ``convert_spectrum``.
+    Tcell : float
+        Operating temperature of the cell in K.
+
+    Returns
+    -------
+    float
+        Fill factor of the cell, dimensionless.
     """
-    Calculates the fill factor of a solar cell.
-
-    Parameters: 
-        E_gap(float):  Optical Band Gap in eV  
-        photon_spectrum(numpy.ndarray): Output spectrum as numpy ndarray.
-        Tcell(float): Operating temperature of the cell in K
-
-    Returns:
-       fill_factor (float):  The fill factor of a solar cell.
-    """
-
-    j_sc = jsc(E_gap, photon_spectrum,Tcell)
+    j_sc = jsc(E_gap, photon_spectrum, Tcell)
     v_oc = voc(E_gap, photon_spectrum, Tcell)
-    v_mpp = v_at_mpp(E_gap, photon_spectrum,Tcell)
-    j_mpp = j_at_mpp(E_gap, photon_spectrum,Tcell)
+    v_mpp = v_at_mpp(E_gap, photon_spectrum, Tcell)
+    j_mpp = j_at_mpp(E_gap, photon_spectrum, Tcell)
 
-    fill_factor = ((j_mpp * v_mpp) / (j_sc * v_oc))
+    fill_factor = (j_mpp * v_mpp) / (j_sc * v_oc)
 
     return fill_factor

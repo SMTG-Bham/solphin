@@ -1,0 +1,47 @@
+# Read the Docs build configuration.
+# https://docs.readthedocs.com/platform/stable/config-file/v2.html
+version: 2
+
+build:
+  os: ubuntu-24.04
+  tools:
+    # 3.11 matches requires-python in pyproject.toml and the pin in
+    # environment.yml.
+    python: "3.11"
+
+sphinx:
+  configuration: docs/source/conf.py
+  # Left at the default (false) on purpose. The docstring warnings that used
+  # to block this (malformed inline emphasis in get_band_structure and
+  # mobility_plot) are fixed and a local `make -C docs html` is warning-free,
+  # so enabling this is now viable whenever a maintainer wants the guard.
+  fail_on_warning: false
+
+python:
+  install:
+    - method: pip
+      path: .
+      extra_requirements:
+        - docs
+
+# Installing the package itself (rather than just the [docs] extra) is
+# load-bearing, not belt-and-braces: docs/source/conf.py does `import solphin`
+# at module level to read __version__, and solphin/__init__.py imports every
+# submodule -- so numpy, scipy, matplotlib, pymatgen, sumo and ipywidgets all
+# have to be present before Sphinx starts, quite apart from what autodoc needs.
+#
+# sumo comes from PyPI here, which is the resolution environment.yml has to go
+# out of its way to reproduce: conda-forge's sumo pins castepxbin 0.1.0.*,
+# which caps numpy<2. PyPI's castepxbin accepts numpy>=1,<3, so a plain
+# `pip install .` is numpy-2 clean and needs no special-casing.
+#
+# No `formats:` entry: HTML only. A PDF build would put the tutorial notebook
+# and the raw <img> blocks in docs/source/index.rst through LaTeX, and neither
+# is written with that in mind.
+#
+# The full checkout is required, not just docs/. docs/source/full_workflow_tutorial.ipynb
+# is a git-tracked symlink to tutorial/full_workflow_tutorial.ipynb, so any
+# sparse or partial clone would break the tutorials page. The notebook is
+# rendered from its stored outputs, never re-executed (nb_execution_mode =
+# "off" in conf.py), so the VASP data under tests/data/ is not read at build
+# time.
