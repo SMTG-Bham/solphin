@@ -1,0 +1,33 @@
+# Install with: pre-commit install
+#
+# Deliberately no ruff-format hook yet: `ruff format` currently restructures 16
+# files, and CONTRIBUTING.md asks contributors to keep unrelated reformatting
+# out of a diff. Add the hook in the same change that lands that sweep (#34).
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: \.ipynb$
+      - id: end-of-file-fixer
+        exclude: \.ipynb$
+      - id: check-yaml
+      - id: check-toml
+      - id: check-merge-conflict
+      # docs/source/full_workflow_tutorial.ipynb is a symlink into tutorial/.
+      # A tool that writes a fix back through that path turns it into a 1.4 MB
+      # copy, and git shows only a content change unless you read the mode.
+      - id: check-symlinks
+      - id: destroyed-symlinks
+      - id: check-added-large-files
+        # tests/data/ already carries ~134 MB of VASP reference data. This
+        # only inspects newly added files, so that history is unaffected --
+        # the point is to stop the next vasprun.xml going in unnoticed.
+        args: [--maxkb=1024]
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    # Keep in step with the pin in .github/workflows/test.yml.
+    rev: v0.16.4
+    hooks:
+      - id: ruff-check
+        args: [--fix]

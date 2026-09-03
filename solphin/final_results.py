@@ -1,43 +1,172 @@
-from solphin.pv_fom import Final_equation
-from solphin.db_fom import max_eff
+"""Combine the detailed-balance limit and Γₚᵥ into final relative-efficiency results."""
 
-import numpy as np
-from matplotlib.axes import Axes
-from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
+import numpy as np
 from ipywidgets import interact, widgets
+from matplotlib.axes import Axes
+from matplotlib.cm import ScalarMappable
+from matplotlib.colors import LogNorm
+from matplotlib.figure import Figure
+from numpy.typing import NDArray
 
-import logging
-logging.getLogger('matplotlib.font_manager').disabled = True
-logging.basicConfig(level=logging.INFO)
+from solphin.db_fom import max_eff
+from solphin.pv_fom import SAMPLED_RANGES, Final_equation, check_sampled_ranges
 
-import warnings
-warnings.filterwarnings(action="ignore",message="This figure was using a layout engine that is incompatible with subplots_adjust{1}.+")
-warnings.filterwarnings(action="ignore",message="invalid value encountered in multiply{1}.+")
+# The sweep arguments each vary one property, so their bounds are checked
+# against that property's entry in the shared table rather than a second copy of
+# the numbers.
+_SWEEP_PROPERTIES = {
+    "dop_range": "dop_density",
+    "tau_range": "tau",
+    "mu_range": "mu",
+}
+
+# Default sweeps span exactly the sampled range of the property they vary, taken
+# from the table itself rather than restated, so a default can never fall
+# outside the window the following functions then check it against.
+_DEFAULT_DOP_RANGE = SAMPLED_RANGES["dop_density"][:2]
+_DEFAULT_TAU_RANGE = SAMPLED_RANGES["tau"][:2]
+_DEFAULT_MU_RANGE = SAMPLED_RANGES["mu"][:2]
+
+
+def _exponent_grid(start: float, stop: float, step: float) -> NDArray:
+    """Build an inclusive grid of base-10 exponents from start to stop.
+
+    ``np.arange`` excludes its stop, which left the default sweeps a decade
+    short of the bounds they document. Simply pushing the stop out by one step
+    overshoots whenever the step does not divide the span, which would take the
+    sweep past both the caller's maximum and the range sampled in Crovetto
+    2024 table 1. So the endpoint is admitted only when it lands on the grid.
+
+    Parameters
+    ----------
+    start : float
+        Base-10 exponent of the first point.
+    stop : float
+        Base-10 exponent of the last point, included when the step reaches it
+        exactly and otherwise the ceiling the grid stops below.
+    step : float
+        Spacing between successive exponents.
+
+    Returns
+    -------
+    numpy.ndarray
+        Exponents from ``start``, ascending, none of them above ``stop``.
+    """
+    exponents = np.arange(start, stop + step / 2, step)
+
+    # A float grid can land a hair above the stop, so compare with a tolerance
+    # small against the step rather than exactly.
+    return exponents[exponents <= stop + step * 1e-9]
+
+
+def _check_sweep_range(
+        name: str, bounds: tuple[float, float], allow_out_of_range: bool
+) -> None:
+    """Check the endpoints of a sweep range against Crovetto 2024 table 1.
+
+    A sweep steps one property across a range, so every point it visits has to
+    be inside the sampled range for the same reason a single value does. The
+    endpoints are checked before any of them is evaluated, so an unusable range
+    fails once with the range named rather than once per sample from inside the
+    figure of merit.
+
+    Parameters
+    ----------
+    name : str
+        Name of the sweep argument, one of ``"dop_range"``, ``"tau_range"`` or
+        ``"mu_range"``.
+    bounds : tuple of float
+        Minimum and maximum of the sweep.
+    allow_out_of_range : bool
+        If True, an endpoint outside the table 1 range warns instead of
+        raising.
+
+    Raises
+    ------
+    ValueError
+        If either endpoint lies outside the table 1 range of the property the
+        sweep varies and ``allow_out_of_range`` is False.
+
+    Warns
+    -----
+    UserWarning
+        The same conditions, when ``allow_out_of_range`` is True.
+    """
+    prop = _SWEEP_PROPERTIES[name]
+
+    for bound in bounds:
+        check_sampled_ranges({prop: bound}, allow_out_of_range)
+
 
 # Calculating equation 33 from the FOM paper
 
-def SQ_relative_FOM_PV_efficiency(E_gap, photon_spectrum, alpha, tau, sigma, dos_mass, dop_density, epsilon, mu, Tcell):
+def SQ_relative_FOM_PV_efficiency(
+        E_gap: float,
+        photon_spectrum: NDArray,
+        alpha: float,
+        tau: float,
+        sigma: float,
+        dos_mass: float,
+        dop_density: float,
+        epsilon: float,
+        mu: float,
+        Tcell: float,
+        *,
+        allow_out_of_range: bool = False,
+) -> tuple[float, float, float]:
+    """Calculate the Γₚᵥ efficiency and its value relative to the Shockley-Queisser limit.
 
-    ''' Calculates the final value for the photovoltaic figure of merit from Crovetto 2024 as a percentage of the Shockley Queisser efficiency limit.
-    
-    Parameters:
-        E_gap(float): Optical Band Gap in eV  
-        photon_spectrum(numpy.ndarrray): Converted input spectrum from DB_FOM.convert_spectrum y: Number of photons (Np/m2/s/dE) x: Energy (eV)
-        alpha(float): Spectral average of incident light in cm⁻¹
-        tau(float): Non-radiative recombination lifetime in s
-        sigma(float): Spectral dispersion of the absorption coefficient spectrum, unitless
-        dos_mass(float): Density of States effective mass in m₀
-        dop_density(float): Doping density in cm⁻³
-        epsilon(float): Static dielectric constant, unitless
-        mu(float): Charge carrier mobility in cm²V⁻¹s⁻¹
-        Tcell(float): Operating temperature of the cell in K
+    Implements equation 33 of Crovetto 2024.
 
-    Returns:
-        efficiency(float): Percentage photovoltaic figure of merit efficiency.
-    '''
+    Parameters
+    ----------
+    E_gap : float
+        Optical band gap in eV.
+    photon_spectrum : numpy.ndarray
+        Converted photon flux spectrum from ``convert_spectrum``: photon
+        energy in eV against photon flux in m⁻² s⁻¹ eV⁻¹.
+    alpha : float
+        Spectrally averaged absorption coefficient in cm⁻¹.
+    tau : float
+        Non-radiative recombination lifetime in s.
+    sigma : float
+        Spectral dispersion of the absorption coefficient, dimensionless.
+    dos_mass : float
+        Density-of-states effective mass in units of m₀.
+    dop_density : float
+        Doping density in cm⁻³.
+    epsilon : float
+        Static dielectric constant, dimensionless.
+    mu : float
+        Charge carrier mobility in cm² V⁻¹ s⁻¹.
+    Tcell : float
+        Operating temperature of the cell in K.
+    allow_out_of_range : bool, optional
+        If True, a property outside its Crovetto 2024 table 1 sampled range
+        warns instead of raising, and the efficiency is evaluated anyway.
+        Default is False. Keyword-only.
 
-    PV_FOM = Final_equation(E_gap, alpha, tau, sigma, dos_mass, dop_density, epsilon, mu)
+    Returns
+    -------
+    SQ : float
+        Shockley-Queisser limit efficiency in %.
+    SQ_relative : float
+        Figure-of-merit efficiency relative to the SQ limit, in %.
+    FOM_efficiency : float
+        Figure-of-merit photovoltaic efficiency in %.
+
+    Raises
+    ------
+    ValueError
+        If any property lies outside its Crovetto 2024 table 1 sampled range
+        in :data:`~solphin.pv_fom.SAMPLED_RANGES` and ``allow_out_of_range``
+        is False.
+    """
+    PV_FOM = Final_equation(
+        E_gap, alpha, tau, sigma, dos_mass, dop_density, epsilon, mu,
+        allow_out_of_range=allow_out_of_range,
+    )
 
     k_1 = 3.3e-1
     k_2 = 9.06e-2
@@ -55,205 +184,230 @@ def SQ_relative_FOM_PV_efficiency(E_gap, photon_spectrum, alpha, tau, sigma, dos
 
     efficiency = SQ_eff / ((1 + fraction) * denom_bracket)
 
-    FOM_efficiency = efficiency * 100 
+    FOM_efficiency = efficiency * 100
 
-    SQ_relative = (FOM_efficiency / SQ ) * 100
+    SQ_relative = (FOM_efficiency / SQ) * 100
 
     return SQ, SQ_relative, FOM_efficiency
 
 
 def plot_FOM(
-        fig:Figure, 
-        axes:list[Axes], 
-        E_gap,
-        photon_spectrum, 
-        alpha, 
-        tau, 
-        sigma, 
-        dos_mass, 
-        dop_density, 
-        epsilon, 
-        mu, 
-        Tcell,
-        dop_range:tuple[float,float], 
-        tau_range:tuple[float,float], 
-        mu_range:tuple[float,float]):
+        fig: Figure,
+        axes: list[Axes],
+        E_gap: float,
+        photon_spectrum: NDArray,
+        alpha: float,
+        tau: float,
+        sigma: float,
+        dos_mass: float,
+        dop_density: float,
+        epsilon: float,
+        mu: float,
+        Tcell: float,
+        dop_range: tuple[float, float] = _DEFAULT_DOP_RANGE,
+        tau_range: tuple[float, float] = _DEFAULT_TAU_RANGE,
+        mu_range: tuple[float, float] = _DEFAULT_MU_RANGE,
+        *,
+        allow_out_of_range: bool = False,
+) -> None:
+    """Plot the figure of merit against doping density, lifetime and mobility.
 
+    Each panel varies one transport parameter while the other two stay fixed
+    at their supplied values. All three sweeps are logarithmic, since each
+    spans several decades.
+
+    Parameters
+    ----------
+    fig : Figure
+        Matplotlib figure containing the axes for the plots.
+    axes : list of Axes
+        Three axes for the plots against dopant density, carrier lifetime
+        and mobility, respectively.
+    E_gap : float
+        Optical band gap in eV.
+    photon_spectrum : numpy.ndarray
+        Converted photon flux spectrum from ``convert_spectrum``.
+    alpha : float
+        Spectrally averaged absorption coefficient in cm⁻¹.
+    tau : float
+        Carrier lifetime in s, held fixed when varying dopant density and
+        mobility.
+    sigma : float
+        Spectral dispersion of the absorption coefficient, dimensionless.
+    dos_mass : float
+        Density-of-states effective mass in units of m₀.
+    dop_density : float
+        Dopant density in cm⁻³, held fixed when varying carrier lifetime
+        and mobility.
+    epsilon : float
+        Static dielectric constant, dimensionless.
+    mu : float
+        Carrier mobility in cm² V⁻¹ s⁻¹, held fixed when varying dopant
+        density and carrier lifetime.
+    Tcell : float
+        Operating temperature of the cell in K.
+    dop_range : tuple of float, optional
+        Minimum and maximum dopant densities evaluated, in cm⁻³. Default is
+        the sampled range of Crovetto 2024 table 1.
+    tau_range : tuple of float, optional
+        Minimum and maximum carrier lifetimes evaluated, in s. Default is the
+        sampled range of Crovetto 2024 table 1.
+    mu_range : tuple of float, optional
+        Minimum and maximum carrier mobilities evaluated, in
+        cm² V⁻¹ s⁻¹. Default is the sampled range of Crovetto 2024 table 1.
+    allow_out_of_range : bool, optional
+        If True, a fixed property or a sweep endpoint outside its Crovetto
+        2024 table 1 sampled range warns instead of raising, and the panels
+        are drawn anyway. Default is False. Keyword-only.
+
+    Raises
+    ------
+    ValueError
+        If a sweep endpoint or a fixed property lies outside its table 1
+        sampled range and ``allow_out_of_range`` is False.
     """
-    Plots the photovoltaic figure of merit as a function of key transport parameters.
+    # Checked before the first point is evaluated, so an unusable range fails
+    # once naming the range rather than fifty times from inside the sweep.
+    for name, bounds in (
+            ("dop_range", dop_range),
+            ("tau_range", tau_range),
+            ("mu_range", mu_range),
+    ):
+        _check_sweep_range(name, bounds, allow_out_of_range)
 
-    This function evaluates and plots the photovoltaic figure of merit while
-    independently varying dopant density, carrier lifetime, and carrier
-    mobility. For each plot, the other two transport parameters are held fixed
-    at their supplied values.
+    # For each of the three quantities, take the other two as fixed and iterate over a sensible range
 
-    Parameters:
-        fig(Figure): Matplotlib figure containing the axes used for the
-            figure-of-merit plots.
-
-        axes(list[Axes]): List of three Matplotlib axes used to plot the figure
-            of merit against dopant density, carrier lifetime, and mobility,
-            respectively.
-
-        E_gap(float): Electronic band gap used in the photovoltaic efficiency
-            calculation.
-
-        photon_spectrum: Incident photon spectrum used in the photovoltaic
-            efficiency calculation.
-
-        alpha: Absorption coefficient data used in the photovoltaic efficiency
-            calculation.
-
-        tau(float): Carrier lifetime held fixed when varying dopant density and
-            mobility.
-
-        sigma: Carrier capture cross section used in the photovoltaic efficiency
-            calculation.
-
-        dos_mass(float): Density-of-states effective mass used in the
-            photovoltaic efficiency calculation.
-
-        dop_density(float): Dopant density held fixed when varying carrier
-            lifetime and mobility.
-
-        epsilon(float): Dielectric constant used in the photovoltaic efficiency
-            calculation.
-
-        mu(float): Carrier mobility held fixed when varying dopant density and
-            carrier lifetime.
-
-        Tcell(float): Cell temperature used in the photovoltaic efficiency
-            calculation.
-
-        dop_range(tuple[float, float]): Minimum and maximum dopant densities
-            over which the figure of merit is evaluated.
-
-        tau_range(tuple[float, float]): Minimum and maximum carrier lifetimes
-            over which the figure of merit is evaluated.
-
-        mu_range(tuple[float, float]): Minimum and maximum carrier mobilities
-            over which the figure of merit is evaluated.
-
-    Returns:
-        None
-    """
-
-    #For each of the three quantities, take the other two as fixed and iterate over a sensible range
-
-    #Plot vs dopant density
+    # Plot vs dopant density
     densities = np.logspace(np.log10(dop_range[0]), np.log10(dop_range[1]))
-    dop_foms = [SQ_relative_FOM_PV_efficiency(E_gap=E_gap, photon_spectrum=photon_spectrum, alpha=alpha, tau=tau, sigma=sigma, dos_mass=dos_mass, dop_density=d, epsilon=epsilon, mu=mu, Tcell=Tcell)[-1] for d in densities]
+    dop_foms = [
+        SQ_relative_FOM_PV_efficiency(E_gap=E_gap, photon_spectrum=photon_spectrum, alpha=alpha, tau=tau, sigma=sigma,
+                                      dos_mass=dos_mass, dop_density=d, epsilon=epsilon, mu=mu, Tcell=Tcell,
+                                      allow_out_of_range=allow_out_of_range)[-1] for d
+        in densities]
     axes[0].plot(densities, dop_foms, "-", markersize=6)
     axes[0].set_xscale("log")
     axes[0].set_xlabel("Doping Density (cm$^{-3}$)")
     axes[0].set_ylabel("Figure of Merit")
-    axes[0].set_title("Figure of Merit vs Doping Density \n"+r"($\mu$="+str(mu)+r", $\tau$=" + f"{tau:.2e}" + ")")
+    axes[0].set_title("Figure of Merit vs Doping Density \n" + r"($\mu$=" + str(mu) + r", $\tau$=" + f"{tau:.2e}" + ")")
 
-    #Plot vs lifetime
-    lifetimes = np.linspace(tau_range[0], tau_range[1])
-    lifetime_foms = [SQ_relative_FOM_PV_efficiency(E_gap=E_gap, photon_spectrum=photon_spectrum, alpha=alpha, tau=l, sigma=sigma, dos_mass=dos_mass, dop_density=dop_density, epsilon=epsilon, mu=mu, Tcell=Tcell)[-1] for l in lifetimes]
+    # Plot vs lifetime
+    lifetimes = np.logspace(np.log10(tau_range[0]), np.log10(tau_range[1]))
+    lifetime_foms = [
+        SQ_relative_FOM_PV_efficiency(E_gap=E_gap, photon_spectrum=photon_spectrum, alpha=alpha, tau=l, sigma=sigma,
+                                      dos_mass=dos_mass, dop_density=dop_density, epsilon=epsilon, mu=mu, Tcell=Tcell,
+                                      allow_out_of_range=allow_out_of_range)[
+            -1] for l in lifetimes]
     axes[1].plot(lifetimes, lifetime_foms, "-", markersize=6)
+    axes[1].set_xscale("log")
     axes[1].set_xlabel("Carrier Lifetime (s)")
-    axes[1].set_title("Figure of Merit vs Carrier Lifetime \n"+r"($\mu$="+str(mu)+r", Density=" + f"{dop_density:.2e}" + ")")
+    axes[1].set_title(
+        "Figure of Merit vs Carrier Lifetime \n" + r"($\mu$=" + str(mu) + r", Density=" + f"{dop_density:.2e}" + ")")
 
-    #Plot vs mobility
-    mobilities = np.linspace(mu_range[0], mu_range[1])
-    mob_foms = [SQ_relative_FOM_PV_efficiency(E_gap=E_gap, photon_spectrum=photon_spectrum, alpha=alpha, tau=tau, sigma=sigma, dos_mass=dos_mass, dop_density=dop_density, epsilon=epsilon, mu=m, Tcell=Tcell)[-1] for m in mobilities]
+    # Plot vs mobility
+    mobilities = np.logspace(np.log10(mu_range[0]), np.log10(mu_range[1]))
+    mob_foms = [
+        SQ_relative_FOM_PV_efficiency(E_gap=E_gap, photon_spectrum=photon_spectrum, alpha=alpha, tau=tau, sigma=sigma,
+                                      dos_mass=dos_mass, dop_density=dop_density, epsilon=epsilon, mu=m, Tcell=Tcell,
+                                      allow_out_of_range=allow_out_of_range)[
+            -1] for m in mobilities]
     axes[2].plot(mobilities, mob_foms, "-", markersize=6)
+    axes[2].set_xscale("log")
     axes[2].set_xlabel("Carrier Mobility (cm$^2$V$^{-1}$s$^{-1}$)")
-    axes[2].set_title("Figure of Merit vs Carrier Mobility \n" + "(Density=" + f"{dop_density:.2e}" + r", $\tau$="+ f"{tau:.2e}" + ")")
+    axes[2].set_title(
+        "Figure of Merit vs Carrier Mobility \n" + "(Density=" + f"{dop_density:.2e}" + r", $\tau$=" + f"{tau:.2e}" + ")")
 
-def _get_step(quantity_range):
-    """
-    Calculates the step size for a specified quantity range.
-
-    This function divides the interval between the minimum and maximum values
-    of the supplied range into 100 equal steps.
-
-    Parameters:
-        quantity_range(tuple): Minimum and maximum values defining the range,
-            specified as (minimum, maximum).
-
-    Returns:
-        float: Step size corresponding to one hundredth of the supplied range.
-    """
-    return (quantity_range[1] - quantity_range[0])/100
 
 def plot_final_result_interactive(
-        E_gap,
-        photon_spectrum, 
-        alpha, 
-        tau, 
-        sigma, 
-        dos_mass, 
-        dop_density, 
-        epsilon, 
-        mu, 
-        Tcell,
-        dop_range:tuple[float,float]=(1e10, 1e18), 
-        tau_range:tuple[float,float]=(1e-15, 1e3), 
-        mu_range:tuple[float,float]=(1e-2, 1e9)):
-    """
-    Creates an interactive Figure of Merit visualization dashboard.
+        E_gap: float,
+        photon_spectrum: NDArray,
+        alpha: float,
+        tau: float,
+        sigma: float,
+        dos_mass: float,
+        dop_density: float,
+        epsilon: float,
+        mu: float,
+        Tcell: float,
+        dop_range: tuple[float, float] = _DEFAULT_DOP_RANGE,
+        tau_range: tuple[float, float] = _DEFAULT_TAU_RANGE,
+        mu_range: tuple[float, float] = _DEFAULT_MU_RANGE,
+        *,
+        allow_out_of_range: bool = False,
+) -> None:
+    """Create an interactive figure-of-merit dashboard with parameter sliders.
 
-    Parameters:
-        E_gap(float): Optical Band Gap in eV  
-        photon_spectrum(numpy.ndarrray): Converted input spectrum from DB_FOM.convert_spectrum y: Number of photons (Np/m2/s/dE) x: Energy (eV)
-        alpha(float): Spectral average of incident light in cm⁻¹
-        tau(float): Non-radiative recombination lifetime in s
-        sigma(float): Spectral dispersion of the absorption coefficient spectrum, unitless
-        dos_mass(float): Density of States effective mass in m₀
-        dop_density(float): Doping density in cm⁻³
-        epsilon(float): Static dielectric constant, unitless
-        mu(float): Charge carrier mobility in cm²V⁻¹s⁻¹
-        Tcell(float): Operating temperature of the cell in K
-        dop_range(tuple[float,float]): Range of dopant densities to explore in the interactive plot (default: (1e8, 1e24))
-        tau_range(tuple[float,float]): Range of carrier lifetimes to explore in the interactive plot (default: (1e-8, 1e-6))
-        mu_range(tuple[float,float]): Range of carrier mobilities to explore in the interactive plot (default: (1, 300))
+    Parameters
+    ----------
+    E_gap : float
+        Optical band gap in eV.
+    photon_spectrum : numpy.ndarray
+        Converted photon flux spectrum from ``convert_spectrum``.
+    alpha : float
+        Spectrally averaged absorption coefficient in cm⁻¹.
+    tau : float
+        Non-radiative recombination lifetime in s.
+    sigma : float
+        Spectral dispersion of the absorption coefficient, dimensionless.
+    dos_mass : float
+        Density-of-states effective mass in units of m₀.
+    dop_density : float
+        Doping density in cm⁻³.
+    epsilon : float
+        Static dielectric constant, dimensionless.
+    mu : float
+        Charge carrier mobility in cm² V⁻¹ s⁻¹.
+    Tcell : float
+        Operating temperature of the cell in K.
+    dop_range : tuple of float, optional
+        Dopant density range explored by the slider, in cm⁻³.
+        Default is the sampled range of Crovetto 2024 table 1.
+    tau_range : tuple of float, optional
+        Carrier lifetime range explored by the slider, in s.
+        Default is the sampled range of Crovetto 2024 table 1.
+    mu_range : tuple of float, optional
+        Carrier mobility range explored by the slider, in cm² V⁻¹ s⁻¹.
+        Default is the sampled range of Crovetto 2024 table 1.
+    allow_out_of_range : bool, optional
+        If True, a property or a slider bound outside its Crovetto 2024
+        table 1 sampled range warns instead of raising. Default is False.
+        Keyword-only.
 
-    Returns:
-        None
+    Raises
+    ------
+    ValueError
+        If a slider bound or a fixed property lies outside its table 1
+        sampled range and ``allow_out_of_range`` is False.
     """
     plt.close("all")
-    fig, axes = plt.subplots(1,3, figsize=(12,3), dpi=120, constrained_layout=True)
+    fig, axes = plt.subplots(1, 3, figsize=(12, 3), dpi=120, constrained_layout=True)
 
-    fig.canvas.header_visible = False      # hides the figure “header” in JupyterLab
-    fig.canvas.footer_visible = False      # hides the footer
-    fig.canvas.toolbar_visible = False     # hides the toolbar
+    # These three attributes exist only on the ipympl canvas, i.e. under
+    # %matplotlib widget. Install it with the "interactive" extra:
+    #     pip install "solphin[interactive]"
+    fig.canvas.header_visible = False  # type: ignore[attr-defined]  # hides the figure “header” in JupyterLab
+    fig.canvas.footer_visible = False  # type: ignore[attr-defined]  # hides the footer
+    fig.canvas.toolbar_visible = False  # type: ignore[attr-defined]  # hides the toolbar
 
     # wrapping that clears axes and redraws combined DB plots
 
-    def plot_combined_wrapper(density, lifetime, mobility):
+    def plot_combined_wrapper(density: float, lifetime: float, mobility: float) -> None:
+        """Clear the axes and redraw the plots for the selected slider values.
 
+        Parameters
+        ----------
+        density : float
+            Doping density in cm⁻³.
+        lifetime : float
+            Carrier lifetime in s.
+        mobility : float
+            Carrier mobility in cm² V⁻¹ s⁻¹.
         """
-        Updates the combined figure using the selected transport parameters.
-
-        This function clears the existing figure axes and redraws the
-        figure-of-merit plots using the specified doping density, carrier
-        lifetime, and mobility together with the fixed material and simulation
-        parameters defined in the enclosing scope.
-
-        Parameters:
-            density(float): Doping density used for the figure-of-merit
-                calculation.
-
-            lifetime(float): Carrier lifetime used for the figure-of-merit
-                calculation.
-
-            mobility(float): Carrier mobility used for the figure-of-merit
-                calculation.
-
-        Returns:
-            None
-        """
-
         for ax in fig.axes:
             ax.clear()
             ax.set_xlabel("")
             ax.set_ylabel("")
             ax.set_title("")
 
-        
         plot_FOM(
             fig=fig,
             axes=axes,
@@ -270,116 +424,213 @@ def plot_final_result_interactive(
             dop_range=dop_range,
             tau_range=tau_range,
             mu_range=mu_range,
-            )
+            allow_out_of_range=allow_out_of_range,
+        )
 
-    widget_layout = layout=widgets.Layout(width='800px')
+    widget_layout = layout = widgets.Layout(width='800px')
     widget_style = {'description_width': '200px'}
 
-    dopant_slider   = widgets.FloatLogSlider(value=dop_density, min=np.log10(dop_range[0]), max=np.log10(dop_range[1]), step=0.1, description="Doping Density (cm⁻³)",    layout=widget_layout, style=widget_style)
-    lifetime_slider = widgets.FloatLogSlider(value=tau, min=np.log10(tau_range[0]), max=np.log10(tau_range[1]), step=0.01, description="Carrier Lifetime (s)", layout=widget_layout, style=widget_style)
-    mobility_slider = widgets.FloatSlider(value=mu, min=mu_range[0], max=mu_range[1], step=_get_step(mu_range), description="Carrier Mobility (cm²V⁻¹s⁻¹)", layout=widget_layout, style=widget_style)
+    dopant_slider = widgets.FloatLogSlider(value=dop_density, min=np.log10(dop_range[0]), max=np.log10(dop_range[1]),
+                                           step=0.1, description="Doping Density (cm⁻³)", layout=widget_layout,
+                                           style=widget_style)
+    lifetime_slider = widgets.FloatLogSlider(value=tau, min=np.log10(tau_range[0]), max=np.log10(tau_range[1]),
+                                             step=0.01, description="Carrier Lifetime (s)", layout=widget_layout,
+                                             style=widget_style)
+    mobility_slider = widgets.FloatLogSlider(value=mu, min=np.log10(mu_range[0]), max=np.log10(mu_range[1]),
+                                             step=0.1, description="Carrier Mobility (cm²V⁻¹s⁻¹)",
+                                             layout=widget_layout, style=widget_style)
 
     interact(plot_combined_wrapper, density=dopant_slider, lifetime=lifetime_slider, mobility=mobility_slider)
 
-def _clearlines(n):
 
+def _clearlines(n: int) -> None:
+    """Clear previously printed terminal lines with ANSI escape sequences.
+
+    Parameters
+    ----------
+    n : int
+        Number of terminal lines to move upward and clear.
     """
-    Clears a specified number of previously printed terminal lines.
-
-    This function uses ANSI escape sequences to move the terminal cursor upward
-    and clear each selected line. It is intended for updating or replacing
-    previously printed command-line output.
-
-    Parameters:
-        n(int): Number of terminal lines to move upward and clear.
-
-    Returns:
-        None
-    """
-        
     LINE_UP = '\033[1A'
     LINE_CLEAR = '\x1b[2K'
     for i in range(n):
         print(LINE_UP, end=LINE_CLEAR)
 
+
 def print_final_result_interactive(
-        E_gap,
-        photon_spectrum, 
-        alpha, 
-        tau, 
-        sigma, 
-        dos_mass, 
-        dop_density, 
-        epsilon, 
-        mu, 
-        Tcell,
-        dop_range:tuple[float,float]=(1e10, 1e18), 
-        tau_range:tuple[float,float]=(1e-15, 1e3), 
-        mu_range:tuple[float,float]=(1e-2, 1e9)):
+        E_gap: float,
+        photon_spectrum: NDArray,
+        alpha: float,
+        tau: float,
+        sigma: float,
+        dos_mass: float,
+        dop_density: float,
+        epsilon: float,
+        mu: float,
+        Tcell: float,
+        dop_range: tuple[float, float] = _DEFAULT_DOP_RANGE,
+        tau_range: tuple[float, float] = _DEFAULT_TAU_RANGE,
+        mu_range: tuple[float, float] = _DEFAULT_MU_RANGE,
+        *,
+        allow_out_of_range: bool = False,
+) -> None:
+    """Interactively print the figure-of-merit efficiencies with parameter sliders.
+
+    Parameters
+    ----------
+    E_gap : float
+        Optical band gap in eV.
+    photon_spectrum : numpy.ndarray
+        Converted photon flux spectrum from ``convert_spectrum``.
+    alpha : float
+        Spectrally averaged absorption coefficient in cm⁻¹.
+    tau : float
+        Non-radiative recombination lifetime in s.
+    sigma : float
+        Spectral dispersion of the absorption coefficient, dimensionless.
+    dos_mass : float
+        Density-of-states effective mass in units of m₀.
+    dop_density : float
+        Doping density in cm⁻³.
+    epsilon : float
+        Static dielectric constant, dimensionless.
+    mu : float
+        Charge carrier mobility in cm² V⁻¹ s⁻¹.
+    Tcell : float
+        Operating temperature of the cell in K.
+    dop_range : tuple of float, optional
+        Dopant density range explored by the slider, in cm⁻³.
+        Default is the sampled range of Crovetto 2024 table 1.
+    tau_range : tuple of float, optional
+        Carrier lifetime range explored by the slider, in s.
+        Default is the sampled range of Crovetto 2024 table 1.
+    mu_range : tuple of float, optional
+        Carrier mobility range explored by the slider, in cm² V⁻¹ s⁻¹.
+        Default is the sampled range of Crovetto 2024 table 1.
+    allow_out_of_range : bool, optional
+        If True, a property or a slider bound outside its Crovetto 2024
+        table 1 sampled range warns instead of raising. Default is False.
+        Keyword-only.
+
+    Raises
+    ------
+    ValueError
+        If a slider bound or a fixed property lies outside its table 1
+        sampled range and ``allow_out_of_range`` is False.
     """
-    Interactively writes figure of merit information.
 
-    Parameters:
-        E_gap(float): Optical Band Gap in eV  
-        photon_spectrum(numpy.ndarrray): Converted input spectrum from DB_FOM.convert_spectrum y: Number of photons (Np/m2/s/dE) x: Energy (eV)
-        alpha(float): Spectral average of incident light in cm⁻¹
-        tau(float): Non-radiative recombination lifetime in s
-        sigma(float): Spectral dispersion of the absorption coefficient spectrum, unitless
-        dos_mass(float): Density of States effective mass in m₀
-        dop_density(float): Doping density in cm⁻³
-        epsilon(float): Static dielectric constant, unitless
-        mu(float): Charge carrier mobility in cm²V⁻¹s⁻¹
-        Tcell(float): Operating temperature of the cell in K
-        dop_range(tuple[float,float]): Range of dopant densities to explore in the interactive plot (default: (1e8, 1e24))
-        tau_range(tuple[float,float]): Range of carrier lifetimes to explore in the interactive plot (default: (1e-8, 1e-6))
-        mu_range(tuple[float,float]): Range of carrier mobilities to explore in the interactive plot (default: (1, 300))
-
-    Returns:
-        None
-    """
-
-    def print_fom(density, lifetime, mobility):
-
+    def print_fom(density: float, lifetime: float, mobility: float) -> None:
+        """Print the figure-of-merit efficiencies for the selected slider values."""
         _clearlines(5)
 
-        sq, fom_sq, eff= SQ_relative_FOM_PV_efficiency(E_gap, photon_spectrum, alpha, lifetime, sigma, dos_mass, density, epsilon, mobility, Tcell)
+        sq, fom_sq, eff = SQ_relative_FOM_PV_efficiency(E_gap, photon_spectrum, alpha, lifetime, sigma, dos_mass,
+                                                        density, epsilon, mobility, Tcell,
+                                                        allow_out_of_range=allow_out_of_range)
         print("")
         print(f"Photovoltaic Figure of Merit relative to the SQ limit: {fom_sq:.2f} %")
         print(f"Photovoltaic Figure of Merit total efficiency: {eff:.2f} %")
         print(f"SQ limit: {sq:.2f} %")
 
-    widget_layout = layout=widgets.Layout(width='800px')
+    # This wrapper drives the efficiency directly rather than through plot_FOM,
+    # so the slider bounds are checked here instead.
+    for name, bounds in (
+            ("dop_range", dop_range),
+            ("tau_range", tau_range),
+            ("mu_range", mu_range),
+    ):
+        _check_sweep_range(name, bounds, allow_out_of_range)
+
+    widget_layout = layout = widgets.Layout(width='800px')
     widget_style = {'description_width': '200px'}
 
-    dopant_slider   = widgets.FloatLogSlider(value=dop_density, min=np.log10(dop_range[0]), max=np.log10(dop_range[1]), step=0.1, description="Doping Density (cm⁻³)",    layout=widget_layout, style=widget_style)
-    lifetime_slider = widgets.FloatLogSlider(value=tau, min=np.log10(tau_range[0]), max=np.log10(tau_range[1]), step=0.01, description="Carrier Lifetime (s)", layout=widget_layout, style=widget_style)
-    mobility_slider = widgets.FloatSlider(value=mu, min=mu_range[0], max=mu_range[1], step=_get_step(mu_range), description="Carrier Mobility (cm²V⁻¹s⁻¹)", layout=widget_layout, style=widget_style)
+    dopant_slider = widgets.FloatLogSlider(value=dop_density, min=np.log10(dop_range[0]), max=np.log10(dop_range[1]),
+                                           step=0.1, description="Doping Density (cm⁻³)", layout=widget_layout,
+                                           style=widget_style)
+    lifetime_slider = widgets.FloatLogSlider(value=tau, min=np.log10(tau_range[0]), max=np.log10(tau_range[1]),
+                                             step=0.01, description="Carrier Lifetime (s)", layout=widget_layout,
+                                             style=widget_style)
+    mobility_slider = widgets.FloatLogSlider(value=mu, min=np.log10(mu_range[0]), max=np.log10(mu_range[1]),
+                                             step=0.1, description="Carrier Mobility (cm²V⁻¹s⁻¹)",
+                                             layout=widget_layout, style=widget_style)
 
     interact(print_fom, density=dopant_slider, lifetime=lifetime_slider, mobility=mobility_slider)
 
 
 def mobility_plot(
-    E_gap,
-    photon_spectrum,
-    alpha,
-    sigma,
-    dos_mass,
-    epsilon,
-    dop_density=1e10,
-    mob_min=-2,
-    mob_max=9,
-    lifetime_min=-15,
-    lifetime_max=3,
-    step=1,
-    Tcell=300
-):
+        E_gap: float,
+        photon_spectrum: NDArray,
+        alpha: float,
+        sigma: float,
+        dos_mass: float,
+        epsilon: float,
+        dop_density: float = 1e10,
+        mob_min: float = -2,
+        mob_max: float = 9,
+        lifetime_min: float = -15,
+        lifetime_max: float = 3,
+        step: float = 1,
+        Tcell: float = 300,
+        *,
+        allow_out_of_range: bool = False,
+) -> None:
+    """Plot the figure-of-merit efficiency against mobility, one line per lifetime.
 
-    from matplotlib.colors import LogNorm
-    from matplotlib.cm import ScalarMappable
+    Mobility and lifetime are swept on logarithmic grids: the ``*_min`` and
+    ``*_max`` arguments are base-10 exponents, not values, so the defaults
+    cover 10⁻² to 10⁹ cm² V⁻¹ s⁻¹ and 10⁻¹⁵ to 10³ s.
+
+    Parameters
+    ----------
+    E_gap : float
+        Optical band gap in eV.
+    photon_spectrum : numpy.ndarray
+        Converted photon flux spectrum from ``convert_spectrum``: photon
+        energy in eV against photon flux in m⁻² s⁻¹ eV⁻¹.
+    alpha : float
+        Spectrally averaged absorption coefficient in cm⁻¹.
+    sigma : float
+        Spectral dispersion of the absorption coefficient, dimensionless.
+    dos_mass : float
+        Density-of-states effective mass in units of m₀.
+    epsilon : float
+        Static dielectric constant, dimensionless.
+    dop_density : float, optional
+        Doping density in cm⁻³. Default is ``1e10``.
+    mob_min : float, optional
+        Base-10 exponent of the lowest mobility swept. Default is ``-2``.
+    mob_max : float, optional
+        Base-10 exponent of the highest mobility swept, included when
+        ``step`` reaches it exactly. Default is ``9``.
+    lifetime_min : float, optional
+        Base-10 exponent of the shortest lifetime swept. Default is ``-15``.
+    lifetime_max : float, optional
+        Base-10 exponent of the longest lifetime swept, included when ``step``
+        reaches it exactly. Default is ``3``.
+    step : float, optional
+        Spacing between successive exponents. Default is ``1``.
+    Tcell : float, optional
+        Operating temperature of the cell in K. Default is ``300``.
+    allow_out_of_range : bool, optional
+        If True, a property or a sweep endpoint outside its Crovetto 2024
+        table 1 sampled range warns instead of raising, and the lines are
+        drawn anyway. Default is False. Keyword-only.
+
+    Raises
+    ------
+    ValueError
+        If a sweep endpoint or a fixed property lies outside its table 1
+        sampled range and ``allow_out_of_range`` is False.
+    """
+    # The sweeps are given as exponents, so they are converted before being
+    # checked against the table, which holds values.
+    _check_sweep_range("mu_range", (10.0 ** mob_min, 10.0 ** mob_max), allow_out_of_range)
+    _check_sweep_range(
+        "tau_range", (10.0 ** lifetime_min, 10.0 ** lifetime_max), allow_out_of_range
+    )
 
     # Exponents
-    mobility_exp = np.arange(mob_min, mob_max, step)
-    lifetime_exp = np.arange(lifetime_min, lifetime_max, step)
+    mobility_exp = _exponent_grid(mob_min, mob_max, step)
+    lifetime_exp = _exponent_grid(lifetime_min, lifetime_max, step)
 
     # Actual values: 1e-2, 1e-1, 1e0, ...
     mobility_values = 10.0 ** mobility_exp
@@ -401,8 +652,7 @@ def mobility_plot(
         efficiency_list = []
 
         for mu in mobility_values:
-
-            efficiency = SQ_relative_FOM_PV_efficiency(
+            _, _, efficiency = SQ_relative_FOM_PV_efficiency(
                 E_gap,
                 photon_spectrum,
                 alpha,
@@ -412,7 +662,8 @@ def mobility_plot(
                 dop_density=dop_density,
                 epsilon=epsilon,
                 mu=mu,
-                Tcell=Tcell
+                Tcell=Tcell,
+                allow_out_of_range=allow_out_of_range,
             )
 
             efficiency_list.append(efficiency)
@@ -440,8 +691,8 @@ def mobility_plot(
 
     # Larger text
     ax.tick_params(axis="both", labelsize=12)
-    ax.xaxis.label.set_size(14)
-    ax.yaxis.label.set_size(14)
+    ax.xaxis.label.set_fontsize(14)
+    ax.yaxis.label.set_fontsize(14)
     cbar.ax.tick_params(labelsize=12)
 
     fig.tight_layout()
