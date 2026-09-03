@@ -628,19 +628,20 @@ def plot_blank(use_slme, thickness_range, eff_slme, eff_lam, eff_flat, linestyle
         None
     """
 
-    fig, ax = plt.subplots(figsize=(8, 4))
+    fig, ax = plt.subplots(figsize=(8, 6))
 
     if use_slme:
-        ax.plot(thickness_range, eff_slme, color = 'blue', label="SLME")
-    ax.plot(thickness_range, eff_lam, color = 'green', label="Blank Lambertian")
-    ax.plot(thickness_range, eff_flat, color = 'orange', label="Blank Flat", linestyle=linestyle)
+        ax.plot(thickness_range, eff_slme, color = 'blue', label="SLME", linewidth=3)
+    ax.plot(thickness_range, eff_lam, color = 'green', label="Blank Lambertian", linewidth=3)
+    ax.plot(thickness_range, eff_flat, color = 'orange', label="Blank Flat", linestyle=linestyle, linewidth=3)
     ax.set_xscale("log")
-    ax.set_xlabel("Film Thickness / m", labelpad=5)
-    ax.set_ylabel(r"Max PV Efficiency $(\eta_\mathrm{Max})$ / %")
+    ax.set_xlabel("Film Thickness / m", labelpad=5, fontsize=20)
+    ax.tick_params(axis="both", labelsize=16)
+    ax.set_ylabel(r"Max PV Efficiency $(\eta_\mathrm{Max})$ / %", fontsize=20)
     ax.set_ylim([0, 35])
     ax.margins(x=0)
-    ax.legend()
+    ax.legend(fontsize=16)
     plt.tight_layout()    
     if save:
-        plt.savefig("slme.png", dpi=700)
+        plt.savefig("slme.png", dpi=2000)
     plt.show()

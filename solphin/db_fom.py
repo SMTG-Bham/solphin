@@ -184,7 +184,7 @@ def current_density(E_gap, photon_spectrum, voltage, Tcell):
         Tcell(float): Operating temperature of the cell in K
 
     Returns:
-        Current density (float):  Current that flows across a cross sectional area in C cm⁻³s⁻¹. 
+        Current density (float):  Current that flows across a cross sectional area in A/m2. 
 
     """
 
@@ -200,7 +200,7 @@ def jsc(E_gap, photon_spectrum, Tcell):
         photon_spectrum(numpy.ndarray): Output spectrum as numpy ndarray.
 
     Returns:
-        Short circuit current density (float):  Current that flows across a cross sectional area at 0 applied voltage in C cm⁻³s⁻¹.  
+        Short circuit current density (float):  Current that flows across a cross sectional area at 0 applied voltage in A/m2.  
 
     """
     
@@ -226,7 +226,7 @@ def voc(E_gap, photon_spectrum, Tcell):
 
     return (k * Tcell / q) * np.log( Jph / J0 +1)
 
-def v_at_mpp(E_gap, photon_spectrum):
+def v_at_mpp(E_gap, photon_spectrum,Tcell):
 
     """
     Calculates the voltage at maximum power point (mpp) of a solar cell.
@@ -240,13 +240,13 @@ def v_at_mpp(E_gap, photon_spectrum):
 
     """
 
-    v_open = voc(E_gap, photon_spectrum)
+    v_open = voc(E_gap, photon_spectrum,Tcell)
     # print v_open
     v = np.linspace(0, v_open)
-    index = np.where(v * current_density(E_gap, photon_spectrum, v)==max(v * current_density(E_gap, photon_spectrum, v)))
+    index = np.where(v * current_density(E_gap, photon_spectrum, v,Tcell)==max(v * current_density(E_gap, photon_spectrum, v, Tcell)))
     return v[index][0]
 
-def j_at_mpp(E_gap, photon_spectrum):
+def j_at_mpp(E_gap, photon_spectrum,Tcell):
 
     """
     Calculates the current at maximum power point (mpp) of a solar cell.
@@ -260,7 +260,7 @@ def j_at_mpp(E_gap, photon_spectrum):
 
     """
 
-    return max_power(E_gap, photon_spectrum) / v_at_mpp(E_gap, photon_spectrum)
+    return max_power(E_gap, photon_spectrum, Tcell) / v_at_mpp(E_gap, photon_spectrum,Tcell)
 
 def max_power(E_gap, photon_spectrum, Tcell):
 
@@ -316,11 +316,11 @@ def fill_factor(E_gap, photon_spectrum, Tcell):
        fill_factor (float):  The fill factor of a solar cell.
     """
 
-    j_sc = jsc(E_gap, photon_spectrum)
+    j_sc = jsc(E_gap, photon_spectrum,Tcell)
     v_oc = voc(E_gap, photon_spectrum, Tcell)
-    v_mpp = v_at_mpp(E_gap, photon_spectrum)
-    j_mpp = j_at_mpp(E_gap, photon_spectrum)
+    v_mpp = v_at_mpp(E_gap, photon_spectrum,Tcell)
+    j_mpp = j_at_mpp(E_gap, photon_spectrum,Tcell)
 
-    fill_factor = (j_mpp * v_mpp) / (j_sc, v_oc)
+    fill_factor = ((j_mpp * v_mpp) / (j_sc * v_oc))
 
     return fill_factor
