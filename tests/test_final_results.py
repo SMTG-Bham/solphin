@@ -17,10 +17,10 @@ import solphin.final_results as final_results
 # CH3NH3PbI3 (MAPI) property set from Table 2 of the paper; the same block is
 # quoted in tutorial cell 40 and reused by test_pv_fom.
 #
-# Annotated Any rather than float because it is splatted into a signature that
-# carries the keyword-only allow_out_of_range bool: a dict[str, float] cannot
-# prove to a type checker that it will not land there. The values are pinned by
-# the assertions below either way.
+# dict[str, Any] rather than the inferred dict[str, float]: the set is splatted
+# into SQ_relative_FOM_PV_efficiency, whose keyword-only allow_out_of_range is
+# a bool, and mypy checks a **dict's value type against every parameter the
+# dict could reach.
 MAPI: dict[str, Any] = {
     "E_gap": 1.55,  # eV
     "alpha": 9.9e4,  # cm^-1

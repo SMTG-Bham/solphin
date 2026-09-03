@@ -1,16 +1,13 @@
 Using solphin with CASTEP
 =========================
 
-Every VASP-facing capability in ``solphin`` has a CASTEP counterpart. The
-reader functions take a ``code`` keyword — ``code="vasp"`` is the default
-everywhere, so existing VASP workflows are unchanged — and input generation
-has a dedicated module, :mod:`solphin.castep_inputs`. The physics between
-those boundaries (detailed balance, the figure of merit, SLME and the
-plotting) is identical for both codes.
-
-This page is the reference for what maps to what. For the workflow walked
-end to end — generating the input sets, running OptaDOS, then reading the
-results back — see the :doc:`CASTEP tutorial <castep_workflow_tutorial>`.
+Every VASP-facing capability in ``solphin`` has a CASTEP counterpart: the
+reader functions take a ``code`` keyword (``code="vasp"`` is the default
+everywhere, so existing VASP workflows are unchanged), input generation has
+a dedicated module, :mod:`solphin.castep_inputs`, and the physics between
+those boundaries — detailed balance, the figure of merit, SLME and the
+plotting — is identical for both codes. For the workflow walked end to end,
+see the :doc:`CASTEP tutorial <castep_workflow_tutorial>`.
 
 What each function reads
 ------------------------
@@ -84,6 +81,9 @@ Patch mapping:
      - ``spin_treatment: Vector`` with spin-orbit coupling
    * - ``gamma_only``
      - ``kpoint_mp_grid: 1 1 1``
+   * - ``timings``
+     - Accepted with no parameter changes (an empty patch in both codes'
+       recipes)
    * - ``elastic_tensor``, ``rvv10``, ``deformation_potential``, ``lobster``
      - VASP-only; requesting them raises ``ValueError``
 
@@ -91,10 +91,13 @@ Recipe caveats worth knowing:
 
 * ``R2SCAN`` maps to CASTEP's ``RSCAN`` functional — the closest supported
   meta-GGA, not a bit-for-bit equivalent.
-* ``elec_energy_tol`` is per atom in CASTEP, where VASP's ``EDIFF`` is a
-  total energy; the recipes use ``1e-7`` eV/atom to mirror ``EDIFF = 1e-6``.
+* ``elec_energy_tol`` is per atom in CASTEP, whereas VASP's ``EDIFF`` is a
+  total energy; the base recipes use ``1e-7`` eV/atom to mirror
+  ``EDIFF = 1e-6``, and the ``tight_relax`` patch tightens it to ``1e-9``.
 * ``kpoint_mp_spacing`` is in Å\ :sup:`-1` without VASP's 2π factor: the
-  default ``0.03`` corresponds to ``KSPACING ≈ 0.19``.
+  recipes' default of ``0.03`` is the k-point density a VASP user would
+  write as ``KSPACING ≈ 0.19`` (a unit conversion for comparison — the VASP
+  recipes leave ``KSPACING`` to the user).
 
 Band structures
 ---------------
@@ -119,10 +122,9 @@ a converged SCF run instead of copying a charge density:
    bs = solphin.band_structure.get_band_structure("band", 2, code="castep")
    solphin.band_structure.plot_band_structure(bs, plt)
 
-The setup appends the path to a copy of the SCF ``.cell`` as a
-``spectral_kpoint_list``, switches the copied ``.param`` to
-``task: Spectral`` / ``spectral_task: BandStructure``, and copies the
-``.check`` with ``reuse`` set — CASTEP's analogue of VASP's
+:func:`~solphin.band_structure.write_castep_band_structure_calculation`
+copies the SCF ``.cell`` / ``.param`` pair into each split folder with the
+path appended and the ``.check`` reused — CASTEP's analogue of VASP's
 ``ICHARG = 11`` restart. High-symmetry labels are read back from the
 ``.cell`` beside each ``.bands`` file.
 
@@ -147,9 +149,11 @@ Optics through OptaDOS
 
 CASTEP's spectral task writes optical matrix elements (``.ome_bin``); the
 dielectric function itself comes from `OptaDOS
-<https://github.com/optados-developers/optados>`_. Run the ``optics`` task
-(the ``optics`` patch sets it up), then OptaDOS with ``task : optics``, and
-hand the resulting ``<seed>_epsilon.dat`` to solphin:
+<https://github.com/optados-developers/optados>`_, a Fortran post-processing
+tool distributed alongside CASTEP — not a Python dependency, and nothing in
+``solphin`` needs a CASTEP installation. Run the ``optics`` task (the
+``optics`` patch sets it up), then OptaDOS with ``task : optics``, and hand
+the resulting ``<seed>_epsilon.dat`` to solphin:
 
 .. code-block:: python
 
@@ -158,12 +162,9 @@ hand the resulting ``<seed>_epsilon.dat`` to solphin:
 
 Both the default polycrystalline geometry and ``optics_geom : tensor`` are
 understood; the polycrystalline spectrum is treated as an isotropic tensor.
-Broadening choices live in the OptaDOS ``.odi`` file. The static dielectric
-constant ``eps_inf`` is taken from the lowest-energy row, matching the VASP
-convention. Downstream of the generated ``absorption.dat`` and
-``n_real.dat``, everything — spectral averages, SLME, the Blank models, the
-figure of merit — is code-agnostic and needs no ``code`` argument.
-
-OptaDOS is a Fortran post-processing tool distributed alongside CASTEP; it
-is not a Python dependency of ``solphin``, and nothing in ``solphin`` needs
-a CASTEP installation.
+Broadening choices live in the OptaDOS ``.odi`` file. The high-frequency
+(ion-clamped) dielectric constant ``eps_inf`` is taken from the
+lowest-energy row, matching the VASP convention. Downstream of the generated
+``absorption.dat`` and ``n_real.dat``, everything — spectral averages, SLME,
+the Blank models, the figure of merit — is code-agnostic and needs no
+``code`` argument.
