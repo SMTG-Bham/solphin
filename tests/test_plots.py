@@ -272,9 +272,7 @@ def test_mobility_plot_defaults_reach_the_documented_bounds(
         FOM_ARGS["dos_mass"], FOM_ARGS["epsilon"], Tcell=TCELL,
     )
 
-    # Line2D.get_xdata is typed as ArrayLike, which admits scalars and so is
-    # not indexable as far as mypy is concerned; asarray pins it down.
-    mobilities = np.asarray(plt.gca().lines[0].get_xdata())
+    mobilities = np.asarray(plt.gca().lines[0].get_xdata(), dtype=float)
 
     assert mobilities[0] == pytest.approx(1e-2)
     assert mobilities[-1] == pytest.approx(1e9)
