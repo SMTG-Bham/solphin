@@ -1359,9 +1359,21 @@ def compute_dos(
 
             fitted, missing = em_electrons, "hole"
 
+            _warn_single_carrier_mass(em_electrons, "hole")
+
+            final_result = (
+                em_electrons.m_eff_rel
+            )
+
         elif em_holes is not None:
 
             fitted, missing = em_holes, "electron"
+
+            _warn_single_carrier_mass(em_holes, "electron")
+
+            final_result = (
+                em_holes.m_eff_rel
+            )
 
         else:
 
@@ -1383,26 +1395,9 @@ def compute_dos(
             stacklevel=2,
         )
 
-    elif em_holes is not None:
-
-        _warn_single_carrier_mass(em_holes, "electron")
-
-        final_result = (
-            em_holes.m_eff_rel
-        )
-
-    else:
-
-        raise ValueError(
-            "Neither the electron nor the hole DOS effective mass could be "
-            "calculated, so the geometric average of Crovetto 2024 equation "
-            "(S6) has no ingredients."
-        )
-
     minimum, maximum, _ = SAMPLED_RANGES["dos_mass"]
 
     if not minimum <= final_result <= maximum:
-
         warnings.warn(
             f"DOS effective mass {final_result:.6f} m₀ is outside the "
             f"{minimum} - {maximum} m₀ range sampled by Crovetto 2024 table 1;"
