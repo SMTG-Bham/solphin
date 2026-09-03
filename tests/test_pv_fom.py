@@ -268,4 +268,4 @@ def test_nan_is_refused() -> None:
 
 def test_check_sampled_ranges_ignores_unknown_keys() -> None:
     """Callers pass whole argument sets through, Tcell and all."""
-    check_sampled_ranges(**MAPI, Tcell=300.0)
+    check_sampled_ranges({**MAPI, 'Tcell': 300.0})
