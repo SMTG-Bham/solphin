@@ -96,7 +96,7 @@ def _check_sweep_range(
     prop = _SWEEP_PROPERTIES[name]
 
     for bound in bounds:
-        check_sampled_ranges(allow_out_of_range, **{prop: bound})
+        check_sampled_ranges({prop: bound}, allow_out_of_range)
 
 
 # Calculating equation 33 from the FOM paper

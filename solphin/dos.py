@@ -1143,6 +1143,33 @@ def _check_dos_fit_quality(
     return False
 
 
+def _warn_single_carrier_mass(
+        fitted: _DOSEffectiveMassResult, missing: str
+) -> None:
+    """Warn that a single fitted mass stands in for the geometric average.
+
+    Parameters
+    ----------
+    fitted : _DOSEffectiveMassResult
+        The carrier fit that did succeed, whose mass is being used.
+    missing : str
+        Name of the carrier whose fit failed, ``"electron"`` or ``"hole"``.
+
+    Warns
+    -----
+    UserWarning
+        Always; this is only called when one of the two fits is unavailable.
+    """
+    warnings.warn(
+        f"The {missing} DOS effective-mass fit is unavailable, so the "
+        "geometric average √(mₑm_h) of Crovetto 2024 equation (S6) cannot be "
+        f"formed; falling back to the {fitted.carrier} mass "
+        f"{fitted.m_eff_rel:.6f} m₀ alone.",
+        UserWarning,
+        stacklevel=3,
+    )
+
+
 def compute_dos(
         dos_vasprun: str,
         m_eff: float | None = None,
@@ -1356,8 +1383,20 @@ def compute_dos(
             stacklevel=2,
         )
 
+    elif em_holes is not None:
+
+        _warn_single_carrier_mass(em_holes, "electron")
+
         final_result = (
-            fitted.m_eff_rel
+            em_holes.m_eff_rel
+        )
+
+    else:
+
+        raise ValueError(
+            "Neither the electron nor the hole DOS effective mass could be "
+            "calculated, so the geometric average of Crovetto 2024 equation "
+            "(S6) has no ingredients."
         )
 
     minimum, maximum, _ = SAMPLED_RANGES["dos_mass"]
