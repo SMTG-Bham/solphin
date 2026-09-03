@@ -253,9 +253,11 @@ def calc_dielectric(
     Returns
     -------
     eps_inf : float
-        Static dielectric constant, averaged over the tensor diagonal.
+        High-frequency (ion-clamped) dielectric constant, averaged over the
+        tensor diagonal.
     eps_inf_tensor : numpy.ndarray
-        Static dielectric tensor (real part at zero energy), shape (3, 3).
+        High-frequency (ion-clamped) dielectric tensor (real part at the
+        lowest energy), shape (3, 3).
     eps_full : numpy.ndarray
         Complex frequency-dependent dielectric tensor, shape (N, 3, 3).
     eps_imag : numpy.ndarray
@@ -780,7 +782,7 @@ def make_blank_plot(
 def power_efficiency(
         A_E: NDArray, energy_abs: NDArray, n_real: NDArray, alpha_m: NDArray, d: float
 ) -> float:
-    """Compute the power conversion efficiency using a spectral absorption model.
+    """Compute the photon escape probability using a spectral absorption model.
 
     Follows the detailed-balance framework of Blank et al., weighting the
     absorptance by the blackbody photon flux.
@@ -801,7 +803,7 @@ def power_efficiency(
     Returns
     -------
     float
-        Power efficiency, dimensionless and capped at 1.0.
+        Photon escape probability ``p_e``, dimensionless and capped at 1.0.
     """
     phi_bb_E = _bb_per_eV(energy_abs)
 
