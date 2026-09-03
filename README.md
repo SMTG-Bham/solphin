@@ -49,7 +49,7 @@ Every VASP-facing capability has a CASTEP counterpart — see
 
 If you use `solphin` in your work, please cite the following:
 
-* Cox, P. U., Russell, P. P., Crovetto, A., Squires, A. G., & Scanlon, D. O.
+* Cox, P. U., Russell, P. P., Crovetto, A., Squires, A. G., Slocombe, L, & Scanlon, D. O.
   Solphin [Computer software]. https://github.com/SMTG-Bham/solphin
 * Crovetto, A., 2024. A phenomenological figure of merit for photovoltaic materials. Journal of Physics: Energy, 6 (2),
   p.025009.
@@ -58,6 +58,6 @@ If you use `solphin` in your work, please cite the following:
 
 ## Acknowledgements
 
-The developers Philippa U. Cox and Peter P. Russell would like to thank Alexander G. Squires, Andrea Crovetto and David
+The developers Philippa U. Cox, Peter P. Russell and Louie Slocombe would like to thank Alexander G. Squires, Andrea Crovetto and David
 O. Scanlon for their guidance on this project, Brooke Busbee for her work on the branding and Jacob Baggott for his
-assistance.
+assistance. 
