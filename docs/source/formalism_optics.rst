@@ -43,10 +43,9 @@ m\ :sup:`-1`; the ``absorption.dat`` file written by
 :func:`~solphin.optics.generate_absorption` is in cm\ :sup:`-1`, which is the
 unit the figure of merit expects.
 
-Averaging over an anisotropic material this way is a deliberate
-simplification. For a strongly anisotropic absorber the three eigenvalues can
-differ by enough that no single :math:`\alpha(E)` represents the material
-well, and the polarisation-resolved curves are worth inspecting directly with
+Averaging an anisotropic material this way is a deliberate simplification:
+for a strongly anisotropic absorber no single :math:`\alpha(E)` represents
+the material well — inspect the polarisation-resolved curves with
 :func:`~solphin.optics.plot_absorption`.
 
 How much light a film of thickness *d* absorbs
@@ -75,8 +74,8 @@ The Blank detailed-balance model
 --------------------------------
 
 Blank *et al.* generalise the SQ construction to a film that is neither
-perfectly absorbing nor perfectly radiative. The chain implemented in
-``_eta_d`` is as follows.
+perfectly absorbing nor perfectly radiative. The chain, evaluated at each
+thickness by :func:`~solphin.optics.make_blank_plot`, is as follows.
 
 **Photon escape probability.** Of the photons generated inside the absorber,
 only a fraction escape rather than being reabsorbed. Comparing the emission
@@ -90,10 +89,7 @@ that leaves the film with the emission generated throughout its volume gives
        \;1\right]
 
 where :math:`\phi_{\mathrm{bb}}` is the blackbody photon flux at the cell
-temperature. This is :func:`~solphin.optics.power_efficiency`. Note that the
-denominator is thickness-independent, so :math:`p_{\mathrm{e}} \propto 1/d`
-in the optically thick limit — thicker films reabsorb more of their own
-luminescence.
+temperature (computed by :func:`~solphin.optics.power_efficiency`).
 
 **External luminescence efficiency.** Combining the escape probability with
 the internal luminescence efficiency :math:`Q_{\mathrm{i}}` — the fraction of
@@ -164,11 +160,9 @@ Blank curves alone.
 
 .. note::
 
-   :math:`\Delta` is a proxy, not a measurement of the non-radiative rate. It
-   captures the indirect-gap penalty and nothing else, so it says nothing
-   about defect-mediated recombination in a direct-gap absorber — a material
-   with :math:`\Delta = 0` and a picosecond Shockley-Read-Hall lifetime is
-   scored at its radiative limit. Quantifying that loss is the job of
+   :math:`\Delta` prices only the indirect-gap penalty — a direct-gap
+   absorber with a picosecond Shockley-Read-Hall lifetime is still scored at
+   its radiative limit. Non-radiative loss is instead quantified by
    :math:`\tau` in :doc:`formalism_pv_fom`.
 
 Efficiency against thickness
@@ -181,14 +175,12 @@ Lambertian light trapping, and SLME — at each thickness. The absorption
 coefficient is interpolated onto the solar wavelength grid with a cubic
 spline, and clamped to its end values outside the calculated range.
 
-Reading the resulting plot is the point of the exercise. The efficiency rises
-with thickness while absorption is the binding constraint, then flattens once
-the film is optically thick; the thickness at which it flattens is the
-minimum film thickness the material needs. The gap between the flat and
-Lambertian curves is how much light trapping is worth for this absorber —
-large for a weak or indirect absorber, negligible for a strong direct one.
-Unlike a drift-diffusion simulation, none of these curves turn over at large
-thickness, because none of them models carrier collection.
+The efficiency rises with thickness while absorption is the binding
+constraint, then flattens once the film is optically thick — the flattening
+point is the minimum film thickness the material needs, and the gap between
+the flat and Lambertian curves is what light trapping is worth for this
+absorber. None of the curves turn over at large thickness, because none of
+them models carrier collection.
 
 .. [Blank2017] B. Blank, T. Kirchartz, S. Lany and U. Rau, *Selection metric
    for photovoltaic materials screening based on detailed-balance analysis*,
