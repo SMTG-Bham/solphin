@@ -50,13 +50,20 @@ COMPONENT_NAMES = sorted(
 def _call_with(func: Callable[..., float], **overrides: float) -> float:
     """Invoke func with the MAPI values its signature happens to ask for.
 
-    Arguments MAPI has no value for - allow_out_of_range, say - are left to
-    their defaults rather than being passed, so a new keyword on a component
-    does not have to be added here to keep the sweeps working.
+    A parameter with no default is a property, and MAPI must have a value for
+    it: that is what makes the reflective component sweep above trustworthy, so
+    a missing one raises KeyError here rather than being quietly skipped. A
+    defaulted parameter - allow_out_of_range - is passed only when the caller
+    asked for it, so adding another flag to a component does not break the
+    sweeps.
     """
     params = {**MAPI, **overrides}
     wanted = inspect.signature(func).parameters
-    return func(**{name: params[name] for name in wanted if name in params})
+    return func(**{
+        name: params[name]
+        for name, parameter in wanted.items()
+        if parameter.default is inspect.Parameter.empty or name in overrides
+    })
 
 
 def _sweep(parameter: str, values: Sequence[float]) -> list[float]:
@@ -200,7 +207,7 @@ def test_every_corner_of_the_box_evaluates() -> None:
     bounds = [SAMPLED_RANGES[name][:2] for name in names]
 
     for corner in itertools.product(*bounds):
-        gamma = Final_equation(**dict(zip(names, corner)))
+        gamma = _call_with(Final_equation, **dict(zip(names, corner)))
 
         assert math.isfinite(gamma)
         assert gamma > 0
@@ -256,4 +263,4 @@ def test_nan_is_refused() -> None:
 
 def test_check_sampled_ranges_ignores_unknown_keys() -> None:
     """Callers pass whole argument sets through, Tcell and all."""
-    check_sampled_ranges(**MAPI, Tcell=300.0, photon_spectrum=None)
+    check_sampled_ranges({**MAPI, "Tcell": 300.0})

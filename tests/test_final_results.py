@@ -7,6 +7,8 @@ merit, and the equation-(33) fit with its supplementary-material constants -
 against the article rather than against this implementation.
 """
 
+from typing import Any
+
 import pytest
 from numpy.typing import NDArray
 
@@ -14,7 +16,12 @@ import solphin.final_results as final_results
 
 # CH3NH3PbI3 (MAPI) property set from Table 2 of the paper; the same block is
 # quoted in tutorial cell 40 and reused by test_pv_fom.
-MAPI = {
+#
+# Annotated Any rather than float because it is splatted into a signature that
+# carries the keyword-only allow_out_of_range bool: a dict[str, float] cannot
+# prove to a type checker that it will not land there. The values are pinned by
+# the assertions below either way.
+MAPI: dict[str, Any] = {
     "E_gap": 1.55,  # eV
     "alpha": 9.9e4,  # cm^-1
     "tau": 6.9e-7,  # s

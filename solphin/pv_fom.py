@@ -6,6 +6,7 @@ Andrea Crovetto, 2024, J. Phys. Energy 6 025009.
 """
 
 import warnings
+from collections.abc import Mapping
 
 import numpy as np
 
@@ -33,7 +34,7 @@ SAMPLED_RANGES: dict[str, tuple[float, float, str]] = {
 
 
 def check_sampled_ranges(
-        allow_out_of_range: bool = False, **properties: float
+        properties: Mapping[str, float], allow_out_of_range: bool = False
 ) -> None:
     """Check Γₚᵥ inputs against the sampled ranges of Crovetto 2024 table 1.
 
@@ -51,13 +52,15 @@ def check_sampled_ranges(
 
     Parameters
     ----------
+    properties : mapping of str to float
+        Property values keyed by the argument names of
+        :data:`SAMPLED_RANGES`. Keys outside that mapping are ignored, so a
+        caller may pass a whole argument set through. Taken as one mapping
+        rather than as keyword arguments so that it cannot collide with
+        ``allow_out_of_range``.
     allow_out_of_range : bool, optional
         If True, an out-of-range value raises a ``UserWarning`` instead of a
         ``ValueError`` and evaluation continues. Default is False.
-    **properties : float
-        Property values keyed by the argument names of
-        :data:`SAMPLED_RANGES`. Keys outside that mapping are ignored, so a
-        caller may pass a whole argument set through.
 
     Raises
     ------
@@ -103,9 +106,12 @@ def check_sampled_ranges(
     )
 
     if allow_out_of_range:
-        # Three frames up: this function, the solphin function that called it,
-        # and the caller's own code, which is where the offending value came
-        # from and so where the warning should point.
+        # Three frames up: this function, Final_equation, and the caller's own
+        # code, which is where the offending value came from and so where the
+        # warning should point. That is the path nearly every caller takes; the
+        # sweep checks in final_results sit one frame deeper and a direct call
+        # to this function one shallower, so on those two the quoted line is
+        # off by one while the message itself is unaffected.
         warnings.warn(message, UserWarning, stacklevel=3)
 
         return
@@ -163,15 +169,17 @@ def Final_equation(
     # Every private factor below is reached only through this function, so this
     # is the one place the eight properties have to be checked.
     check_sampled_ranges(
+        {
+            "E_gap": E_gap,
+            "alpha": alpha,
+            "tau": tau,
+            "sigma": sigma,
+            "dos_mass": dos_mass,
+            "dop_density": dop_density,
+            "epsilon": epsilon,
+            "mu": mu,
+        },
         allow_out_of_range,
-        E_gap=E_gap,
-        alpha=alpha,
-        tau=tau,
-        sigma=sigma,
-        dos_mass=dos_mass,
-        dop_density=dop_density,
-        epsilon=epsilon,
-        mu=mu,
     )
 
     E_gap_2_5 = E_gap ** 2.5
