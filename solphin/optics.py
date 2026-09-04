@@ -726,7 +726,8 @@ def make_blank_plot(
         thickness_range: NDArray | None = None,
         save: bool = False,
         out_directory: str | Path = ".",
-) -> None:
+    ) -> tuple[list[float], list[float], list[float], NDArray]:
+    
     """Generate the efficiency-versus-thickness plot for the Blank and SLME models.
 
     Loads the absorption and refractive index data, selects a spectrum,
@@ -756,6 +757,17 @@ def make_blank_plot(
     out_directory : str or Path, optional
         Directory the figure is written into when ``save`` is ``True``.
         Default is ``"."``, the current working directory.
+
+    Returns
+    -------
+    eff_flat : list of float
+        Efficiencies from the flat Beer-Lambert absorption model.
+    eff_lam : list of float
+        Efficiencies from the Lambertian (interference-enhanced) model.
+    eff_slme : list of float
+        SLME efficiencies; empty if ``use_slme`` is False.
+    thickness_range : numpy.ndarray
+        Thickness values used for the evaluation.
     """
     abs_file = f'{optics_directory}/absorption.dat'
     n_real_file = f'{optics_directory}/n_real.dat'
@@ -780,6 +792,8 @@ def make_blank_plot(
     linestyle = "--" if np.isclose(direct_gap, indirect_gap) else "-"
 
     plot_blank(use_slme, thickness_range, eff_slme, eff_lam, eff_flat, max_y, linestyle, save, out_directory)
+
+    return eff_flat, eff_lam, eff_slme, thickness_range
 
 
 def power_efficiency(
