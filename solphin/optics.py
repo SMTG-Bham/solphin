@@ -761,7 +761,7 @@ def make_blank_plot(
     n_real_file = f'{optics_directory}/n_real.dat'
 
     # Setup the spectrum and convert to units
-    sol_wl, sol_irr, use_slme = _spectrum_select(spectrum_type)
+    sol_wl, sol_irr, use_slme, max_y = _spectrum_select(spectrum_type)
     sol_wl_m, sol_phot_flux = _convert_spec(sol_wl, sol_irr)
 
     # Calculate indicent power
@@ -779,7 +779,7 @@ def make_blank_plot(
 
     linestyle = "--" if np.isclose(direct_gap, indirect_gap) else "-"
 
-    plot_blank(use_slme, thickness_range, eff_slme, eff_lam, eff_flat, linestyle, save, out_directory)
+    plot_blank(use_slme, thickness_range, eff_slme, eff_lam, eff_flat, max_y, linestyle, save, out_directory)
 
 
 def power_efficiency(
@@ -1004,6 +1004,7 @@ def plot_blank(
         eff_slme: list[float],
         eff_lam: list[float],
         eff_flat: list[float],
+        max_y: int,
         linestyle: str,
         save: bool,
         out_directory: str | Path = ".",
