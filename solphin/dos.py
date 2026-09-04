@@ -1388,7 +1388,7 @@ def compute_dos(
         # quantity Γₚᵥ was fitted against, so say so.
         warnings.warn(
             f"The {missing} DOS effective-mass fit is unavailable, so the "
-            "geometric average √(mₑm_h) of Crovetto 2024 equation (S6) cannot "
+            "geometric average √(mₑmₕ) of Crovetto 2024 equation (S6) cannot "
             f"be formed; falling back to the {fitted.carrier} mass "
             f"{fitted.m_eff_rel:.6f} m₀ alone.",
             UserWarning,
