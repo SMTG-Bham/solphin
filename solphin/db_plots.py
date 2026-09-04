@@ -205,7 +205,7 @@ def sq_limit_plot(
     percentage_sq = p_above_1_1 * 100
 
     canvas.plot([e_gap], [percentage_sq], 'ro')
-    canvas.text(e_gap + 0.05, percentage_sq, '{:.4}eV, {:.4}'.format(e_gap, percentage_sq))
+    canvas.text(e_gap + 0.05, percentage_sq, '{:.2}eV, {:.2}'.format(e_gap, percentage_sq))
 
     if ax:
         ax.set_xlabel('$E_{gap}$ (eV)')
