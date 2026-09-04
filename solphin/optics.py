@@ -1043,7 +1043,7 @@ def plot_blank(
     ax.set_xscale("log")
     ax.set_xlabel("Film Thickness / m", labelpad=5)
     ax.set_ylabel(r"Max PV Efficiency $(\eta_\mathrm{Max})$ / %")
-    ax.set_ylim((0, 35))
+    ax.set_ylim((0, max_y))
     ax.margins(x=0)
     ax.legend()
     plt.tight_layout()
