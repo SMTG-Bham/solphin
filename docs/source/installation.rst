@@ -29,20 +29,20 @@ packaging tools).
 Development environment
 -----------------------
 
-``environment.yml`` builds a complete conda environment:
+``environment.yml`` builds a complete conda environment, including an
+editable install of ``solphin``:
 
 .. code-block:: bash
 
    conda env create -f environment.yml
    conda activate solphin
-   pip install --no-deps sumo castepxbin
-   pip install -e . --no-deps
 
-``sumo`` is installed from PyPI rather than conda-forge on purpose. The
-conda-forge build pins ``castepxbin 0.1.0.*``, which in turn requires
-``numpy >=1,<2`` — that conflicts with the ``numpy>=2.0`` this package needs
-and makes the environment unsolvable. PyPI's ``castepxbin`` accepts
-``numpy>=1,<3``, so the pip route resolves cleanly.
+Two entries come from PyPI, through the ``pip:`` block in that file, rather
+than from conda-forge: ``sumo`` and ``castepxbin``. As of September 2026
+conda-forge's ``sumo`` pins ``castepxbin 0.1.0`` and every conda-forge
+``castepxbin`` build requires ``numpy <2``, which cannot coexist with the
+``numpy>=2.0`` this package needs. The comment at the top of
+``environment.yml`` has the details.
 
 VASP pseudopotentials
 ---------------------
