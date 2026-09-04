@@ -543,12 +543,15 @@ def _spectrum_select(spectrum_type: str) -> tuple[NDArray, NDArray, bool]:
         am15_path = Path(slme_mod.__file__).parent / "am1.5G.dat"
         sol_wl, sol_irr = np.loadtxt(am15_path, usecols=[0, 1],
                                      unpack=True, skiprows=2)  # nm, W m-2 nm-1
+        max_y = 35
     else:
         spectrum = load_spectrum(spectrum_type)
+        maximums = {"Fluorescent": 60, "Blue LED": 70, "Green LED": 70, "Red LED": 70, "White LED": 60, "IR LED": 70, "Photopic":70}
+        max_y = maximums[spectrum_type]
         sol_wl = spectrum[:, 0]  # nm
         sol_irr = spectrum[:, 1]  # W m-2 nm-1
 
-    return sol_wl, sol_irr, use_slme
+    return sol_wl, sol_irr, use_slme, max_y
 
 
 def _convert_spec(sol_wl: NDArray, sol_irr: NDArray) -> tuple[NDArray, NDArray]:
