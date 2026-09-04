@@ -1628,6 +1628,6 @@ def write_eff_mass(
         recipe=functional,
         out_dir=folder,
         patches=["eff_mass"],
-        user_incar_settings={"ENCUT": encut, "ISYM": 0, "ICHARG": 0},
+        user_incar_settings={"ENCUT": encut, "ISYM": 0, "ICHARG": 0, "NEDOS": 6000},
         user_kpoints_settings=kp,
     )
