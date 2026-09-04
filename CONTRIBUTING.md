@@ -35,7 +35,8 @@ tutorial notebooks
 
 ## Development setup
 
-The conda environment file installs every runtime, docs and development dependency:
+The conda environment file installs every runtime, docs and development dependency, plus `solphin` itself as an
+editable install:
 
 ```bash
 conda env create -f environment.yml
@@ -45,16 +46,9 @@ conda env create -f environment.yml
 conda activate solphin
 ```
 
-```bash
-pip install --no-deps sumo castepxbin
-```
-
-```bash
-pip install -e . --no-deps
-```
-
-Both pip steps are deliberately separate from the conda solve — see the comment at the top
-of [environment.yml](environment.yml) for why `--no-deps` matters, and why `sumo` cannot come from conda-forge.
+`sumo` and `castepxbin` come from PyPI through the file's `pip:` block rather than from conda-forge, whose builds of
+both still cap `numpy<2` — see the comment at the top of [environment.yml](environment.yml). An environment built
+from an earlier version of the file picks up the change with `conda env update -f environment.yml`.
 
 Python 3.11 or newer is required. `solphin/band_structure.py` uses PEP 604 unions (`str | Path`) in annotations that are
 evaluated at runtime, which would allow 3.10, but the current releases of `pymatgen`, `numpy`, `scipy` and
@@ -189,12 +183,10 @@ make -C docs html SPHINXOPTS="-W"
 ### Adding a dependency
 
 Runtime dependencies must be added to **both**
-[pyproject.toml](pyproject.toml) and [environment.yml](environment.yml), which are kept in sync by hand.
-`environment.yml` carries one deliberate asymmetry:
-`sumo` is a runtime dependency in `pyproject.toml` but is absent from the conda list, because conda-forge's build pins
-`castepxbin 0.1.0.*` and so caps
-`numpy<2`. It is installed from PyPI instead, as a documented `--no-deps` step. Please keep new additions in both files,
-and say in the pull request why the dependency is needed.
+[pyproject.toml](pyproject.toml) and [environment.yml](environment.yml), which are kept in sync by hand. In
+`environment.yml` a new dependency goes in the conda list; only `sumo` and `castepxbin` sit in the `pip:` block,
+because conda-forge's builds of both still cap `numpy<2` (the comment at the top of that file explains). Please keep
+the two files in step, and say in the pull request why the dependency is needed.
 
 ### Adding a resource file
 
