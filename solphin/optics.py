@@ -479,7 +479,7 @@ def plot_absorption(
     eps_inf, eps_inf_tensor, eps_full, eps_imag, energies = calc_dielectric(filename, code=code)
     data = calc_absorption(eps_full, energies)
 
-    plt.figure(figsize=(3, 5))
+    plt.figure(figsize=(5, 5))
     absorption = data["absorption"] * sc.centi / 1e5  # m-1 -> 10^5 cm-1
 
     plt.plot(

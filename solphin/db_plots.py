@@ -53,8 +53,8 @@ def photons_above_bandgap_plot(
     canvas.plot(a[:, 0], a[:, 1], color='#231123')
 
     p_above_1_1 = db_fom._photons_above_bandgap(Egap, spectrum)
-    canvas.plot([Egap], [p_above_1_1], 'ro')  # , color='#FF6666')
-    canvas.text(Egap + 0.05, p_above_1_1, '{:.4}eV, {:.4}'.format(Egap, p_above_1_1))
+    canvas.plot([Egap], [p_above_1_1], 'ro', markersize=5)  # , color='#FF6666')
+    canvas.text(Egap + 0.1, p_above_1_1, '{:.4} eV, {:.4}'.format(Egap, p_above_1_1))
 
     if ax:
         canvas.set_xlabel('$E_{gap}$ (eV)')
@@ -204,8 +204,8 @@ def sq_limit_plot(
     p_above_1_1 = db_fom.max_eff(e_gap, spectrum, Tcell)
     percentage_sq = p_above_1_1 * 100
 
-    canvas.plot([e_gap], [percentage_sq], 'ro')
-    canvas.text(e_gap + 0.05, percentage_sq, '{:.2}eV, {:.2}'.format(e_gap, percentage_sq))
+    canvas.plot([e_gap], [percentage_sq], 'ro', markersize=5)
+    canvas.text(e_gap + 0.1, percentage_sq - 0.5, '{:.2} eV, {:.2f}%'.format(e_gap, percentage_sq))
 
     if ax:
         ax.set_xlabel('$E_{gap}$ (eV)')
@@ -276,7 +276,7 @@ def plot_db_combined(
     sq_limit_plot(spectrum, Egap, Tcell, ax=axes[2])
 
     fig.subplots_adjust(wspace=0.5)
-    fig.suptitle("$E_{gap}$" + f"= {Egap} eV, T = {Tcell} K, {spectrum_type} Spectrum", y=1.1)
+    fig.suptitle("$E_{gap}$" + f"= {Egap:.2f} eV, T = {Tcell} K, {spectrum_type} Spectrum", y=1.1)
 
 
 def plot_db_combined_interactive(
