@@ -21,7 +21,7 @@ from scipy.integrate import simpson
 from scipy.interpolate import interp1d
 
 import solphin.spectral as spectral
-from solphin.db_fom import load_spectrum
+from solphin.db_fom import CIE_LED_SPECTRA, DEFAULT_TARGET_LUX, load_spectrum
 
 _c = sc.c
 _h = sc.h
@@ -517,7 +517,9 @@ def plot_absorption(
     plt.show()
 
 
-def _spectrum_select(spectrum_type: str) -> tuple[NDArray, NDArray, bool]:
+def _spectrum_select(
+        spectrum_type: str, target_lux: float | None = DEFAULT_TARGET_LUX
+) -> tuple[NDArray, NDArray, bool, float]:
     """Select and load a solar or illuminant spectrum.
 
     Parameters
@@ -526,6 +528,10 @@ def _spectrum_select(spectrum_type: str) -> tuple[NDArray, NDArray, bool]:
         Identifier for the spectrum to load. ``"AM1.5"`` uses the standard
         AM1.5G spectrum bundled with the SLME package; anything else is
         loaded with ``load_spectrum``.
+    target_lux : float or None, optional
+        Illuminance to rescale an indoor spectrum to, in lux; see
+        :func:`solphin.db_fom.load_spectrum`. Ignored for ``"AM1.5"``, which
+        is an absolute standard. Default is ``DEFAULT_TARGET_LUX``.
 
     Returns
     -------
@@ -535,6 +541,8 @@ def _spectrum_select(spectrum_type: str) -> tuple[NDArray, NDArray, bool]:
         Spectral irradiance in W m⁻² nm⁻¹.
     use_slme : bool
         True if the built-in AM1.5G spectrum was used.
+    max_y : float
+        Upper limit for the efficiency axis of the resulting plot, in %.
     """
     use_slme = (spectrum_type == "AM1.5")
 
@@ -545,9 +553,16 @@ def _spectrum_select(spectrum_type: str) -> tuple[NDArray, NDArray, bool]:
                                      unpack=True, skiprows=2)  # nm, W m-2 nm-1
         max_y = 35
     else:
-        spectrum = load_spectrum(spectrum_type)
-        maximums = {"Fluorescent": 60, "Blue LED": 70, "Green LED": 70, "Red LED": 70, "White LED": 60, "IR LED": 70, "Photopic":70}
-        max_y = maximums[spectrum_type]
+        spectrum = load_spectrum(spectrum_type, target_lux=target_lux)
+        # Indoor illuminances put the detailed-balance ceiling well above the
+        # one-sun value, so these axes run higher than the AM1.5 case. Unknown
+        # names fall back to AM1.5 inside load_spectrum, hence the default.
+        maximums = {"Fluorescent": 60, "Blue LED": 70, "Green LED": 70,
+                    "Red LED": 70, "White LED": 60, "IR LED": 70}
+        # The CIE standard LED illuminants are all broadband white sources of
+        # similar efficacy, and sit in the same range as the white LED.
+        maximums.update(dict.fromkeys(CIE_LED_SPECTRA, 60))
+        max_y = maximums.get(spectrum_type, 35)
         sol_wl = spectrum[:, 0]  # nm
         sol_irr = spectrum[:, 1]  # W m-2 nm-1
 
@@ -726,8 +741,8 @@ def make_blank_plot(
         thickness_range: NDArray | None = None,
         save: bool = False,
         out_directory: str | Path = ".",
+        target_lux: float | None = DEFAULT_TARGET_LUX,
     ) -> tuple[list[float], list[float], list[float], NDArray]:
-    
     """Generate the efficiency-versus-thickness plot for the Blank and SLME models.
 
     Loads the absorption and refractive index data, selects a spectrum,
@@ -757,6 +772,12 @@ def make_blank_plot(
     out_directory : str or Path, optional
         Directory the figure is written into when ``save`` is ``True``.
         Default is ``"."``, the current working directory.
+    target_lux : float or None, optional
+        Illuminance to rescale an indoor spectrum to, in lux; see
+        :func:`solphin.db_fom.load_spectrum`. Ignored when ``spectrum_type``
+        is ``"AM1.5"``. Because the efficiency depends on the illumination
+        level, this value should be quoted alongside any indoor efficiency.
+        Default is ``DEFAULT_TARGET_LUX``, 1000 lux.
 
     Returns
     -------
@@ -773,7 +794,7 @@ def make_blank_plot(
     n_real_file = f'{optics_directory}/n_real.dat'
 
     # Setup the spectrum and convert to units
-    sol_wl, sol_irr, use_slme, max_y = _spectrum_select(spectrum_type)
+    sol_wl, sol_irr, use_slme, max_y = _spectrum_select(spectrum_type, target_lux=target_lux)
     sol_wl_m, sol_phot_flux = _convert_spec(sol_wl, sol_irr)
 
     # Calculate indicent power
@@ -1040,6 +1061,10 @@ def plot_blank(
         Efficiencies from the Lambertian optical model.
     eff_flat : list of float
         Efficiencies from the flat Beer-Lambert model.
+    max_y : int
+        Upper limit of the efficiency axis in %. Indoor spectra reach higher
+        efficiencies than AM1.5G, so the ceiling depends on the spectrum;
+        ``_spectrum_select`` supplies it.
     linestyle : str
         Matplotlib line style for the flat-model curve.
     save : bool
