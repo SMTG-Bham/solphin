@@ -127,6 +127,83 @@ scanned for its maximum power point and divided by the incident power density
    \qquad
    \eta(d) = \frac{\max_V\left[J(V)\,V\right]}{P_{\mathrm{in}}}
 
+.. _illuminance-normalisation:
+
+Illuminance normalisation of the indoor spectra
+-----------------------------------------------
+
+:math:`\eta` above is not invariant under a rescaling of the spectrum:
+:math:`J_{\mathrm{sc}}` grows with the illumination while :math:`J_0` is fixed
+by the cell temperature, so :math:`V_{\mathrm{oc}} \sim \ln(J_{\mathrm{sc}}/J_0)`
+and hence the efficiency both depend on *how much* light falls on the cell, not
+only on its spectral shape. An indoor efficiency is therefore meaningless
+unless the light level is quoted with it.
+
+The bundled illuminant files do not share a common scale as supplied — the red,
+white and infrared LED spectra are normalised to a peak of unity, the
+fluorescent, blue and green LED spectra are absolute measurements taken at
+different illuminances, and the nine CIE 15:2018 standard LED illuminants
+(``LED-B1`` to ``LED-B5``, ``LED-BH1``, ``LED-RGB1``, ``LED-V1`` and
+``LED-V2``) are tabulated on an arbitrary scale of their own. ``solphin``
+therefore treats them all as *relative* spectra and rescales each to a target
+illuminance
+
+.. math::
+
+   E_{\mathrm{v}} = K_{\mathrm{m}} \int V(\lambda)\,E(\lambda)\,\mathrm{d}\lambda,
+   \qquad
+   K_{\mathrm{m}} = 683\ \mathrm{lm\,W^{-1}},
+
+with :math:`V(\lambda)` the photopic luminosity function (bundled as
+``photopic.csv``) and :math:`K_{\mathrm{m}}` its efficacy at 555 nm, the
+definition of the lumen. The target is the ``target_lux`` argument of
+:func:`solphin.db_fom.load_spectrum` and
+:func:`solphin.optics.make_blank_plot`, 1000 lx by default, and the resulting
+spectra carry a few W m⁻² — some three orders of magnitude below one sun.
+
+Two spectra are exempt:
+
+* **AM1.5G** is an absolute standard integrating to 1000 W m⁻², and is used
+  exactly as supplied; ``target_lux`` does not apply to it.
+* The **infrared LED** peaks at 849 nm, where :math:`V(\lambda) \approx 0`, so
+  its illuminance is ~0.009 lx and normalising it by :math:`E_{\mathrm{v}}`
+  would inflate it by five orders of magnitude. It is instead matched on
+  *radiant power*, to the irradiance the white LED carries at the same target
+  illuminance. Comparisons involving it are power-matched rather than
+  illuminance-matched.
+
+A common wavelength support
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The source files cover very different wavelength ranges: 280-4000 nm for
+AM1.5G, 300-2420 nm for the fluorescent and white LED spectra, and only
+380-780 nm for the CIE LED illuminants. That range is not a presentational
+detail, because the radiative recombination integrals above take their
+wavelength grid from the illumination spectrum — :math:`\phi_{\odot}` and
+:math:`\phi_{\mathrm{bb}}` are integrated over the same grid, in
+:func:`solphin.db_fom._rr0` as well as in the :math:`J_0^{\mathrm{rad}}` of
+the Blank model. A spectrum ending at 780 nm therefore truncates the blackbody
+integral at 1.59 eV, and for any band gap below that returns a recombination
+current orders of magnitude too small, so that
+
+.. math::
+
+   V_{\mathrm{oc}} \sim \frac{k_{\mathrm{B}}T}{q}\ln\frac{J_{\mathrm{sc}}}{J_0}
+
+and the efficiency with it come back far too high — and, worse, stop varying
+with the gap at all.
+
+Every loaded spectrum is therefore padded with **zero irradiance** out to a
+common 280-4000 nm support. Padding changes no measured quantity — a region of
+zero irradiance contributes nothing to :math:`E_{\mathrm{v}}`,
+:math:`P_{\mathrm{in}}` or :math:`J_{\mathrm{sc}}` — but it gives the
+blackbody integral the grid it needs, and it replaces the flat extrapolation
+that :func:`solphin.spectral._resample_common_grid` would otherwise apply
+beyond a spectrum's last tabulated point with the zero that belongs there.
+With the support shared, :math:`J_0^{\mathrm{rad}}` becomes a property of the
+gap and the cell temperature alone, as detailed balance requires, rather than
+an artefact of which lamp file was selected.
+
 Spectroscopic limited maximum efficiency
 ----------------------------------------
 

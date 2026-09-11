@@ -18,7 +18,6 @@ Efficiency (SLME), the Blank *et al.* maximum efficiency and optical absorption 
 material's theoretical photovoltaic performance. From an initial crystal structure, `solphin` generates the `VASP` or
 `CASTEP` input files for each required calculation, and reads the results of either code.
 
-**Please note that Solphin is still in early-stage testing and development**
 
 Documentation, including workflow tutorials for both codes and the Python API reference, lives at
 [solphin.readthedocs.io](https://solphin.readthedocs.io/en/latest/).
@@ -39,11 +38,6 @@ Python 3.11 or newer is required. See the
 [installation docs](https://solphin.readthedocs.io/en/latest/installation.html) for the optional extras, the conda
 development environment and VASP pseudopotential setup.
 
-## CASTEP
-
-Every VASP-facing capability has a CASTEP counterpart — see
-["Using solphin with CASTEP"](https://solphin.readthedocs.io/en/latest/castep.html) for the reference, and
-[tutorial/castep_workflow_tutorial.ipynb](tutorial/castep_workflow_tutorial.ipynb) for the workflow walked end to end.
 
 ## Citation
 

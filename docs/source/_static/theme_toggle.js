@@ -1,16 +1,17 @@
-// Swaps the two front-page diagrams when the theme changes: the light artwork
-// is unreadable on a dark background and vice versa. index.rst emits both
-// images and hides the dark one; this picks the right one from there on.
+// Swaps light/dark artwork when the theme changes: the light versions are
+// unreadable on a dark background and vice versa. The pages emit both images
+// of each pair, tagged with the classes below, and hide the dark ones; this
+// picks the right one of every pair from there on.
 document.addEventListener("DOMContentLoaded", function () {
     const btn = document.getElementById("wagtail-theme");
 
-    const light = document.getElementById("diagram-light");
-    const dark = document.getElementById("diagram-dark");
+    const light = document.querySelectorAll(".theme-light-only");
+    const dark = document.querySelectorAll(".theme-dark-only");
 
     // conf.py loads this through html_js_files, which applies to every page,
-    // but the two diagrams only exist on the front page. Without this guard
-    // update() dereferences null on every other page in the docs.
-    if (!btn || !light || !dark) {
+    // but the paired images only exist on some of them. Nothing to do where
+    // the theme button or the images are absent.
+    if (!btn || (!light.length && !dark.length)) {
         return;
     }
 
@@ -22,13 +23,12 @@ document.addEventListener("DOMContentLoaded", function () {
             document.documentElement.classList.contains("theme-dark") ||
             document.body.classList.contains("theme-dark");
 
-        if (isDark) {
-            light.style.display = "none";
-            dark.style.display = "block";
-        } else {
-            light.style.display = "block";
-            dark.style.display = "none";
-        }
+        light.forEach((el) => {
+            el.style.display = isDark ? "none" : "block";
+        });
+        dark.forEach((el) => {
+            el.style.display = isDark ? "block" : "none";
+        });
     }
 
     // The button does not flip the class itself -- it dispatches
