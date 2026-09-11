@@ -216,7 +216,7 @@ def castep_dielectric(
 def dos_result(dos_vasprun: Path) -> DOSResult:
     """DOSResult for electrons at the 0.1 eV window the reference mass is quoted at."""
     return dos.compute_dos(
-        dos_vasprun=str(dos_vasprun), carrier="electrons", energy_window=0.1
+        filepath=str(dos_vasprun), carrier="electrons", energy_window=0.1
     )
 
 
