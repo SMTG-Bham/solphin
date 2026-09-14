@@ -11,4 +11,4 @@ Tutorials
    sq_tutorial.ipynb
    slme_tutorial.ipynb
    fom_tutorial.ipynb
-   .. tutorials_full
+   tutorials_full

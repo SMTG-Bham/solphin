@@ -46,5 +46,6 @@ If you use ``solphin`` in your work, please cite the following:
 
    installation
    tutorials
+   castep
    api
    formalism
