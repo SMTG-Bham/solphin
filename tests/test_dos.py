@@ -143,7 +143,7 @@ def test_compute_dos_poor_fit_is_visible(dos_result: DOSResult) -> None:
 def test_compute_dos_holes_carrier(dos_vasprun: Path) -> None:
     """Selecting holes returns the hole mass, and em_result follows the selection."""
     result = dos.compute_dos(
-        dos_vasprun=str(dos_vasprun), carrier="holes", energy_window=0.1
+        filepath=str(dos_vasprun), carrier="holes", energy_window=0.1
     )
 
     assert result.carrier == "holes"
@@ -162,13 +162,13 @@ def test_compute_dos_holes_carrier(dos_vasprun: Path) -> None:
 def test_compute_dos_rejects_bad_carrier(dos_vasprun: Path) -> None:
     """An unknown carrier name raises a ValueError."""
     with pytest.raises(ValueError):
-        dos.compute_dos(dos_vasprun=str(dos_vasprun), carrier="phonons")
+        dos.compute_dos(filepath=str(dos_vasprun), carrier="phonons")
 
 
 def test_compute_dos_m_eff_override(dos_vasprun: Path) -> None:
     """An explicit mass bypasses the fit - the documented escape hatch for coarse data."""
     result = dos.compute_dos(
-        dos_vasprun=str(dos_vasprun), m_eff=0.25, carrier="electrons", energy_window=0.1
+        filepath=str(dos_vasprun), m_eff=0.25, carrier="electrons", energy_window=0.1
     )
 
     assert result.final_result == pytest.approx(0.25, rel=1e-12)
@@ -272,7 +272,7 @@ def test_castep_dos_recovers_hole_mass(castep_dos_bands: Path) -> None:
 def test_castep_compute_dos_summary(castep_dos_bands: Path) -> None:
     """compute_dos reads gap, volume and both masses from the .bands file."""
     result = dos.compute_dos(
-        dos_vasprun=str(castep_dos_bands),
+        filepath=str(castep_dos_bands),
         carrier="electrons",
         energy_window=0.25,
         code="castep",
@@ -297,7 +297,7 @@ def test_castep_compute_dos_summary(castep_dos_bands: Path) -> None:
 def test_castep_compute_dos_m_eff_override(castep_dos_bands: Path) -> None:
     """The explicit-mass escape hatch works on the CASTEP path too."""
     result = dos.compute_dos(
-        dos_vasprun=str(castep_dos_bands), m_eff=0.25, code="castep"
+        filepath=str(castep_dos_bands), m_eff=0.25, code="castep"
     )
 
     assert result.final_result == pytest.approx(0.25, rel=1e-12)

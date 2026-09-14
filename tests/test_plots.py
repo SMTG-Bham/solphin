@@ -91,6 +91,51 @@ def test_sq_limit_plot(photon_spectrum: NDArray) -> None:
     assert ax.lines
 
 
+def test_sq_limit_plot_gap_axis_is_independent_of_the_spectrum_grid(
+        photon_spectrum: NDArray
+) -> None:
+    """The curve is drawn on its own gap axis, not on the spectrum's energy grid.
+
+    Reusing the grid made the plot's resolution an accident of how finely the
+    illuminant was tabulated, and after zero-padding put most of the samples
+    below 1 eV where nobody reads the figure. The default range is still the
+    one the grid-based version covered.
+    """
+    fig, ax = plt.subplots()
+
+    db_plots.sq_limit_plot(photon_spectrum, E_GAP, TCELL, ax=ax)
+
+    gaps = ax.lines[0].get_xdata()
+    energies = np.sort(photon_spectrum[:, 0])
+
+    assert len(gaps) == db_plots.DEFAULT_GAP_POINTS
+    assert gaps[0] == pytest.approx(energies[0])
+    assert gaps[-1] == pytest.approx(energies[-3])
+    # Uniform in energy, unlike the hc/lambda grid it replaced.
+    np.testing.assert_allclose(np.diff(gaps), np.diff(gaps)[0], rtol=1e-9)
+
+
+@pytest.mark.parametrize(
+    "plot",
+    [
+        lambda ps, ax: db_plots.sq_limit_plot(ps, E_GAP, TCELL, ax=ax, Emin=0.8, Emax=2.5,
+                                              n_points=40),
+        lambda ps, ax: db_plots.photons_above_bandgap_plot(ps, E_GAP, ax=ax, Emin=0.8, Emax=2.5,
+                                                           n_points=40),
+    ],
+)
+def test_sweep_plots_honour_an_explicit_gap_range(photon_spectrum: NDArray, plot: object) -> None:
+    """Both sweep plots take an explicit band-gap window and sample count."""
+    fig, ax = plt.subplots()
+
+    plot(photon_spectrum, ax)  # type: ignore[operator]
+
+    gaps = ax.lines[0].get_xdata()
+
+    assert len(gaps) == 40
+    assert (gaps[0], gaps[-1]) == pytest.approx((0.8, 2.5))
+
+
 def test_plot_db_combined(photon_spectrum: NDArray) -> None:
     """The combined three-panel figure builds without pre-made axes."""
     db_plots.plot_db_combined(photon_spectrum, E_GAP, TCELL, "AM1.5")

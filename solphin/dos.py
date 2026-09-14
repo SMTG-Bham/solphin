@@ -1171,7 +1171,7 @@ def _warn_single_carrier_mass(
 
 
 def compute_dos(
-        dos_vasprun: str,
+        filepath: str,
         m_eff: float | None = None,
         carrier: str = "electrons",
         energy_window: float = 0.15,
@@ -1190,7 +1190,7 @@ def compute_dos(
 
     Parameters
     ----------
-    dos_vasprun : str
+    filepath : str
         Path to the DOS data file: ``vasprun.xml`` for VASP, a
         ``<seed>.bands`` file for CASTEP.
     m_eff : float or None, optional
@@ -1248,7 +1248,7 @@ def compute_dos(
         )
 
     dos_obj, _, _, vol_m3 = _load_dos_data(
-        dos_vasprun, code=code, bin_width=bin_width
+        filepath, code=code, bin_width=bin_width
     )
 
     cbm, vbm = (
@@ -1279,7 +1279,7 @@ def compute_dos(
 
             em_electrons = (
                 get_dos_effective_mass(
-                    dos_vasprun=dos_vasprun,
+                    dos_vasprun=filepath,
                     carrier="electrons",
                     energy_window=energy_window,
                     min_dos=min_dos,
@@ -1310,7 +1310,7 @@ def compute_dos(
 
             em_holes = (
                 get_dos_effective_mass(
-                    dos_vasprun=dos_vasprun,
+                    dos_vasprun=filepath,
                     carrier="holes",
                     energy_window=energy_window,
                     min_dos=min_dos,
@@ -1388,7 +1388,7 @@ def compute_dos(
         # quantity Γₚᵥ was fitted against, so say so.
         warnings.warn(
             f"The {missing} DOS effective-mass fit is unavailable, so the "
-            "geometric average √(mₑm_h) of Crovetto 2024 equation (S6) cannot "
+            "geometric average √(mₑmₕ) of Crovetto 2024 equation (S6) cannot "
             f"be formed; falling back to the {fitted.carrier} mass "
             f"{fitted.m_eff_rel:.6f} m₀ alone.",
             UserWarning,
@@ -1435,7 +1435,7 @@ def compute_dos(
         if selected_em is not None:
             _check_dos_fit_quality(
                 result=selected_em,
-                dos_vasprun=dos_vasprun,
+                dos_vasprun=filepath,
                 min_dos=min_dos,
                 code=code,
                 bin_width=bin_width,
@@ -1628,6 +1628,6 @@ def write_eff_mass(
         recipe=functional,
         out_dir=folder,
         patches=["eff_mass"],
-        user_incar_settings={"ENCUT": encut, "ISYM": 0, "ICHARG": 0},
+        user_incar_settings={"ENCUT": encut, "ISYM": 0, "ICHARG": 0, "NEDOS": 6000},
         user_kpoints_settings=kp,
     )

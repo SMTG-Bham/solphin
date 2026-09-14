@@ -17,6 +17,7 @@ from numpy.typing import NDArray
 from scipy.optimize import brentq
 
 import castep_fixtures
+import solphin.db_fom as db_fom
 import solphin.optics as optics
 
 # --- the dielectric tensor -------------------------------------------------
@@ -135,7 +136,7 @@ def test_calc_incident_power_am15() -> None:
     Note this reads pymatgen's am1.5G.dat, not the bundled ASTMG173.csv that
     db_fom.load_spectrum uses - a different source on a different grid.
     """
-    wavelengths, irradiance, use_slme = optics._spectrum_select("AM1.5")
+    wavelengths, irradiance, use_slme, _ = optics._spectrum_select("AM1.5")
 
     power = optics._calc_incident_power(irradiance, wavelengths)
 
@@ -145,10 +146,54 @@ def test_calc_incident_power_am15() -> None:
 
 def test_spectrum_select_falls_back_to_bundled_resources() -> None:
     """Anything other than AM1.5 routes through db_fom.load_spectrum instead."""
-    wavelengths, irradiance, use_slme = optics._spectrum_select("Red LED")
+    wavelengths, irradiance, use_slme, max_y = optics._spectrum_select("Red LED")
 
     assert use_slme is False
     assert len(wavelengths) == len(irradiance) > 0
+    assert max_y > 0
+
+
+def test_spectrum_select_normalises_indoor_spectra() -> None:
+    """An indoor spectrum reaches the efficiency model at the requested illuminance.
+
+    P_in is integrated straight from these values, and the efficiency depends
+    on the illumination level, so a wrong scale here silently changes every
+    indoor result.
+    """
+    wavelengths, irradiance, _, _ = optics._spectrum_select("White LED", target_lux=500.0)
+
+    spectrum = np.column_stack([wavelengths, irradiance])
+
+    assert db_fom.calculate_illuminance(spectrum) == pytest.approx(500.0, rel=1e-6)
+    assert optics._calc_incident_power(irradiance, wavelengths) == pytest.approx(1.632, rel=1e-2)
+
+
+@pytest.mark.parametrize("spectrum_type", db_fom.CIE_LED_SPECTRA)
+def test_spectrum_select_handles_the_cie_led_family(spectrum_type: str) -> None:
+    """Each CIE standard LED illuminant reaches the optics path fully wired up.
+
+    They are tabulated only over 380-780 nm, so this also covers the padding
+    that gives the J0_rad integral in _eta_d a grid wide enough to reach the
+    band edge of a typical absorber.
+    """
+    wavelengths, irradiance, use_slme, max_y = optics._spectrum_select(spectrum_type)
+
+    assert use_slme is False
+    assert max_y > 0
+    assert wavelengths[0] <= db_fom.SPECTRUM_WL_MIN
+    assert wavelengths[-1] >= db_fom.SPECTRUM_WL_MAX
+
+    spectrum = np.column_stack([wavelengths, irradiance])
+
+    assert db_fom.calculate_illuminance(spectrum) == pytest.approx(1000.0, rel=1e-6)
+
+
+def test_spectrum_select_leaves_am15_absolute() -> None:
+    """The AM1.5 branch is an absolute standard and must ignore target_lux."""
+    _, irradiance, _, _ = optics._spectrum_select("AM1.5", target_lux=50.0)
+    _, default_irradiance, _, _ = optics._spectrum_select("AM1.5")
+
+    np.testing.assert_array_equal(irradiance, default_irradiance)
 
 
 def test_convert_spec_photon_flux() -> None:

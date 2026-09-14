@@ -288,7 +288,7 @@ def plot_FOM(
     axes[0].set_xscale("log")
     axes[0].set_xlabel("Doping Density (cm$^{-3}$)")
     axes[0].set_ylabel("Figure of Merit")
-    axes[0].set_title("Figure of Merit vs Doping Density \n" + r"($\mu$=" + str(mu) + r", $\tau$=" + f"{tau:.2e}" + ")")
+    axes[0].set_title("Figure of Merit vs Doping Density \n" + r"($\mu$=" + f"{mu:.2e}" + r", $\tau$=" + f"{tau:.2e}" + ")")
 
     # Plot vs lifetime
     lifetimes = np.logspace(np.log10(tau_range[0]), np.log10(tau_range[1]))
@@ -301,7 +301,7 @@ def plot_FOM(
     axes[1].set_xscale("log")
     axes[1].set_xlabel("Carrier Lifetime (s)")
     axes[1].set_title(
-        "Figure of Merit vs Carrier Lifetime \n" + r"($\mu$=" + str(mu) + r", Density=" + f"{dop_density:.2e}" + ")")
+        "Figure of Merit vs Carrier Lifetime \n" + r"($\mu$=" + f"{mu:.2e}" + r", Density=" + f"{dop_density:.2e}" + ")")
 
     # Plot vs mobility
     mobilities = np.logspace(np.log10(mu_range[0]), np.log10(mu_range[1]))
