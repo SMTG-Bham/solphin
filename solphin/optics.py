@@ -1039,7 +1039,7 @@ def plot_blank(
         eff_slme: list[float],
         eff_lam: list[float],
         eff_flat: list[float],
-        max_y: int,
+        max_y: float,
         linestyle: str,
         save: bool,
         out_directory: str | Path = ".",
@@ -1061,7 +1061,7 @@ def plot_blank(
         Efficiencies from the Lambertian optical model.
     eff_flat : list of float
         Efficiencies from the flat Beer-Lambert model.
-    max_y : int
+    max_y : float
         Upper limit of the efficiency axis in %. Indoor spectra reach higher
         efficiencies than AM1.5G, so the ceiling depends on the spectrum;
         ``_spectrum_select`` supplies it.

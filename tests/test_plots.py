@@ -105,7 +105,7 @@ def test_sq_limit_plot_gap_axis_is_independent_of_the_spectrum_grid(
 
     db_plots.sq_limit_plot(photon_spectrum, E_GAP, TCELL, ax=ax)
 
-    gaps = ax.lines[0].get_xdata()
+    gaps = np.asarray(ax.lines[0].get_xdata(), dtype=float)
     energies = np.sort(photon_spectrum[:, 0])
 
     assert len(gaps) == db_plots.DEFAULT_GAP_POINTS
@@ -130,7 +130,7 @@ def test_sweep_plots_honour_an_explicit_gap_range(photon_spectrum: NDArray, plot
 
     plot(photon_spectrum, ax)  # type: ignore[operator]
 
-    gaps = ax.lines[0].get_xdata()
+    gaps = np.asarray(ax.lines[0].get_xdata(), dtype=float)
 
     assert len(gaps) == 40
     assert (gaps[0], gaps[-1]) == pytest.approx((0.8, 2.5))
