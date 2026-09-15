@@ -1494,6 +1494,7 @@ def _generate_local_kpoints(
         k0_frac: NDArray,
         mesh: tuple[int, int, int],
         delta: float,
+        irred_kpts:Kpoints|None = None
 ) -> Kpoints:
     """Generate a local reciprocal-space k-point mesh around a band-edge k-point.
 
@@ -1510,20 +1511,31 @@ def _generate_local_kpoints(
     delta : float
         Maximum fractional reciprocal-space displacement from the central
         k-point along each direction.
+    irred_kpts : Kpoints|None, Optional
+        Kpoints object representing the symmetry-irreducible k-points
+        used for a standard calculation. These are prepended to the zero-
+        weighted local set if supplied.
 
     Returns
     -------
     Kpoints
         VASP KPOINTS object with the generated local mesh.
     """
-    pts_grid = _local_kpoint_offsets(k0_frac, mesh, delta)
+    local_pts = _local_kpoint_offsets(k0_frac, mesh, delta).tolist()
+    local_weights = [0.0] * len(local_pts)
+
+    standard_pts = irred_kpts.kpts if irred_kpts else []
+    standard_weights = irred_kpts.kpts_weights if irred_kpts else []
+
+    pts_grid = standard_pts + local_pts
+    weights = standard_weights + local_weights
 
     return Kpoints(
-        comment="Local k-mesh around band edge",
+        comment=f"Local zero-weighted k-mesh around {k0_frac}",
         style=Kpoints.supported_modes.Reciprocal,
         num_kpts=len(pts_grid),
-        kpts=pts_grid.tolist(),
-        kpts_weights=[1.0] * len(pts_grid),
+        kpts=pts_grid,
+        kpts_weights=weights,
     )
 
 
@@ -1532,6 +1544,7 @@ def write_local_kpoints(
         k0_frac: NDArray,
         mesh: tuple[int, int, int],
         delta: float,
+        irred_kpts:Kpoints|None = None
 ) -> None:
     """Generate and write a dense local VASP KPOINTS file around a band edge.
 
@@ -1548,8 +1561,12 @@ def write_local_kpoints(
     delta : float
         Maximum fractional reciprocal-space displacement from the central
         k-point along each direction.
+    irred_kpts : Kpoints|None, Optional
+        Kpoints object representing the symmetry-irreducible k-points
+        used for a standard calculation. These are prepended to the zero-
+        weighted local set if supplied.
     """
-    kp = _generate_local_kpoints(k0_frac, mesh, delta)
+    kp = _generate_local_kpoints(k0_frac, mesh, delta, irred_kpts)
     folder_path = Path(folder)
     folder_path.mkdir(parents=True, exist_ok=True)
 
@@ -1564,6 +1581,7 @@ def write_eff_mass(
         folder: str = "eff_mass",
         mesh: tuple[int, int, int] = (5, 5, 5),
         delta: float = 0.01,
+        irred_kpts: Kpoints|None = None,
         code: str = "vasp",
 ) -> None:
     """Write a calculation setup for an effective-mass calculation.
@@ -1591,6 +1609,10 @@ def write_eff_mass(
     delta : float, optional
         Maximum fractional reciprocal-space displacement from the central
         k-point along each direction. Default is ``0.01``.
+    irred_kpts : Kpoints|None, Optional
+        (VASP ONLY) Kpoints object representing the symmetry-irreducible k-points
+        used for a standard calculation. These are prepended to the zero-
+        weighted local set if supplied.
     code : str, optional
         Which code to write inputs for, ``"vasp"`` or ``"castep"``. Default
         is ``"vasp"``.
@@ -1621,6 +1643,7 @@ def write_eff_mass(
         k0_frac=k0_frac,
         mesh=mesh,
         delta=delta,
+        irred_kpts=irred_kpts,
     )
 
     write_vasp_calculation(
