@@ -39,6 +39,54 @@ Python 3.11 or newer is required. See the
 development environment and VASP pseudopotential setup.
 
 
+## Quick start
+
+The detailed-balance analysis needs nothing beyond the package itself, so it is the quickest way to check an install.
+This computes the Shockley-Queisser limit for a 1.39 eV absorber (the Cu<sub>2</sub>GeS<sub>3</sub> band gap used in
+the tutorials) under the bundled AM1.5G spectrum, then draws the three-panel detailed-balance figure:
+
+```python
+import matplotlib.pyplot as plt
+
+import solphin.db_fom as db_fom
+import solphin.db_plots as db_plots
+
+E_gap = 1.39   # band gap in eV
+Tcell = 300.0  # cell temperature in K
+
+spectrum = db_fom.load_spectrum("AM1.5")
+photon_spectrum = db_fom.convert_spectrum(spectrum)
+
+print(f"Jsc = {db_fom.jsc(E_gap, photon_spectrum, Tcell):.1f} A m^-2")
+print(f"Voc = {db_fom.voc(E_gap, photon_spectrum, Tcell):.3f} V")
+print(f"SQ efficiency limit = {100 * db_fom.max_eff(E_gap, photon_spectrum, Tcell):.1f} %")
+
+db_plots.plot_db_combined(spectrum=photon_spectrum, Egap=E_gap, Tcell=Tcell, spectrum_type="AM1.5")
+plt.savefig("detailed_balance.png", dpi=150, bbox_inches="tight")
+```
+
+The full workflow, from generating `VASP` or `CASTEP` inputs for a crystal structure to reading the finished
+calculations back into band gap, effective mass, absorption, SLME and figure-of-merit analyses, is walked through in
+the tutorial notebooks:
+[full_workflow_tutorial.ipynb](https://github.com/SMTG-Bham/solphin/blob/main/tutorial/full_workflow_tutorial.ipynb)
+for `VASP` and
+[castep_workflow_tutorial.ipynb](https://github.com/SMTG-Bham/solphin/blob/main/tutorial/castep_workflow_tutorial.ipynb)
+for `CASTEP`. The same notebooks are rendered in the
+[documentation](https://solphin.readthedocs.io/en/latest/tutorials.html), alongside the
+[API reference](https://solphin.readthedocs.io/en/latest/api.html).
+
+## Contributing and support
+
+Bug reports, feature requests and questions about using the code all go through the
+[issue tracker](https://github.com/SMTG-Bham/solphin/issues). For a bug, please include the smallest snippet that
+reproduces it, the full traceback and your `solphin` version
+(`python -c "import solphin; print(solphin.__version__)"`).
+
+If you would like to contribute code or documentation,
+[CONTRIBUTING.md](https://github.com/SMTG-Bham/solphin/blob/main/CONTRIBUTING.md) covers the development environment,
+the style and docstring conventions, how to run the tests and how to build the documentation. This project follows the
+[Contributor Covenant](https://github.com/SMTG-Bham/solphin/blob/main/CODE_OF_CONDUCT.md) code of conduct.
+
 ## Citation
 
 If you use `solphin` in your work, please cite the following:
@@ -54,4 +102,8 @@ If you use `solphin` in your work, please cite the following:
 
 The developers Philippa U. Cox, Peter P. Russell and Louie Slocombe would like to thank Alexander G. Squires, Andrea Crovetto and David
 O. Scanlon for their guidance on this project, Brooke Busbee for her work on the branding and Jacob Baggott for his
-assistance. 
+assistance.
+
+## License
+
+`solphin` is released under the [MIT License](https://github.com/SMTG-Bham/solphin/blob/main/LICENSE).
