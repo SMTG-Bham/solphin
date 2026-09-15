@@ -64,4 +64,4 @@ CASTEP support
 CASTEP support needs no extra installation: the ``.bands`` and ``.cell``
 readers come with ``sumo`` and its ``castepxbin`` dependency, both installed
 with ``solphin``. Optics parsing consumes an OptaDOS ``<seed>_epsilon.dat``
-file — see :doc:`castep` for the workflow.
+file — see the :doc:`CASTEP workflow tutorial <castep_workflow_tutorial>`.
