@@ -1525,7 +1525,7 @@ def _generate_local_kpoints(
     local_weights = [0.0] * len(local_pts)
 
     standard_pts = irred_kpts.kpts if irred_kpts else []
-    standard_weights = irred_kpts.kpts_weights if irred_kpts else []
+    standard_weights = irred_kpts.kpts_weights if irred_kpts and irred_kpts.kpts_weights else []
 
     pts_grid = standard_pts + local_pts
     weights = standard_weights + local_weights
