@@ -18,9 +18,9 @@ coverage:
       default:
         # Held above the project figure on purpose: the point of the check is
         # that new code arrives tested, so that 85% goes up rather than down.
-        # Ten of the tests are strict xfails standing in for known defects
-        # (tests/README.md), and those still execute the lines they cover, so
-        # a bug fix that drops its marker does not move this number.
+        # Known defects are pinned with strict xfails (tests/README.md), and an
+        # xfailed test still executes the lines it covers, so a bug fix that
+        # drops its marker does not move this number. None are open today.
         target: 80%
         threshold: 0%
 

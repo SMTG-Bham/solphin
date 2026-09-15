@@ -81,8 +81,9 @@ jobs:
       #
       # Two tests skip here by design: requires_potcars keys on
       # PMG_VASP_PSP_DIR, and VASP pseudopotentials are licensed and cannot be
-      # put in CI. Six more are strict xfails standing in for known defects --
-      # see tests/README.md. Either turning into a failure is a real signal.
+      # put in CI. Known defects, when there are any, are pinned as strict
+      # xfails (tests/README.md); the register is empty today. A skip or xfail
+      # turning into a failure is a real signal.
       - run: pytest --cov --cov-report=xml
       # Every successful matrix job uploads and Codecov merges the reports
       # under the commit. There is no version-gated code in solphin/, so the

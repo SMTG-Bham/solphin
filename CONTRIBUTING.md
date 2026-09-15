@@ -55,8 +55,9 @@ evaluated at runtime, which would allow 3.10, but the current releases of `pymat
 `matplotlib` all declare `Requires-Python >=3.11`. The development environment pins 3.11.
 
 For the `VASP` input generation functionality you will also need your `VASP`
-pseudopotentials configured through `$HOME/.pmgrc.yaml`, as described in the
-[README](README.md).
+pseudopotentials configured through `$HOME/.pmgrc.yaml`, as described under "VASP pseudopotentials" in the
+[installation docs](https://solphin.readthedocs.io/en/latest/installation.html#vasp-pseudopotentials)
+(source: [docs/source/installation.rst](docs/source/installation.rst)).
 
 ## Making a change
 
@@ -134,9 +135,10 @@ Beyond that, follow the conventions already in the package:
 
 `pytest` and `pytest-cov` are included in the development environment. The suite lives in the top-level `tests/`
 directory and mirrors the module layout (`tests/test_db_fom.py` and so on). Read [tests/README.md](tests/README.md)
-first — it explains what is anchored to analytic limits and documents the ten
-`xfail(strict=True)` markers that stand in for known defects, which means **fixing one of those defects turns the suite
-red** and is your cue to drop the marker:
+first — it explains what is anchored to analytic limits and keeps the register of known defects. A known defect is
+pinned by an `xfail(strict=True)` marker rather than left untested, which means **fixing one of those defects turns
+the suite red** and is your cue to drop the marker. The register is empty at the time of writing, so a bare run should
+be all green:
 
 ```bash
 pytest
