@@ -1610,7 +1610,7 @@ def write_local_kpoints(
 
 
 def write_eff_mass(
-        k0_frac: NDArray|tuple[NDArray,NDArray],
+        k0_frac: NDArray|Sequence[NDArray],
         structure: Structure,
         functional: str,
         encut: int,
