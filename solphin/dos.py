@@ -15,6 +15,7 @@ import numpy as np
 import scipy.constants as sc
 from matplotlib import pyplot as plt
 from numpy.typing import NDArray
+from collections.abc import Sequence
 from pymatgen.core.structure import Structure
 from pymatgen.electronic_structure.core import Spin
 from pymatgen.electronic_structure.dos import CompleteDos, Dos
@@ -1489,7 +1490,6 @@ def _local_kpoint_offsets(
 
     return np.asarray(pts)
 
-
 def _generate_local_kpoints(
         k0_frac: NDArray,
         mesh: tuple[int, int, int],
@@ -1538,23 +1538,43 @@ def _generate_local_kpoints(
         kpts_weights=weights,
     )
 
+def _combine_kpoints(
+        kps:Sequence[Kpoints],
+) -> Kpoints:
+
+    kpts = kps[0].kpts
+    weights = kps[0].kpts_weights
+
+    for kp in kps[1:]:
+        kpts = kpts + kp.kpts
+        weights = weights + kp.kpts_weights if weights and kp.kpts_weights else weights
+
+    num_kpts = len(kpts)
+
+    return Kpoints(
+        comment="Combined k-points",
+        style=Kpoints.supported_modes.Reciprocal,
+        num_kpts=num_kpts,
+        kpts=kpts,
+        kpts_weights=weights,
+    )
 
 def write_local_kpoints(
         folder: str | Path,
-        k0_frac: NDArray,
+        k0_frac: NDArray|Sequence[NDArray],
         mesh: tuple[int, int, int],
         delta: float,
         irred_kpts:Kpoints|None = None
 ) -> None:
-    """Generate and write a dense local VASP KPOINTS file around a band edge.
+    """Generate and write a dense local VASP KPOINTS file around particular k-points.
 
     Parameters
     ----------
     folder : str or Path
         Calculation folder the generated ``KPOINTS`` file is written into.
     k0_frac : numpy.ndarray
-        Fractional reciprocal-space coordinates of the central k-point,
-        typically the CBM, VBM, or a relevant direct band-gap location.
+        Fractional reciprocal-space coordinates of the central k-point(s),
+        typically the CBM, VBM, or a relevant band-gap location.
     mesh : tuple of int
         Number of k-points along each reciprocal direction, as
         ``(nx, ny, nz)``.
@@ -1566,7 +1586,24 @@ def write_local_kpoints(
         used for a standard calculation. These are prepended to the zero-
         weighted local set if supplied.
     """
-    kp = _generate_local_kpoints(k0_frac, mesh, delta, irred_kpts)
+
+    #Direct gap
+    if isinstance(k0_frac, np.ndarray):
+        kp = _generate_local_kpoints(k0_frac, mesh, delta, irred_kpts)
+
+    #Indirect gap
+    elif isinstance(k0_frac, Sequence):
+        kp_0 = _generate_local_kpoints(k0_frac[0], mesh, delta, irred_kpts)
+        kps = [kp_0]
+        comment = f"Local zero-weighted k-mesh around {k0_frac[0]}"
+
+        for k0 in k0_frac[1:]:
+            kps.append(_generate_local_kpoints(k0, mesh, delta))
+            comment = comment + f", {k0}"
+
+        kp = _combine_kpoints(kps)
+        kp.comment = comment
+
     folder_path = Path(folder)
     folder_path.mkdir(parents=True, exist_ok=True)
 
@@ -1574,7 +1611,7 @@ def write_local_kpoints(
 
 
 def write_eff_mass(
-        k0_frac: NDArray,
+        k0_frac: NDArray|tuple[NDArray,NDArray],
         structure: Structure,
         functional: str,
         encut: int,
@@ -1593,8 +1630,8 @@ def write_eff_mass(
 
     Parameters
     ----------
-    k0_frac : numpy.ndarray
-        Fractional reciprocal-space coordinates of the band-edge k-point.
+    k0_frac : numpy.ndarray|tuple[NDArray,NDArray]
+        Fractional reciprocal-space coordinates of the band-edge k-point(s).
     structure : Structure
         Crystal structure used to generate the input files.
     functional : str
@@ -1622,35 +1659,90 @@ def write_eff_mass(
     ValueError
         If ``code`` is not ``"vasp"`` or ``"castep"``.
     """
-    if code == "castep":
-        rows = [
-            [f"{coordinate:.8f}" for coordinate in point]
-            for point in _local_kpoint_offsets(k0_frac, mesh, delta)
-        ]
-        write_castep_calculation(
+
+    #Direct gap
+    if isinstance(k0_frac, np.ndarray):
+
+        if code == "castep":
+            rows = [
+                [f"{coordinate:.8f}" for coordinate in point]
+                for point in _local_kpoint_offsets(k0_frac, mesh, delta)
+            ]
+            write_castep_calculation(
+                structure=structure,
+                recipe=functional,
+                out_dir=folder,
+                patches=["eff_mass"],
+                user_param_settings={"cut_off_energy": encut},
+                user_cell_blocks={"spectral_kpoint_list": rows},
+            )
+            return
+        
+        if code != "vasp":
+            raise ValueError(f"Unsupported code {code!r}; expected 'vasp' or 'castep'.")
+
+        kp = _generate_local_kpoints(
+            k0_frac=k0_frac,
+            mesh=mesh,
+            delta=delta,
+            irred_kpts=irred_kpts,
+        )
+
+        write_vasp_calculation(
             structure=structure,
             recipe=functional,
             out_dir=folder,
             patches=["eff_mass"],
-            user_param_settings={"cut_off_energy": encut},
-            user_cell_blocks={"spectral_kpoint_list": rows},
+            user_incar_settings={"ENCUT": encut, "ISYM": 0, "ICHARG": 0, "NEDOS": 6000},
+            user_kpoints_settings=kp,
         )
-        return
-    if code != "vasp":
-        raise ValueError(f"Unsupported code {code!r}; expected 'vasp' or 'castep'.")
 
-    kp = _generate_local_kpoints(
-        k0_frac=k0_frac,
-        mesh=mesh,
-        delta=delta,
-        irred_kpts=irred_kpts,
-    )
+    #Indirect gap
+    elif isinstance(k0_frac, Sequence):
 
-    write_vasp_calculation(
-        structure=structure,
-        recipe=functional,
-        out_dir=folder,
-        patches=["eff_mass"],
-        user_incar_settings={"ENCUT": encut, "ISYM": 0, "ICHARG": 0, "NEDOS": 6000},
-        user_kpoints_settings=kp,
-    )
+        if code == "castep":
+
+            rows = []
+            for k0 in k0_frac:
+                rows = rows + [
+                    [f"{coordinate:.8f}" for coordinate in point]
+                    for point in _local_kpoint_offsets(k0, mesh, delta)
+                ]
+
+            write_castep_calculation(
+                structure=structure,
+                recipe=functional,
+                out_dir=folder,
+                patches=["eff_mass"],
+                user_param_settings={"cut_off_energy": encut},
+                user_cell_blocks={"spectral_kpoint_list": rows},
+            )
+            return
+
+        elif code == "vasp":
+
+            kp_0 = _generate_local_kpoints(k0_frac[0], mesh, delta, irred_kpts)
+            kps = [kp_0]
+            comment = f"Local zero-weighted k-mesh around {k0_frac[0]}"
+
+            for k0 in k0_frac[1:]:
+                kps.append(_generate_local_kpoints(k0, mesh, delta))
+                comment = comment + f", {k0}"
+
+            kp = _combine_kpoints(kps)
+            kp.comment = comment
+
+            write_vasp_calculation(
+                structure=structure,
+                recipe=functional,
+                out_dir=folder,
+                patches=["eff_mass"],
+                user_incar_settings={"ENCUT": encut, "ISYM": 0, "ICHARG": 0, "NEDOS": 6000},
+                user_kpoints_settings=kp,
+            )
+
+        else:
+            raise ValueError(f"Unsupported code {code!r}; expected 'vasp' or 'castep'.")
+
+    else:
+        raise ValueError("k0_frac Should be a single NDArray or a Sequence of them, representing the co-ordinates of k-points of interest.")
