@@ -8,6 +8,7 @@ valence band maximum - apply to both codes alike.
 """
 
 import warnings
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -15,7 +16,6 @@ import numpy as np
 import scipy.constants as sc
 from matplotlib import pyplot as plt
 from numpy.typing import NDArray
-from collections.abc import Sequence
 from pymatgen.core.structure import Structure
 from pymatgen.electronic_structure.core import Spin
 from pymatgen.electronic_structure.dos import CompleteDos, Dos
@@ -1586,7 +1586,6 @@ def write_local_kpoints(
         used for a standard calculation. These are prepended to the zero-
         weighted local set if supplied.
     """
-
     #Direct gap
     if isinstance(k0_frac, np.ndarray):
         kp = _generate_local_kpoints(k0_frac, mesh, delta, irred_kpts)
@@ -1659,7 +1658,6 @@ def write_eff_mass(
     ValueError
         If ``code`` is not ``"vasp"`` or ``"castep"``.
     """
-
     #Direct gap
     if isinstance(k0_frac, np.ndarray):
 
