@@ -42,10 +42,8 @@ dependencies = [
     "scipy",
     "matplotlib>=3.9.4",
     "pymatgen>=2024.8.9",
-    # First release whose own numpy usage and metadata (numpy>=2.0,
-    # castepxbin>=0.3.1) match the numpy>=2.0 floor above.
     "sumo>=3.0",
-    "castepxbin",
+    "castepxbin>=0.3.1",
     "ipywidgets"
 ]
 
