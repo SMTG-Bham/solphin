@@ -1,15 +1,20 @@
 Installation
 ============
 
-``solphin`` is not yet published to PyPI, so install it from a checkout:
+.. code-block:: bash
+
+   pip install solphin
+
+Python 3.11 or newer is required (``requires-python`` in ``pyproject.toml``).
+
+To work on ``solphin`` itself, or to run the tutorial notebooks from the
+repository, install from a checkout instead:
 
 .. code-block:: bash
 
    git clone https://github.com/SMTG-Bham/solphin
    cd solphin
    pip install -e .
-
-Python 3.11 or newer is required (``requires-python`` in ``pyproject.toml``).
 
 Optional extras
 ---------------
@@ -19,7 +24,9 @@ Optional extras
 
 .. code-block:: bash
 
-   pip install -e ".[interactive]"
+   pip install "solphin[interactive]"
+
+or ``pip install -e ".[interactive]"`` from a checkout.
 
 The other extras are ``tutorial`` (JupyterLab and the notebook stack),
 ``docs`` (Sphinx, the Wagtail theme and ``myst-nb``, which renders the

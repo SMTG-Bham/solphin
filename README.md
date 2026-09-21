@@ -9,6 +9,7 @@
 [![test](https://github.com/SMTG-Bham/solphin/actions/workflows/test.yml/badge.svg)](https://github.com/SMTG-Bham/solphin/actions/workflows/test.yml)
 [![docs](https://github.com/SMTG-Bham/solphin/actions/workflows/docs.yml/badge.svg)](https://github.com/SMTG-Bham/solphin/actions/workflows/docs.yml)
 [![package](https://github.com/SMTG-Bham/solphin/actions/workflows/package.yml/badge.svg)](https://github.com/SMTG-Bham/solphin/actions/workflows/package.yml)
+[![PyPI](https://img.shields.io/pypi/v/solphin?logo=pypi&logoColor=white)](https://pypi.org/project/solphin/)
 [![codecov](https://codecov.io/gh/SMTG-Bham/solphin/branch/main/graph/badge.svg)](https://codecov.io/gh/SMTG-Bham/solphin)
 <a href="https://solphin.readthedocs.io/en/latest/"><img src="https://img.shields.io/badge/Docs-Read%20the%20Docs-8CA1AF?logo=readthedocs&amp;logoColor=white" alt="Documentation"></a>
 
@@ -26,7 +27,13 @@ Documentation, including workflow tutorials for both codes and the Python API re
 
 ## Installation
 
-`solphin` is not yet published to PyPI, so install it from a checkout:
+```bash
+pip install solphin
+```
+
+Python 3.11 or newer is required.
+
+To work on `solphin` itself, or to run the tutorial notebooks from the repository, install from a checkout instead:
 
 ```bash
 git clone https://github.com/SMTG-Bham/solphin
@@ -34,9 +41,8 @@ cd solphin
 pip install -e .
 ```
 
-Python 3.11 or newer is required. See the
-[installation docs](https://solphin.readthedocs.io/en/latest/installation.html) for the optional extras, the conda
-development environment and VASP pseudopotential setup.
+See the [installation docs](https://solphin.readthedocs.io/en/latest/installation.html) for the optional extras, the
+conda development environment and VASP pseudopotential setup.
 
 
 ## Quick start
