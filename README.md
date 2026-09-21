@@ -20,12 +20,15 @@ material's theoretical photovoltaic performance. From an initial crystal structu
 `CASTEP` input files for each required calculation, and reads the results of either code.
 
 
-Documentation, including workflow tutorials for both codes and the Python API reference, lives at
+Documentation, including workflow tutorials for both codes and the Python API reference, can be found at
+
 [solphin.readthedocs.io](https://solphin.readthedocs.io/en/latest/).
 
-<img width="1076" height="596" alt="solphin_1 drawio" src="https://github.com/user-attachments/assets/0f981e7a-fcf3-4ec0-a2ef-01980a3f56ee" />
+<img width="1146" height="596" alt="solphin_workflow_light" src="https://github.com/user-attachments/assets/45302a91-5eaa-4540-bf06-0a26757f2b68" />
 
 ## Installation
+
+Solphin is distributed on PyPI, and can be installed with the following command:
 
 ```bash
 pip install solphin
@@ -73,12 +76,7 @@ plt.savefig("detailed_balance.png", dpi=150, bbox_inches="tight")
 
 The full workflow, from generating `VASP` or `CASTEP` inputs for a crystal structure to reading the finished
 calculations back into band gap, effective mass, absorption, SLME and figure-of-merit analyses, is walked through in
-the tutorial notebooks:
-[full_workflow_tutorial.ipynb](https://github.com/SMTG-Bham/solphin/blob/main/tutorial/full_workflow_tutorial.ipynb)
-for `VASP` and
-[castep_workflow_tutorial.ipynb](https://github.com/SMTG-Bham/solphin/blob/main/tutorial/castep_workflow_tutorial.ipynb)
-for `CASTEP`. The same notebooks are rendered in the
-[documentation](https://solphin.readthedocs.io/en/latest/tutorials.html), alongside the
+a series of [tutorial notebooks](https://solphin.readthedocs.io/en/latest/tutorials.html), alongside the
 [API reference](https://solphin.readthedocs.io/en/latest/api.html).
 
 ## Contributing and support
