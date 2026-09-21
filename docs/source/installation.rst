@@ -1,11 +1,13 @@
 Installation
 ============
 
+Solphin is distributed on PyPI, so it can be installed with the following command:
+
 .. code-block:: bash
 
    pip install solphin
 
-Python 3.11 or newer is required (``requires-python`` in ``pyproject.toml``).
+Python 3.11 or newer is required.
 
 To work on ``solphin`` itself, or to run the tutorial notebooks from the
 repository, install from a checkout instead:
@@ -71,4 +73,4 @@ CASTEP support
 CASTEP support needs no extra installation: the ``.bands`` and ``.cell``
 readers come with ``sumo`` and its ``castepxbin`` dependency, both installed
 with ``solphin``. Optics parsing consumes an OptaDOS ``<seed>_epsilon.dat``
-file — see the :doc:`CASTEP workflow tutorial <castep_workflow_tutorial>`.
+file — see the :doc:`CASTEP optics tutorial <castep_optics_tutorial>`.
