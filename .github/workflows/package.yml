@@ -5,6 +5,11 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+  # publish.yml calls this workflow instead of building again, so the artefact
+  # that goes to PyPI is the one these checks passed. Nothing else is needed to
+  # make a workflow reusable, but note that `github.workflow` in the concurrency
+  # group below then resolves to the *caller's* name, not "package".
+  workflow_call:
 
 permissions:
   contents: read

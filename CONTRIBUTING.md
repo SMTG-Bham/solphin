@@ -199,6 +199,28 @@ do and hard to notice: the package reads these files through `importlib.resource
 still installs and imports perfectly and only fails when someone calls the function. `.github/workflows/package.yml`
 builds both artefacts and fails if a tracked resource is absent from either, but it is cheaper to get right first time.
 
+## Releasing
+
+Releases go to PyPI automatically. `.github/workflows/publish.yml` runs when a GitHub Release is **published**, and
+uploads with [trusted publishing](https://docs.pypi.org/trusted-publishers/), so there is no API token in the
+repository secrets -- PyPI checks the workflow's OIDC identity instead. Nobody should be running `twine upload` by
+hand.
+
+To cut a release:
+
+1. Bump the version in **both** [pyproject.toml](pyproject.toml) and [CITATION.cff](CITATION.cff). They are kept in
+   step by hand, like `pyproject.toml` and `environment.yml` above, and the release workflow refuses to publish if the
+   two disagree. The version is hard-coded rather than derived from the tag, so `git tag` alone changes nothing.
+2. Merge that to `main` and let CI go green.
+3. Draft a GitHub Release against `main`, tagging it `vX.Y.Z` -- the leading `v` is the convention the workflow
+   enforces against the version in `pyproject.toml`. Nothing is uploaded while the release is a draft.
+4. Publish the release. The workflow re-runs the full `package.yml` build and its artefact checks, then uploads that
+   exact artefact. If the `pypi` environment has required reviewers configured, the upload waits for an approval.
+
+A manual run of the workflow (Actions -> publish -> Run workflow) uploads to **TestPyPI** instead, which is the way to
+rehearse the path without spending a version number. It re-uploads over an existing TestPyPI version rather than
+failing; a real release will not.
+
 ## Licence
 
 By contributing, you agree that your contributions will be licensed under the

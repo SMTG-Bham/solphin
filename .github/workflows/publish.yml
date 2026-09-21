@@ -1,0 +1,123 @@
+name: publish
+
+on:
+  # Publishing is driven by the GitHub Release, not by the tag push. Drafting a
+  # release gives you a reviewable page -- notes, the tag it will point at --
+  # that publishes nothing until you press the button, and re-publishing an
+  # existing release re-runs this workflow if an upload ever needs a second go.
+  release:
+    types: [published]
+  # Rehearsal only: a manual run goes to TestPyPI, never to PyPI. See the
+  # `publish` job. Delete this trigger and the two expressions there if you
+  # would rather not maintain a TestPyPI publisher as well.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Deliberately not the cancel-in-progress used by test.yml and package.yml. An
+# upload part way through is not a superseded run, and there is nothing to save
+# by killing it.
+#
+# The literal `-upload-` matters. package.yml is called from here as a reusable
+# workflow, and a called workflow evaluates `github.workflow` as the *caller's*
+# name, so its own group comes out as `publish-refs/tags/v1.2.3`. Without a
+# distinguishing part this workflow would land in the same concurrency group as
+# the build it is waiting on, and deadlock against itself.
+concurrency:
+  group: ${{ github.workflow }}-upload-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  check-version:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      # The version is hard-coded in pyproject.toml and repeated in
+      # CITATION.cff; nothing derives either from the tag. A tag that disagrees
+      # with them means a forgotten bump, and the failure lands late and badly:
+      # PyPI takes whatever version pyproject.toml declares, so v1.1.0 quietly
+      # ships as 1.0.0, or is rejected as a duplicate -- after the twenty
+      # minutes of build below. Ten seconds here instead.
+      #
+      # Skipped on workflow_dispatch, which has no tag to compare against.
+      - name: Assert the release tag matches the packaged version
+        if: github.event_name == 'release'
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          # tomllib is stdlib from 3.11 and the runner's python3 is well past
+          # that, so this needs no setup-python step of its own.
+          version=$(python3 -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["version"])')
+          echo "release tag $TAG, pyproject.toml version $version"
+          [[ "$TAG" == "v$version" ]] || {
+            echo "::error::tag $TAG does not match pyproject.toml version $version -- tag the release v$version, or bump the version"
+            exit 1
+          }
+          # CITATION.cff carries the same number for the citation metadata and
+          # for Zenodo. Nothing installs it, so it drifts silently; this is the
+          # only place the two are compared. `^version:` does not match the
+          # `cff-version:` line above it.
+          cff=$(sed -n 's/^version: *//p' CITATION.cff | tr -d "\"'" | head -1)
+          [[ "$cff" == "$version" ]] || {
+            echo "::error::CITATION.cff says version $cff, pyproject.toml says $version"
+            exit 1
+          }
+
+  build:
+    needs: check-version
+    # The same build and the same artefact checks that already run on every
+    # push, rather than a second, subtly different build living here. What
+    # reaches PyPI is then exactly the artefact that passed `twine check
+    # --strict`, the data-file listing assertions and the clean-venv smoke
+    # test -- and those checks cannot rot, because every pull request runs them.
+    uses: ./.github/workflows/package.yml
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Trusted publishing: PyPI mints a short-lived token in exchange for this
+    # job's OIDC identity, so there is no long-lived API token sitting in the
+    # repository secrets to leak, rotate or inherit from whoever set it up.
+    # PyPI checks the claim (owner, repository, workflow filename, environment)
+    # against what is registered at
+    # https://pypi.org/manage/project/solphin/settings/publishing/ -- so
+    # renaming this file, or the environment below, breaks publishing until the
+    # registration is updated to match.
+    #
+    # The environment is also the natural place to hang a required-reviewer
+    # rule, which is the only thing standing between a compromised main and a
+    # release. Settings -> Environments -> pypi -> Required reviewers.
+    environment:
+      name: ${{ github.event_name == 'release' && 'pypi' || 'testpypi' }}
+      url: ${{ github.event_name == 'release' && 'https://pypi.org/p/solphin' || 'https://test.pypi.org/p/solphin' }}
+    permissions:
+      # Mints the OIDC token, and nothing else. `contents` stays at the
+      # workflow's read default: this job reads the built artefact and writes
+      # only to PyPI.
+      id-token: write
+    steps:
+      # From the `build` job above -- a reusable workflow's jobs run inside this
+      # same workflow run, so its `dist` artefact is here without rebuilding.
+      - uses: actions/download-artifact@v7
+        with:
+          name: dist
+          path: dist/
+      # Tracks the action's release branch rather than pinning a version, which
+      # is what PyPI's own documentation asks for: this action follows the
+      # upload API and the PEP 740 attestation format, and a stale pin fails at
+      # the worst moment. Pin to a commit SHA instead if you would rather
+      # review each bump; it is the one action here with `id-token: write`.
+      #
+      # `dist/` is the default packages-dir, and attestations are generated by
+      # default under trusted publishing.
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: ${{ github.event_name == 'release' && 'https://upload.pypi.org/legacy/' || 'https://test.pypi.org/legacy/' }}
+          # Rehearsals re-upload the same version constantly, and there is
+          # nothing to learn from that failing. On a real release a version
+          # that is already on PyPI is a genuine mistake, and must be loud.
+          skip-existing: ${{ github.event_name != 'release' }}
