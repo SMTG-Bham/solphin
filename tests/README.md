@@ -8,17 +8,24 @@ pytest
 ```
 
 The suite needs no network access, no VASP, no CASTEP, no OptaDOS, and nothing outside `tests/` and the installed
-package. Its data has two families under
+package. Its data has three families under
 `tests/data`:
 
 * `Cu2GeS3` — the VASP reference calculation set (once produced by the tutorial workflow, but owned by the tests —
   deleting `tutorial/` does not change a single result).
-* `castep_toy` — a synthetic CASTEP set: small hand-built `.bands`, `.cell`
-  and OptaDOS `_epsilon.dat` files whose physics is closed-form, so every CASTEP reader anchors to an analytic
+* `castep_toy` — a synthetic CASTEP set: small hand-built `.bands`, `.cell`,
+  OptaDOS `_epsilon.dat` and `.castep` files whose physics is closed-form, so every CASTEP reader anchors to an analytic
   expectation. `tests/castep_fixtures.py`
   documents each file's construction and regenerates it byte-identically; per-file regeneration tests pin that, the same
   discipline as the `.dat`
   regeneration below.
+* `vasp_toy` — the same idea on the VASP side, and for now a single file:
+  `DFPT/OUTCAR`, holding the ionic dielectric block and little else.
+  `tests/vasp_fixtures.py` generates it. It exists because the alternative
+  is committing a multi-hundred-megabyte OUTCAR to exercise nine lines of
+  parsing, and because the interesting cases — a run that computed no ionic
+  response, a restarted run with two blocks — are ones no committed real
+  output happens to be.
 
 The tracked data is never worked on in place: `conftest.py` copies the files the suite reads — the `_DATA_MANIFEST`
 list — into pytest's temp area once per session and strips their write bits, so every fixture hands out a path into a
@@ -52,7 +59,12 @@ anchors:
 | The OptaDOS tensor geometry gives `n = √ε` per axis and zero absorption end to end  | `test_optics.py`         |
 | A parabolic-DOS `.bands` file returns the electron and hole masses it encodes       | `test_dos.py`            |
 | The cosine-band `.bands` fixture has a 1.5 eV direct gap at Γ                       | `test_band_structure.py` |
-| Every `castep_toy` file regenerates byte-identically from `castep_fixtures.py`      | per consumer file        |
+| The VASP and CASTEP ionic dielectric readers return the same tensor, mean 5.0       | `test_dielectric.py`     |
+| CASTEP's ionic tensor is DC − optical permittivity, off-diagonals included          | `test_dielectric.py`     |
+| Output holding no ionic response raises, rather than returning a zero tensor        | `test_dielectric.py`     |
+| `lattice_response` sets `LCALCEPS`, the one route open to hybrids and meta-GGAs     | `test_vasp_inputs.py`    |
+| The CASTEP `dfpt` patch supplies the norm-conserving `species_pot` DFPT requires    | `test_castep_inputs.py`  |
+| Every `castep_toy` and `vasp_toy` file regenerates byte-identically                 | per consumer file        |
 
 The two `.dat` regeneration tests are worth calling out: the committed files are reproducible from the committed
 `vasprun.xml`, which makes them verified reference data rather than a snapshot of whatever the code emits today.

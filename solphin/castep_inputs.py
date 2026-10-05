@@ -39,7 +39,16 @@ class CastepRecipeConfig(TypedDict):
 
 # Patches from the VASP recipe file with no CASTEP equivalent, named in the
 # unsupported-patch error so the caller learns why rather than just what.
-_VASP_ONLY_PATCHES = ("elastic_tensor", "rvv10", "deformation_potential", "lobster")
+# ``lattice_response`` is VASP's finite-field route to the ionic permittivity
+# (LCALCEPS), which has no CASTEP counterpart: CASTEP reaches that quantity
+# only through the linear-response ``dfpt`` patch.
+_VASP_ONLY_PATCHES = (
+    "elastic_tensor",
+    "rvv10",
+    "deformation_potential",
+    "lattice_response",
+    "lobster",
+)
 
 
 def _load_config(fname: str) -> CastepRecipeConfig:
@@ -296,8 +305,8 @@ def write_castep_calculation(
     patches : list of str or None, optional
         Modifications to apply, e.g. vdW corrections or relaxation settings.
         Default is None, treated as no patches. The VASP-only patches
-        ``elastic_tensor``, ``rvv10``, ``deformation_potential`` and
-        ``lobster`` are rejected with a ValueError.
+        ``elastic_tensor``, ``rvv10``, ``deformation_potential``,
+        ``lattice_response`` and ``lobster`` are rejected with a ValueError.
     seedname : str or None, optional
         Seed used to name the input files. Default is None, which uses the
         reduced chemical formula of the structure.

@@ -99,6 +99,36 @@ def test_prepare_incar_defect_patch_expands(config: RecipeConfig) -> None:
         assert incar[key] == value
 
 
+def test_dfpt_patch_uses_perturbation_theory(config: RecipeConfig) -> None:
+    """The dfpt patch is DFPT phonons (IBRION=8) with the DFPT dielectric tag."""
+    incar = vasp_inputs._prepare_incar("PBE", ["dfpt"], config)
+
+    assert incar["IBRION"] == 8
+    assert incar["LEPSILON"] is True
+
+
+@pytest.mark.parametrize("recipe", ["HSE06", "PBE0", "R2SCAN"])
+def test_lattice_response_patch_uses_finite_fields(
+        config: RecipeConfig, recipe: str
+) -> None:
+    """The lattice_response patch must use LCALCEPS, not LEPSILON.
+
+    This patch exists to reach the ionic dielectric constant in regimes DFPT
+    cannot handle - hybrids and meta-GGAs, where VASP does not implement
+    LEPSILON at all. LCALCEPS gets there from the response to a finite
+    electric field instead, and works for every functional. Setting LEPSILON
+    here would make the patch a slower duplicate of dfpt that fails on
+    exactly the recipes it was added for.
+    """
+    incar = vasp_inputs._prepare_incar(recipe, ["lattice_response"], config)
+
+    assert incar["LCALCEPS"] is True
+    assert "LEPSILON" not in incar
+    # Finite differences on the ions, which is what turns the ion-clamped
+    # response into the ionic contribution.
+    assert incar["IBRION"] == 6
+
+
 def test_prepare_incar_gamma_only_is_not_an_incar_patch(config: RecipeConfig) -> None:
     """gamma_only changes k-points, not the INCAR, so it is skipped here."""
     plain = dict(vasp_inputs._prepare_incar("PBE", [], config))

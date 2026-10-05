@@ -2,7 +2,7 @@
 
 Seven modules used to call ``logging.basicConfig``, set the root logger's level,
 disable matplotlib's ``font_manager`` logger, or install ``warnings`` filters at
-module top level. ``solphin/__init__.py`` imports all nine modules eagerly, so
+module top level. ``solphin/__init__.py`` imports all ten modules eagerly, so
 ``import solphin`` reconfigured the root logger and the warnings filters of any
 program that used the library.
 

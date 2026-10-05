@@ -79,7 +79,10 @@ def test_expand_patches_defect_expands(config: CastepRecipeConfig) -> None:
     assert expanded == ["relax_atoms", "spin_polarised"]
 
 
-@pytest.mark.parametrize("patch", ["elastic_tensor", "rvv10", "deformation_potential", "lobster"])
+@pytest.mark.parametrize(
+    "patch",
+    ["elastic_tensor", "rvv10", "deformation_potential", "lattice_response", "lobster"],
+)
 def test_expand_patches_rejects_vasp_only_patches(
         config: CastepRecipeConfig, patch: str
 ) -> None:
@@ -281,6 +284,30 @@ def test_write_castep_calculation_hybrid_writes_species_pot_block(
     cell_text = cell_file.read_text()
     assert "%block species_pot" in cell_text
     assert "NCP19" in cell_text
+
+
+def test_dfpt_patch_forces_norm_conserving_pseudopotentials(
+        fe_structure: Structure, tmp_path: Path
+) -> None:
+    """The dfpt patch must supply species_pot even for a non-hybrid recipe.
+
+    CASTEP's linear response is implemented only for norm-conserving
+    pseudopotentials, but only the two hybrid recipes carry a species_pot of
+    their own. Without one from the patch, a PBE Efield run picks up the
+    default ultrasoft OTFG set and the calculation fails.
+    """
+    cell_file = castep_inputs.write_castep_calculation(
+        fe_structure, "PBE", tmp_path, patches=["dfpt"]
+    )
+
+    cell_text = cell_file.read_text()
+    param_text = (tmp_path / "Fe.param").read_text()
+    assert "%block species_pot" in cell_text
+    assert "NCP19" in cell_text
+    assert "task                    : Efield" in param_text
+    # The ionic part of the permittivity is the whole point of the patch, and
+    # is what solphin.dielectric subtracts the optical part from.
+    assert "efield_calc_ion_permittivity: true" in param_text
 
 
 def test_write_castep_calculation_spin_patch(

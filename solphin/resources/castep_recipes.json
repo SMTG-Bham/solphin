@@ -121,7 +121,10 @@
                 "geom_max_iter": 100
             }
         },
-        "dfpt": {"param": {"task": "Efield"}},
+        "dfpt": {
+            "param": {"task": "Efield", "efield_calc_ion_permittivity": true},
+            "cell": {"species_pot": "NCP19"}
+        },
         "dos": {
             "param": {
                 "task": "Spectral",

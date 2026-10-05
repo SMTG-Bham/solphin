@@ -18,6 +18,8 @@ Parsing and analysis
   masses.
 * :doc:`solphin.optics` — absorption, refractive index, SLME and the Blank
   thickness sweep from dielectric data.
+* :doc:`solphin.dielectric` — ionic (lattice) contribution to the static
+  dielectric constant.
 * :doc:`solphin.spectral` — photon-flux-weighted spectral average and
   dispersion of the absorption coefficient.
 
@@ -46,6 +48,7 @@ Plotting and results
    solphin.band_structure
    solphin.dos
    solphin.optics
+   solphin.dielectric
    solphin.spectral
    solphin.db_fom
    solphin.pv_fom

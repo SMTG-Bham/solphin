@@ -330,6 +330,7 @@
             "NELMIN": 5
         },
         "dfpt": {"IBRION": 8, "NSW": 1, "ISIF": 2, "LEPSILON": true},
+        "lattice_response": {"IBRION": 6, "NSW": 1, "ISIF": 2, "LCALCEPS": true},
         "elastic_tensor": {"IBRION": 6, "NSW": 1, "ISIF": 3},
         "dos": {"LORBIT": 14, "NEDOS": 3000, "ISMEAR": -5, "SIGMA": 0.1},
         "gaussian_dos": {"LORBIT": 14, "NEDOS": 3000, "ISMEAR": 0, "SIGMA": 0.1},
