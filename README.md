@@ -20,11 +20,10 @@ material's theoretical photovoltaic performance. From an initial crystal structu
 `CASTEP` input files for each required calculation, and reads the results of either code.
 
 
-Documentation, including workflow tutorials for both codes and the Python API reference, can be found at
+Documentation, including workflow tutorials for both codes and the Python API reference, can be found at [solphin.readthedocs.io](https://solphin.readthedocs.io/en/latest/).
 
-[solphin.readthedocs.io](https://solphin.readthedocs.io/en/latest/).
+<img width="4729" height="2628" alt="solphin_flowchart" src="https://github.com/user-attachments/assets/fae2dd83-64c1-4d0b-b97f-54e930ef32cd" />
 
-<img width="1146" height="596" alt="solphin_workflow_light" src="https://github.com/user-attachments/assets/45302a91-5eaa-4540-bf06-0a26757f2b68" />
 
 ## Installation
 
@@ -95,8 +94,8 @@ the style and docstring conventions, how to run the tests and how to build the d
 
 If you use `solphin` in your work, please cite the following:
 
-* Cox, P. U., Russell, P. P., Crovetto, A., Squires, A. G., Slocombe, L, & Scanlon, D. O.
-  Solphin [Computer software]. https://github.com/SMTG-Bham/solphin
+* Cox, P. U.; Russell, P. P.; Crovetto, A.; Squires, A. G.; Slocombe, L.; Scanlon, D. O. Solphin: Photovoltaic
+efficiency analysis for bulk materials using Python. 2026; https://arxiv.org/abs/2610.10028.
 * Crovetto, A., 2024. A phenomenological figure of merit for photovoltaic materials. Journal of Physics: Energy, 6 (2),
   p.025009.
 * Alex M. Ganose, Adam J. Jackson, David O. Scanlon. sumo: Command-line tools for plotting and analysis of periodic ab
