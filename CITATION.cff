@@ -4,18 +4,20 @@
 cff-version: 1.2.0
 title: Solphin
 message: >-
-  If you use this software, please cite it using the
-  metadata from this file.
+  If you use this software, please cite our preprint
+  using the preferred-citation metadata from this file.
 type: software
 authors:
   - given-names: Philippa U
     family-names: Cox
-    email: puc369@student.bham.ac.uk
+    email: puc369@.bham.ac.uk
     affiliation: University of Birmingham
+    orcid: 'https://orcid.org/0009-0007-2949-8542'
   - given-names: Peter P
     family-names: Russell
-    email: ppr466@student.bham.ac.uk
+    email: ppr466@.bham.ac.uk
     affiliation: University of Birmingham
+    orcid: 'https://orcid.org/0009-0007-8545-7956'
   - given-names: Andrea
     family-names: Crovetto
     email: ancro@dtu.dk
@@ -25,6 +27,9 @@ authors:
     family-names: Squires
     affiliation: University of Birmingham
     orcid: 'https://orcid.org/0000-0001-6967-3690'
+  - given-names: Louie
+    family-names: Slocombe
+    orcid: 'https://orcid.org/0000-0002-6986-5526'
   - given-names: David O
     family-names: Scanlon
     email: d.o.scanlon@bham.ac.uk
@@ -33,3 +38,32 @@ authors:
 version: 1.0.0
 repository-code: 'https://github.com/SMTG-Bham/solphin'
 license: MIT
+preferred-citation:
+  type: article
+  title: >-
+    Solphin: Photovoltaic efficiency analysis for bulk
+    materials using Python
+  authors:
+    - given-names: Philippa U
+      family-names: Cox
+      orcid: 'https://orcid.org/0009-0007-2949-8542'
+    - given-names: Peter P
+      family-names: Russell
+      orcid: 'https://orcid.org/0009-0007-8545-7956'
+    - given-names: Andrea
+      family-names: Crovetto
+      orcid: 'https://orcid.org/0000-0003-1499-8740'
+    - given-names: Alexander G
+      family-names: Squires
+      orcid: 'https://orcid.org/0000-0001-6967-3690'
+    - given-names: Louie
+      family-names: Slocombe
+      orcid: 'https://orcid.org/0000-0002-6986-5526'
+    - given-names: David O
+      family-names: Scanlon
+      orcid: 'https://orcid.org/0000-0001-9174-8601'
+  journal: arXiv preprint arXiv:2610.10028
+  year: 2026
+  month: 10
+  doi: 10.48550/arXiv.2610.10028
+  url: 'https://arxiv.org/abs/2610.10028'
