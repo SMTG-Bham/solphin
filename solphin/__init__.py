@@ -13,6 +13,7 @@ from solphin import (
     optics,
     pv_fom,
     spectral,
+    transport,
     vasp_inputs,
 )
 
@@ -33,5 +34,6 @@ __all__ = [
     "optics",
     "pv_fom",
     "spectral",
+    "transport",
     "vasp_inputs",
 ]
