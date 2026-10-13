@@ -12,3 +12,4 @@ Tutorials
    sq_tutorial.ipynb
    slme_tutorial.ipynb
    fom_tutorial.ipynb
+   amset_mobility_tutorial.ipynb

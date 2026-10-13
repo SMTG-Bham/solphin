@@ -1,0 +1,52 @@
+# AMSET settings that produced transport_49x49x43.json (Cu2GeS3, Cc, 300 K).
+#
+# PROVISIONAL: good enough for solphin's tests and tutorial, not final physics.
+# Band structure and wavefunctions: HSE06, 10x10x9 uniform mesh, from the
+# Relax/CONTCAR in this directory tree. Deformation potentials and the elastic
+# tensor are computed. The ionic dielectric contribution (2.5) and the
+# polar-optical frequency (9 THz) are ESTIMATES from the kesterite Cu2ZnSnS4
+# analogue (arXiv:1610.05678), pending a DFPT calculation; piezoelectric
+# scattering is left out for want of a piezoelectric tensor. Cluster paths in
+# the original file have been replaced by the bare file names.
+
+scattering_type: ["ADP", "POP", "IMP"]
+
+doping: [-1.e10, -1.e12, -1.e14, -1.e15, -1.e16, -1.e17, -1.e18, -1.e19,
+          1.e10,  1.e12,  1.e14,  1.e15,  1.e16,  1.e17,  1.e18,  1.e19]
+temperatures: [300]
+
+wavefunction_coefficients: wavefunction.h5
+interpolation_factor: 10
+
+deformation_potential: deformation.h5
+
+# Computed elastic tensor, GPa, Voigt order, Cartesian frame of Relax/CONTCAR.
+elastic_constant:
+  - [  132.161,   49.630,   42.786,    0.000,   10.848,    0.000 ]
+  - [   49.630,  136.799,   44.868,    0.000,  -13.364,    0.000 ]
+  - [   42.786,   44.868,  137.621,    0.000,   -1.749,    0.000 ]
+  - [    0.000,    0.000,    0.000,   30.977,    0.000,  -11.767 ]
+  - [   10.848,  -13.364,   -1.749,    0.000,   29.333,    0.000 ]
+  - [    0.000,    0.000,    0.000,  -11.767,    0.000,   38.884 ]
+
+# HSE06 eps_inf tensor from OPT_hybrid (solphin.optics.calc_dielectric).
+high_frequency_dielectric:
+  - [ 6.055,  0.000, -0.064]
+  - [ 0.000,  6.140,  0.000]
+  - [-0.064,  0.000,  6.133]
+
+# ESTIMATE: eps_inf + 2.5 ionic on the diagonal.
+static_dielectric:
+  - [ 8.555,  0.000, -0.064]
+  - [ 0.000,  8.640,  0.000]
+  - [-0.064,  0.000,  8.633]
+
+pop_frequency: 9.0   # THz, ESTIMATE
+
+defect_charge: 1
+compensation_factor: 2
+
+free_carrier_screening: true
+calculate_mobility: true
+separate_mobility: true
+write_input: true

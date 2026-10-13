@@ -77,6 +77,11 @@ _DATA_MANIFEST = (
         for n in range(1, 8)
         for name in ("vasprun.xml", "KPOINTS")
     ),
+    # AMSET transport output for the same Cu2GeS3 structure (HSE06 bands; see
+    # the settings.yaml beside it for what is computed and what is estimated).
+    # Provisional data: the values pinned in test_transport.py follow it.
+    "Cu2GeS3/AMSET/transport_49x49x43.json",
+    "Cu2GeS3/AMSET/settings.yaml",
     # The synthetic CASTEP set; tests/castep_fixtures.py documents each file's
     # analytic construction and regenerates it byte-identically.
     "castep_toy/DOS/toy.bands",
@@ -162,6 +167,12 @@ def band_dir(reference_data: Path) -> Path:
 def relax_dir(reference_data: Path) -> Path:
     """Geometry optimisation - holds the POSCAR and the relaxed CONTCAR."""
     return reference_data / "Cu2GeS3" / "Relax"
+
+
+@pytest.fixture(scope="session")
+def amset_transport_file(reference_data: Path) -> Path:
+    """AMSET transport file for Cu2GeS3, both carrier types, 1e10 - 1e19 cm^-3, 300 K."""
+    return reference_data / "Cu2GeS3" / "AMSET" / "transport_49x49x43.json"
 
 
 @pytest.fixture(scope="session")

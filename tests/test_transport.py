@@ -17,9 +17,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 from numpy.typing import NDArray
+from pymatgen.electronic_structure.bandstructure import BandStructureSymmLine
 
 import solphin.final_results as final_results
+import solphin.spectral as spectral
 import solphin.transport as transport
+from solphin.dos import DOSResult
 
 # Phonon-limited mobilities, flat in doping, and an ionized-impurity mobility
 # falling as 1/n, normalised so impurities are a chosen share of the
@@ -402,3 +405,85 @@ def test_sweep_refuses_range_outside_table_1(photon_spectrum: NDArray) -> None:
             photon_spectrum=photon_spectrum, mobility=10.0, Tcell=300.0,
             dop_range=(1e10, 1e20), **MAPI,
         )
+
+
+# --- real AMSET output: Cu2GeS3 ------------------------------------------------
+#
+# transport_49x49x43.json is an AMSET run on the same Cu2GeS3 structure as the
+# rest of tests/data (HSE06 bands, computed deformation potentials and elastic
+# tensor, estimated ionic dielectric and polar-optical frequency; see the
+# settings.yaml beside it). The data is provisional, so the pinned values below
+# document it and will move when it is replaced. What must not move is the
+# behaviour: a complete two-carrier file raises no coverage or carrier warning.
+
+
+def test_real_file_covers_both_carriers_and_range(amset_transport_file: Path) -> None:
+    """The Cu2GeS3 file has both carriers on 1e10 - 1e19 cm⁻³ at 300 K."""
+    data = transport.load_amset_transport(amset_transport_file)
+
+    assert data.carriers == ("electrons", "holes")
+    assert data.mechanisms == ("overall", "ADP", "IMP", "POP")
+    np.testing.assert_allclose(data.temperatures, [300.0])
+
+    for carrier in data.carriers:
+        n, _ = data.mobility_vs_doping(carrier)
+        assert n[0] == pytest.approx(1e10) and n[-1] == pytest.approx(1e19)
+
+
+def test_real_file_raises_only_physics_warnings(amset_transport_file: Path) -> None:
+    """No single-carrier or grid-coverage warning; impurities and anisotropy only."""
+    with pytest.warns(UserWarning) as record:
+        transport.select_mobility(amset_transport_file, verbose=False)
+
+    messages = " ".join(str(w.message) for w in record)
+
+    assert "Only" not in messages
+    assert "grid" not in messages
+    assert "compensation_factor" in messages
+    assert "hole mobility is anisotropic" in messages
+
+
+def test_real_file_holes_limit_cu2ges3(amset_transport_file: Path) -> None:
+    """Holes are the limiting carrier across the Γₚᵥ range, at their AMSET values."""
+    model = transport.select_mobility(amset_transport_file, verbose=False)
+    electrons = transport.select_mobility(
+        amset_transport_file, carrier="electrons", verbose=False
+    )
+
+    assert set(model.limiting_carrier(np.logspace(10, 18, 9))) == {"holes"}
+    assert model(1e15) == pytest.approx(35.36, rel=1e-3)
+    assert model(1e18) == pytest.approx(23.11, rel=1e-3)
+    assert electrons(1e15) == pytest.approx(262.75, rel=1e-3)
+
+
+def test_real_file_end_to_end_efficiency(
+        amset_transport_file: Path,
+        opt_dir: Path,
+        am15: NDArray,
+        photon_spectrum: NDArray,
+        dielectric: tuple[float, NDArray, NDArray, NDArray, NDArray],
+        dos_result: DOSResult,
+        band_structure_obj: BandStructureSymmLine,
+) -> None:
+    """Every Γₚᵥ input from the Cu2GeS3 set, with μ from AMSET, at n = 1e16 cm⁻³.
+
+    Lifetime 10 ns and an ionic dielectric contribution of 2.5 (the estimate the
+    AMSET run itself used) are the two inputs not computed here. The limiting
+    (hole) mobility and the minority (electron) mobility of this p-type
+    absorber bracket the efficiency, per Crovetto 2024 SI equation S2.
+    """
+    E_gap = band_structure_obj.get_direct_band_gap()
+    alpha, sigma = spectral.generate_spectral_parameters(opt_dir, am15, E_gap=E_gap)
+    props: dict[str, Any] = dict(
+        E_gap=E_gap, photon_spectrum=photon_spectrum, alpha=alpha, tau=1e-8, sigma=sigma,
+        dos_mass=dos_result.final_result, dop_density=1e16, epsilon=dielectric[0] + 2.5,
+        Tcell=300.0,
+    )
+    results = {}
+
+    for carrier in ("limiting", "electrons"):
+        mu = transport.select_mobility(amset_transport_file, carrier=carrier, verbose=False)
+        results[carrier] = final_results.SQ_relative_FOM_PV_efficiency(mu=mu(1e16), **props)[-1]
+
+    assert results["limiting"] == pytest.approx(14.77, abs=0.05)
+    assert results["electrons"] == pytest.approx(17.89, abs=0.05)
