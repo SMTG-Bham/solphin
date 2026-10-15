@@ -880,14 +880,15 @@ def plot_FOM_vs_doping(
         ax_eff.plot(densities, ref_eff, "--", color="#8a8984", linewidth=1.5, label=ref_label)
         ax_eff.legend(frameon=False, fontsize=8)
 
-    ax_mu.set_xscale("log")
     ax_mu.set_yscale("log")
     ax_mu.set_ylabel("Mobility (cm$^2$V$^{-1}$s$^{-1}$)")
     ax_mu.set_title(r"$\Gamma_{PV}$ efficiency vs doping" + f"\n(τ = {tau:.2g} s)")
     ax_eff.set_xlabel("Doping density (cm$^{-3}$)")
     ax_eff.set_ylabel("Efficiency (%)")
 
+    # The x scale goes on both axes: caller-supplied axes need not share x.
     for ax in (ax_mu, ax_eff):
+        ax.set_xscale("log")
         ax.grid(True, which="major", color="#e4e3df", linewidth=0.6)
 
     return ax_mu, ax_eff

@@ -411,6 +411,19 @@ def test_sweep_with_amset_model_and_plots(n_only: Path, photon_spectrum: NDArray
     plt.close("all")
 
 
+def test_sweep_plot_logs_doping_on_unshared_axes(photon_spectrum: NDArray) -> None:
+    """Caller-supplied axes that do not share x still get a log doping axis on both panels."""
+    _, (ax_mu, ax_eff) = plt.subplots(2, 1)
+
+    final_results.plot_FOM_vs_doping(
+        photon_spectrum=photon_spectrum, mobility=10.0, Tcell=300.0, axes=(ax_mu, ax_eff),
+        **MAPI,
+    )
+
+    assert ax_mu.get_xscale() == ax_eff.get_xscale() == "log"
+    plt.close("all")
+
+
 def test_sweep_refuses_range_outside_table_1(photon_spectrum: NDArray) -> None:
     """The doping sweep keeps the table 1 guard of the other sweeps."""
     with pytest.raises(ValueError, match="dop_density"):
