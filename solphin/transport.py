@@ -79,6 +79,12 @@ _SINGULAR = {"electrons": "electron", "holes": "hole"}
 # Relative tolerance when matching a requested temperature to the file's grid.
 _TEMPERATURE_RTOL = 1e-6
 
+# Relative tolerance when comparing a doping density with the file's grid.
+# AMSET round-trips its dopings through bohr⁻³ and writes them a few ulps off,
+# e.g. 1e17 as 9.999999999999998e16, so a grid point the caller names exactly
+# can sit just inside or outside the bound it was meant to meet.
+_DOPING_RTOL = 1e-9
+
 # Text-format headers carry these six upper-triangle components, in this order.
 _TRIU_COMPONENTS = ("xx", "xy", "xz", "yy", "yz", "zz")
 
@@ -597,7 +603,7 @@ class MobilityModel:
         if np.any(n <= 0):
             raise ValueError("Doping densities must be positive (|N_D - N_A| in cm⁻³)")
 
-        above = n > self.upper_bound * (1 + 1e-9)
+        above = n > self.upper_bound * (1 + _DOPING_RTOL)
 
         if np.any(above):
             message = (
@@ -688,6 +694,24 @@ class MobilityModel:
 def _percent(share: float) -> str:
     """Format a fraction as a short percentage."""
     return f"{100 * share:.3g}%"
+
+
+def _in_window(concentration: NDArray, lo: float, hi: float) -> NDArray:
+    """Return which concentrations lie in [lo, hi], to within AMSET's float error.
+
+    Parameters
+    ----------
+    concentration : numpy.ndarray
+        Concentrations in cm⁻³.
+    lo, hi : float
+        Window bounds in cm⁻³.
+
+    Returns
+    -------
+    numpy.ndarray of bool
+        True where the concentration is inside the window.
+    """
+    return (concentration >= lo * (1 - _DOPING_RTOL)) & (concentration <= hi * (1 + _DOPING_RTOL))
 
 
 def select_mobility(
@@ -824,7 +848,7 @@ def select_mobility(
     upper_bound = min(curve[0][-1] for curve in curves.values())
     lo, hi = dop_range
 
-    if lo < lower_bound:
+    if lo < lower_bound * (1 - _DOPING_RTOL):
         shares = [transport.imp_share(c, temperature) for c in used]
 
         if any(s is None for s in shares):
@@ -860,7 +884,7 @@ def select_mobility(
                     f" down to {lo:.3g}."
                 )
 
-    if hi > upper_bound:
+    if hi > upper_bound * (1 + _DOPING_RTOL):
         message = (
             f"The AMSET grid ends at {upper_bound:.3g} cm⁻³, below the {hi:.3g}"
             " cm⁻³ requested."
@@ -879,7 +903,7 @@ def select_mobility(
         share = transport.imp_share(c, temperature)
 
         if share is not None:
-            inside = (share[0] >= lo) & (share[0] <= hi)
+            inside = _in_window(share[0], lo, hi)
             significant = inside & (share[1] > _SIGNIFICANT_IMP_SHARE)
 
             if np.any(significant):
@@ -893,7 +917,7 @@ def select_mobility(
                 )
 
         n, ratio = transport.anisotropy(c, temperature)
-        inside = (n >= lo) & (n <= hi)
+        inside = _in_window(n, lo, hi)
 
         if np.any(inside) and np.max(ratio[inside]) > _ANISOTROPY_RATIO:
             report(
@@ -916,7 +940,7 @@ def select_mobility(
 
     if carrier == "limiting" and len(used) == 2:
         grid = np.unique(np.concatenate([curve[0] for curve in curves.values()]))
-        grid = grid[(grid >= lo) & (grid <= min(hi, upper_bound))]
+        grid = grid[_in_window(grid, lo, min(hi, upper_bound))]
 
         if grid.size:
             limiting = model.limiting_carrier(grid)

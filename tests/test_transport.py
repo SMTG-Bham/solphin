@@ -296,6 +296,19 @@ def test_range_above_grid_is_refused_or_held(n_only: Path) -> None:
         assert model(1e20) == pytest.approx(model(1e19))
 
 
+def test_grid_ends_a_few_ulps_off_still_cover_the_range(tmp_path: Path) -> None:
+    """Grid ends AMSET writes a hair off the requested bounds count as reaching them."""
+    # 9.999999999999998e16 is how AMSET wrote 1e17 in the Cu2GeS3 file.
+    bottom, top = np.nextafter(1e15, np.inf), 9.999999999999998e16
+    path = write_transport(tmp_path / "t.json", build([-bottom, -1e16, -top]))
+
+    with pytest.warns(UserWarning) as record:
+        model = transport.select_mobility(path, dop_range=(1e15, 1e17), verbose=False)
+
+    assert not any("grid" in str(w.message) for w in record)
+    assert model(1e17) == pytest.approx(model(top))
+
+
 def test_model_refuses_densities_above_grid(n_only: Path) -> None:
     """A model built for the default range still refuses a later out-of-grid call."""
     model = quiet_select(n_only, dop_range=(1e15, 1e19))
