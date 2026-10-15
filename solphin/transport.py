@@ -9,12 +9,13 @@ transport file can stand in for the hand-picked constant ``mu``.
 
 Definitions that line up, and one that does not:
 
-* AMSET's ``doping`` is the net free-carrier concentration |n - p| the Fermi
+* AMSET's ``doping`` is the net free-carrier concentration ``|n - p|`` the Fermi
   level is solved for, negative for n-type and positive for p-type. That is
-  Crovetto's ``dop_density`` (equation 3, n = |N_D - N_A|), so it is used as is,
-  sign stripped. It is not a count of charged defects: those enter AMSET only
-  through the ionized-impurity scattering, as compensation_factor x |n - p| /
-  defect_charge, and neither setting is stored in the transport file.
+  Crovetto's ``dop_density`` (equation 3, ``n = |N_D - N_A|``), so it is used as
+  is, sign stripped. It is not a count of charged defects: those enter AMSET
+  only through the ionized-impurity scattering, as
+  ``compensation_factor x |n - p| / defect_charge``, and neither setting is
+  stored in the transport file.
 * AMSET's mobility is the conductivity (drift) mobility of the *majority*
   carrier at each doping - electrons for the n-type entries, holes for the
   p-type ones - which is the μ = qτₛ/M of Crovetto's equation 5.
@@ -170,7 +171,7 @@ class AmsetTransport:
         return int(matches[0])
 
     def _carrier_rows(self, carrier: str) -> NDArray:
-        """Return the doping indices belonging to one carrier, by ascending |n|.
+        """Return the doping indices belonging to one carrier, by ascending ``|n|``.
 
         Parameters
         ----------
@@ -225,7 +226,7 @@ class AmsetTransport:
         Returns
         -------
         concentration : numpy.ndarray
-            Carrier concentrations |n| in cm⁻³, ascending.
+            Carrier concentrations ``|n|`` in cm⁻³, ascending.
         mobility : numpy.ndarray
             Isotropic mobility in cm² V⁻¹ s⁻¹ at each concentration.
 
@@ -240,7 +241,7 @@ class AmsetTransport:
         return np.abs(self.doping[rows]), np.trace(tensors, axis1=-2, axis2=-1) / 3
 
     def _tensors(self, carrier: str, temperature: float, mechanism: str) -> NDArray:
-        """Return one carrier's mobility tensors at one temperature, by ascending |n|.
+        """Return one carrier's mobility tensors at one temperature, by ascending ``|n|``.
 
         Parameters
         ----------
@@ -317,7 +318,7 @@ class AmsetTransport:
         Returns
         -------
         concentration : numpy.ndarray
-            Carrier concentrations |n| in cm⁻³, ascending.
+            Carrier concentrations ``|n|`` in cm⁻³, ascending.
         ratio : numpy.ndarray
             Largest over smallest eigenvalue of the mobility tensor; 1 for an
             isotropic material.
@@ -714,7 +715,7 @@ def select_mobility(
 
     The doping density Γₚᵥ is evaluated at is the majority-carrier
     concentration, and AMSET computes each carrier's mobility as the majority
-    carrier at that concentration. Using a hole mobility at the same |n| for an
+    carrier at that concentration. Using a hole mobility at the same ``|n|`` for an
     n-type absorber therefore approximates the minority-carrier mobility by the
     majority one at the same ionized-impurity density.
 
