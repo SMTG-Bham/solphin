@@ -12,7 +12,9 @@ package. Its data has three families under
 `tests/data`:
 
 * `Cu2GeS3` — the VASP reference calculation set (once produced by the tutorial workflow, but owned by the tests —
-  deleting `tutorial/` does not change a single result).
+  deleting `tutorial/` does not change a single result). `Cu2GeS3/AMSET` adds an AMSET transport file for the same
+  structure, with the `settings.yaml` that produced it. That run is provisional (two of its inputs are estimates,
+  marked in the settings), so the values `test_transport.py` pins to it will move when it is replaced.
 * `castep_toy` — a synthetic CASTEP set: small hand-built `.bands`, `.cell`,
   OptaDOS `_epsilon.dat` and `.castep` files whose physics is closed-form, so every CASTEP reader anchors to an analytic
   expectation. `tests/castep_fixtures.py`
@@ -65,6 +67,9 @@ anchors:
 | `lattice_response` sets `LCALCEPS`, the one route open to hybrids and meta-GGAs     | `test_vasp_inputs.py`    |
 | The CASTEP `dfpt` patch supplies the norm-conserving `species_pot` DFPT requires    | `test_castep_inputs.py`  |
 | Every `castep_toy` and `vasp_toy` file regenerates byte-identically                 | per consumer file        |
+| AMSET's text and JSON layouts parse to the same tensors; log-log μ(n) is exact for power laws | `test_transport.py` |
+| Impurity share is the Matthiessen fraction μ_total/μ_IMP; limiting μ = min(μe, μh) pointwise | `test_transport.py` |
+| A complete two-carrier AMSET file raises no coverage warning; Cu2GeS3 holes limit Γₚᵥ  | `test_transport.py`      |
 
 The two `.dat` regeneration tests are worth calling out: the committed files are reproducible from the committed
 `vasprun.xml`, which makes them verified reference data rather than a snapshot of whatever the code emits today.

@@ -22,6 +22,8 @@ Parsing and analysis
   dielectric constant.
 * :doc:`solphin.spectral` — photon-flux-weighted spectral average and
   dispersion of the absorption coefficient.
+* :doc:`solphin.transport` — doping-dependent carrier mobility from AMSET
+  transport output, checked and prepared for :math:`\Gamma_{\mathrm{PV}}`.
 
 Figures of merit
 ----------------
@@ -50,6 +52,7 @@ Plotting and results
    solphin.optics
    solphin.dielectric
    solphin.spectral
+   solphin.transport
    solphin.db_fom
    solphin.pv_fom
    solphin.db_plots

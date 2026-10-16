@@ -1,5 +1,8 @@
 """Combine the detailed-balance limit and Γₚᵥ into final relative-efficiency results."""
 
+from collections.abc import Callable
+from typing import Any
+
 import matplotlib.pyplot as plt
 import numpy as np
 from ipywidgets import interact, widgets
@@ -697,3 +700,195 @@ def mobility_plot(
 
     fig.tight_layout()
     plt.show()
+
+
+def FOM_vs_doping(
+        E_gap: float,
+        photon_spectrum: NDArray,
+        alpha: float,
+        tau: float,
+        sigma: float,
+        dos_mass: float,
+        epsilon: float,
+        mobility: float | Callable[[float], float | NDArray],
+        Tcell: float,
+        dop_range: tuple[float, float] = _DEFAULT_DOP_RANGE,
+        n_points: int = 50,
+        *,
+        allow_out_of_range: bool = False,
+) -> tuple[NDArray, NDArray, NDArray]:
+    """Evaluate the Γₚᵥ efficiency across doping, with a mobility that may follow it.
+
+    :func:`plot_FOM` sweeps doping at a fixed mobility, but ionized impurity
+    scattering ties the two together. Passing a :class:`~solphin.transport.
+    MobilityModel` from :func:`~solphin.transport.select_mobility` (or any
+    function of the doping density) as ``mobility`` makes each point use the
+    mobility at its own doping. A plain number reproduces the fixed-mobility
+    sweep.
+
+    Parameters
+    ----------
+    E_gap : float
+        Optical band gap in eV.
+    photon_spectrum : numpy.ndarray
+        Converted photon flux spectrum from ``convert_spectrum``.
+    alpha : float
+        Spectrally averaged absorption coefficient in cm⁻¹.
+    tau : float
+        Non-radiative recombination lifetime in s.
+    sigma : float
+        Spectral dispersion of the absorption coefficient, dimensionless.
+    dos_mass : float
+        Density-of-states effective mass in units of m₀.
+    epsilon : float
+        Static dielectric constant, dimensionless.
+    mobility : float or callable
+        Carrier mobility in cm² V⁻¹ s⁻¹, either constant or a function of the
+        doping density in cm⁻³.
+    Tcell : float
+        Operating temperature of the cell in K.
+    dop_range : tuple of float, optional
+        Minimum and maximum doping densities in cm⁻³. Default is the sampled
+        range of Crovetto 2024 table 1.
+    n_points : int, optional
+        Number of logarithmically spaced doping densities. Default is 50.
+    allow_out_of_range : bool, optional
+        If True, a property or sweep endpoint outside its Crovetto 2024 table 1
+        sampled range warns instead of raising. Default is False.
+        Keyword-only.
+
+    Returns
+    -------
+    densities : numpy.ndarray
+        Doping densities in cm⁻³.
+    mobilities : numpy.ndarray
+        Mobility used at each density, in cm² V⁻¹ s⁻¹.
+    efficiencies : numpy.ndarray
+        Γₚᵥ efficiency at each density, in %.
+
+    Raises
+    ------
+    ValueError
+        If the sweep or any property, including a mobility the model returns,
+        lies outside its table 1 sampled range and ``allow_out_of_range`` is
+        False.
+    """
+    _check_sweep_range("dop_range", dop_range, allow_out_of_range)
+
+    densities = np.logspace(np.log10(dop_range[0]), np.log10(dop_range[1]), n_points)
+
+    if callable(mobility):
+        mobilities = np.array([float(mobility(d)) for d in densities])
+    else:
+        mobilities = np.full_like(densities, float(mobility))
+
+    efficiencies = np.array([
+        SQ_relative_FOM_PV_efficiency(
+            E_gap=E_gap, photon_spectrum=photon_spectrum, alpha=alpha, tau=tau, sigma=sigma,
+            dos_mass=dos_mass, dop_density=d, epsilon=epsilon, mu=m, Tcell=Tcell,
+            allow_out_of_range=allow_out_of_range,
+        )[-1]
+        for d, m in zip(densities, mobilities)
+    ])
+
+    return densities, mobilities, efficiencies
+
+
+def plot_FOM_vs_doping(
+        E_gap: float,
+        photon_spectrum: NDArray,
+        alpha: float,
+        tau: float,
+        sigma: float,
+        dos_mass: float,
+        epsilon: float,
+        mobility: float | Callable[[float], float | NDArray],
+        Tcell: float,
+        dop_range: tuple[float, float] = _DEFAULT_DOP_RANGE,
+        mu_reference: float | None = None,
+        axes: tuple[Axes, Axes] | None = None,
+        *,
+        allow_out_of_range: bool = False,
+) -> tuple[Axes, Axes]:
+    """Plot the mobility and the Γₚᵥ efficiency against doping density.
+
+    Two panels share the doping axis: the mobility used at each density on
+    top, the resulting efficiency below. With ``mu_reference`` a constant
+    mobility is drawn dashed in both, showing what a fixed-mobility sweep
+    would have predicted.
+
+    Parameters
+    ----------
+    E_gap : float
+        Optical band gap in eV.
+    photon_spectrum : numpy.ndarray
+        Converted photon flux spectrum from ``convert_spectrum``.
+    alpha : float
+        Spectrally averaged absorption coefficient in cm⁻¹.
+    tau : float
+        Non-radiative recombination lifetime in s.
+    sigma : float
+        Spectral dispersion of the absorption coefficient, dimensionless.
+    dos_mass : float
+        Density-of-states effective mass in units of m₀.
+    epsilon : float
+        Static dielectric constant, dimensionless.
+    mobility : float or callable
+        Carrier mobility in cm² V⁻¹ s⁻¹, constant or a function of doping, as
+        in :func:`FOM_vs_doping`.
+    Tcell : float
+        Operating temperature of the cell in K.
+    dop_range : tuple of float, optional
+        Doping densities swept, in cm⁻³. Default is the sampled range of
+        Crovetto 2024 table 1.
+    mu_reference : float or None, optional
+        A constant mobility in cm² V⁻¹ s⁻¹ to compare against. Default is None.
+    axes : tuple of Axes or None, optional
+        Mobility and efficiency axes to draw on; a new figure is made if None.
+    allow_out_of_range : bool, optional
+        As in :func:`FOM_vs_doping`. Keyword-only.
+
+    Returns
+    -------
+    tuple of Axes
+        The mobility and efficiency axes.
+    """
+    if axes is None:
+        _, (ax_mu, ax_eff) = plt.subplots(
+            2, 1, figsize=(5, 5), dpi=120, sharex=True, constrained_layout=True,
+            gridspec_kw={"height_ratios": [1, 1.6]},
+        )
+    else:
+        ax_mu, ax_eff = axes
+
+    common: dict[str, Any] = dict(
+        E_gap=E_gap, photon_spectrum=photon_spectrum, alpha=alpha, tau=tau, sigma=sigma,
+        dos_mass=dos_mass, epsilon=epsilon, Tcell=Tcell, dop_range=dop_range,
+        allow_out_of_range=allow_out_of_range,
+    )
+
+    densities, mobilities, efficiencies = FOM_vs_doping(mobility=mobility, **common)
+    label = "μ(n)" if callable(mobility) else f"μ = {float(mobility):.3g}"
+
+    ax_mu.plot(densities, mobilities, color="#2a78d6", linewidth=2, label=label)
+    ax_eff.plot(densities, efficiencies, color="#2a78d6", linewidth=2, label=label)
+
+    if mu_reference is not None:
+        _, ref_mu, ref_eff = FOM_vs_doping(mobility=mu_reference, **common)
+        ref_label = f"μ = {mu_reference:.3g} (constant)"
+        ax_mu.plot(densities, ref_mu, "--", color="#8a8984", linewidth=1.5, label=ref_label)
+        ax_eff.plot(densities, ref_eff, "--", color="#8a8984", linewidth=1.5, label=ref_label)
+        ax_eff.legend(frameon=False, fontsize=8)
+
+    ax_mu.set_yscale("log")
+    ax_mu.set_ylabel("Mobility (cm$^2$V$^{-1}$s$^{-1}$)")
+    ax_mu.set_title(r"$\Gamma_{PV}$ efficiency vs doping" + f"\n(τ = {tau:.2g} s)")
+    ax_eff.set_xlabel("Doping density (cm$^{-3}$)")
+    ax_eff.set_ylabel("Efficiency (%)")
+
+    # The x scale goes on both axes: caller-supplied axes need not share x.
+    for ax in (ax_mu, ax_eff):
+        ax.set_xscale("log")
+        ax.grid(True, which="major", color="#e4e3df", linewidth=0.6)
+
+    return ax_mu, ax_eff
