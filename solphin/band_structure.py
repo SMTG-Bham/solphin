@@ -441,26 +441,6 @@ def write_castep_band_structure_calculation(
     copy_param(str(param_path), str(band_path), tags=tags)
 
 
-def _is_soc_vasprun(vr: BSVasprun) -> bool:
-    """Determine whether a VASP calculation includes spin-orbit coupling.
-
-    Parameters
-    ----------
-    vr : BSVasprun
-        Parsed VASP run object with INCAR settings and calculation metadata.
-
-    Returns
-    -------
-    bool
-        True if spin-orbit coupling was enabled (``LSORBIT = True``);
-        False otherwise, or if the INCAR data cannot be accessed.
-    """
-    try:
-        return bool(vr.incar.get("LSORBIT", False))
-    except Exception:
-        return False
-
-
 def _castep_cell_for(bands_file: Path) -> str | None:
     """Find a sibling .cell file usable for high-symmetry labels, if any.
 
