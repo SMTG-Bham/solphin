@@ -75,54 +75,24 @@ The two `.dat` regeneration tests are worth calling out: the committed files are
 `vasprun.xml`, which makes them verified reference data rather than a snapshot of whatever the code emits today.
 
 `test_import_side_effects.py` checks a different kind of property: that
-`import solphin` leaves the root logger, matplotlib's `font_manager` logger and the warnings filters as it found them.
-Seven modules used to reconfigure those at module scope, which `solphin/__init__.py`'s eager imports made unavoidable
-for anyone importing the package. Each check runs in a subprocess, because
+`import solphin` leaves the root logger, matplotlib's `font_manager` logger and the warnings filters as it found them
+(the rule is in `CONTRIBUTING.md`). Each check runs in a subprocess, because
 `conftest.py` imports solphin at collection time and pytest's own logging plugin attaches a handler to the root logger
 for the duration of every test — in-process the property is unobservable either way.
 
 ## Known defects (`xfail`)
 
-The register is currently **empty** — no test is marked `xfail`, and every defect it used to hold has been fixed.
-
-The convention stands for the next one. An `xfail` here is always `xfail(strict=True)`, so **fixing the source turns
-the suite red** and tells you to drop the marker; the register cannot silently rot. `pytest -rx` prints the whole
-list on any run.
-
-All six entries have been retired:
-
-| Test                                           | Was                                                                                     |
-|------------------------------------------------|-----------------------------------------------------------------------------------------|
-| `test_mobility_plot_draws_one_line_per_lifetime` | `final_results.py` appended a 3-tuple instead of one element                           |
-| `test_write_local_kpoints_writes_file`         | `dos.py` called `len()`/`.tolist()` on a pymatgen `Kpoints`                             |
-| `test_vdw_branch_skipped_without_vdw_patch`    | `vasp_inputs.py` — `or "vdw_d4"` was always truthy                                      |
-| `test_prepare_incar_does_not_mutate_config`    | `_prepare_incar` mutated the config dict it was handed                                  |
-| `test_splits_argument_is_honoured`             | `get_band_structure` globbed every split, ignoring the `splits` value                   |
-| `test_write_band_structure_missing_scf_raises` | `write_band_structure_calculation` printed an error and returned `None` instead of raising |
-
-Each kept its assertions and lost only its marker, so the behaviour they pinned is now enforced rather than merely
-recorded. Several gained sibling tests covering the twin defect on the other branch — the GGA `scf_charge` guard, the
-`rvv10` vdW patch, and the nested `MAGMOM` aliasing were all latent alongside the defect that was actually pinned.
+No test is currently marked `xfail`. When a known defect is pinned, the marker is always `xfail(strict=True)`, so
+**fixing the source turns the suite red** and tells you to drop the marker; the register cannot silently rot.
+`pytest -rx` prints the whole list on any run.
 
 ## Not covered, and why
 
-* **The tutorial notebook.** It is documentation, deliberately outside the suite: nothing here executes it, reads it, or
-  pins its recorded numbers, so the full-pipeline composition of the library calls is exercised only by the notebook
-  itself. The reverse dependency does exist — the notebook's analysis half reads `tests/data/Cu2GeS3` — so the data
-  stays put when the notebook moves or goes.
+* **The tutorial notebooks.** They are documentation, deliberately outside the suite: nothing here executes them, reads
+  them, or pins their recorded numbers, so the full-pipeline composition of the library calls is exercised only by the
+  notebooks themselves. The reverse dependency does exist — the notebooks read `tests/data` — so the data stays put
+  when a notebook moves or goes.
 * **The `*_interactive` functions.** `plot_db_combined_interactive` and
-  `plot_final_result_interactive` set `fig.canvas.header_visible`, an ipympl-only attribute. ipympl is now declared —
-  `pyproject.toml`'s
-  `interactive` extra and `environment.yml` both carry it — but the functions need a live widget backend, so they stay
-  outside the suite.
-
-## Observations that are not tests
-
-Real defects that no assertion can currently demonstrate, recorded here rather than as `xfail`:
-
-* `db_fom.py:195` — the ideal-diode term reads `Jph - J0·exp(qV/kT) - 1` where it should be `Jph - J0·(exp(qV/kT) - 1)`.
-  Photon fluxes are ~1e21 m⁻² s⁻¹, so the stray unit term is lost below float64 precision.
-* `optics._bb_per_eV` uses a `2/(h³c²)` prefactor while `db_fom._rr0` uses
-  `2π/(c²h_eV³)` — the same physical quantity under two conventions, differing by exactly π.
-* `db_fom.max_power` computes an unused `index`; `max_eff` documents "%" but returns a fraction;
-  `band_structure._is_soc_vasprun` is never called.
+  `plot_final_result_interactive` set `fig.canvas.header_visible`, an ipympl-only attribute, and need a live widget
+  backend, so they stay outside the suite. ipympl itself is declared in `pyproject.toml`'s `interactive` extra and in
+  `environment.yml`.
